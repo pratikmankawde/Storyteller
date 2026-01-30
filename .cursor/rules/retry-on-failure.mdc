@@ -1,0 +1,31 @@
+---
+description: Retry failed operations with 10 second delay, up to 10 times
+alwaysApply: true
+---
+
+# Retry Behavior on Failures
+
+## Retry Policy
+
+When any operation fails (build, install, test, tool calls, etc.), follow this retry strategy:
+
+1. **Wait 10 seconds** before retrying
+2. **Retry up to 10 times** before giving up
+3. After each failure, wait the full 10 seconds before attempting again
+4. If all 10 retries fail, then report the persistent error
+
+## Examples
+
+- Build failures: Wait 10 seconds, retry build command (up to 10 times)
+- Installation failures: Wait 10 seconds, retry installation (up to 10 times)
+- Test failures: Wait 10 seconds, retry test execution (up to 10 times)
+- Tool call failures: Wait 10 seconds, retry the tool call (up to 10 times)
+
+## Implementation
+
+When encountering a failure:
+1. Log the failure
+2. Wait 10 seconds
+3. Retry the operation
+4. Repeat until success or 10 attempts are exhausted
+5. Only report failure after all retries are exhausted

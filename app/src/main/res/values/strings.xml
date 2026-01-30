@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dramebaz</string>
+    <string name="book_cover">Book cover</string>
+    <string name="empty_library">Your library is empty</string>
+    <string name="empty_library_subtitle">Import a book to get started</string>
+    <string name="import_book">Import Book</string>
+    <string name="chapters_count">%d chapters</string>
+    <string name="no_chapters">No chapters</string>
+    <string name="empty_characters">No characters found</string>
+    <string name="empty_characters_subtitle">Characters will appear here after analyzing chapters</string>
+    <string name="empty_bookmarks">No bookmarks yet</string>
+    <string name="empty_bookmarks_subtitle">Bookmarks you create will appear here</string>
+    <string name="splash_loading">Loading TTS &amp; Qwen models…</string>
+</resources>

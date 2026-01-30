@@ -1,0 +1,50 @@
+# Gradle
+.gradle/
+*.jar
+.gradle-local/
+.gradle-project/
+**/build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Android
+local.properties
+*.apk
+*.apk_
+*.aab
+*.dex
+*.class
+
+# Native / CMake
+.cxx/
+**/.cxx/
+
+# Kotlin
+.kotlin/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs and temp build outputs
+*.log
+build_output.log
+test_output.log
+test_results.log
+
+# Keystore (uncomment if you don't commit signing keys)
+# *.jks
+# *.keystore
+
+# Optional: uncomment to ignore editor/IDE config (if not shared)
+# .vscode/
+# .cursor/

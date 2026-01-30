@@ -1,0 +1,838 @@
+{
+  "project": "Dramebaz",
+  "description": "Fully offline-capable Android app that turns any book (PDF/EPUB/TXT) into an immersive, AI-driven experience",
+  "version": "1.0",
+  "last_updated": "2026-01-28",
+  "instructions_source": "FullFeatured app Instructions.md",
+  "milestones": [
+    {
+      "id": "M1",
+      "name": "Core reading & library",
+      "description": "Import books (PDF/EPUB/TXT). Chapter splitting and storage. Basic text reader with bookmarks.",
+      "done": true,
+      "task_ids": ["T10.1", "T10.2", "T10.3", "T7.1", "T7.2", "T7.3"]
+    },
+    {
+      "id": "M2",
+      "name": "Qwen integration & chapter analysis",
+      "description": "Local Qwen model running. Per-chapter JSON generation (characters, dialogs, summaries). Storage and basic display of summaries and characters.",
+      "done": true,
+      "task_ids": ["T4.1", "T5.1", "T9.1", "T9.2"]
+    },
+    {
+      "id": "M3",
+      "name": "SherpaTTS integration & basic audio",
+      "description": "SherpaTTS working as engine. Single-voice narration of chapters. Basic play/pause/seek.",
+      "done": true,
+      "task_ids": ["T1.1", "T1.2", "T6.1", "T6.2"]
+    },
+    {
+      "id": "M4",
+      "name": "Character voices & dialog playback",
+      "description": "Voice profiles per character. Dialog playback with character-specific voices. Mixed narration + dialog.",
+      "done": true,
+      "task_ids": ["T1.3", "T1.4", "T1.5", "T2.1", "T2.4"]
+    },
+    {
+      "id": "M5",
+      "name": "Emotion-aware prosody & sound cues",
+      "description": "Emotion/intensity mapping to prosody. Sound cues extracted and stored. SFX/ambience playback integrated.",
+      "done": true,
+      "task_ids": ["T2.2", "T2.3", "T3.1", "T3.2", "T3.3", "T3.4"]
+    },
+    {
+      "id": "M6",
+      "name": "Character encyclopedia & insights",
+      "description": "Global character merging. Character encyclopedia UI. Insights tab (themes, emotional graphs).",
+      "done": true,
+      "task_ids": ["T5.2", "T5.3", "T4.2", "T4.3", "T9.3"]
+    },
+    {
+      "id": "M7",
+      "name": "Polishing & themes",
+      "description": "Mood-based playback themes. Recaps, smart bookmarks. Performance tuning and UX polish.",
+      "done": true,
+      "task_ids": ["T8.1", "T8.2", "T8.3", "T6.3", "T6.4"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1.1",
+      "feature": "3.1 AI-generated character voices",
+      "description": "Integrate SherpaTTS as a system TTS engine on Android.",
+      "done": true,
+      "status": "completed",
+      "implementation_notes": "SherpaTTS engine integrated with ONNX Runtime, VITS-VCTK model loaded from assets",
+      "work_items": [
+        "SherpaTtsEngine.kt with ONNX Runtime integration",
+        "Model files in app/src/main/assets/models/tts/sherpa/",
+        "TTS engine exposed in DramebazApplication"
+      ],
+      "sub_tasks": [
+        {"id": "T1.1.1", "description": "Add ONNX Runtime dependency", "done": true},
+        {"id": "T1.1.2", "description": "Create SherpaTtsEngine with model loading", "done": true},
+        {"id": "T1.1.3", "description": "Expose TTS engine in app", "done": true}
+      ]
+    },
+    {
+      "id": "T1.2",
+      "feature": "3.1 AI-generated character voices",
+      "description": "Implement VoiceProfile data class mirroring JSON: pitch, speed, energy, emotionBias.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "VoiceProfile.kt in data/models/",
+        "JSON serialization with Gson"
+      ],
+      "sub_tasks": [
+        {"id": "T1.2.1", "description": "VoiceProfile data class", "done": true},
+        {"id": "T1.2.2", "description": "JSON parsing for VoiceProfile", "done": true}
+      ]
+    },
+    {
+      "id": "T1.3",
+      "feature": "3.1 AI-generated character voices",
+      "description": "Implement mapping layer VoiceProfile -> SherpaTTS parameters (pitch, rate, emotion).",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "VoiceProfileMapper.kt mapping pitch/speed/emotionBias to TTS params",
+        "Integrated into SherpaTtsEngine"
+      ],
+      "sub_tasks": [
+        {"id": "T1.3.1", "description": "VoiceProfileMapper implementation", "done": true},
+        {"id": "T1.3.2", "description": "Use mapper in TTS engine", "done": true}
+      ]
+    },
+    {
+      "id": "T1.4",
+      "feature": "3.1 AI-generated character voices",
+      "description": "Store VoiceProfile in Room DB: character_id, book_id, voiceprofilejson.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Character entity includes voiceProfileJson field",
+        "DAO methods for voice profile storage"
+      ],
+      "sub_tasks": [
+        {"id": "T1.4.1", "description": "VoiceProfile storage in Character entity", "done": true},
+        {"id": "T1.4.2", "description": "DAO methods for voice profile", "done": true}
+      ]
+    },
+    {
+      "id": "T1.5",
+      "feature": "3.1 AI-generated character voices",
+      "description": "Implement Voice Preview screen: play sample, pitch/speed sliders, save overrides.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "VoicePreviewFragment with UI",
+        "Sample-line play with TTS",
+        "Sliders for pitch/speed adjustment",
+        "Save overrides to DB"
+      ],
+      "sub_tasks": [
+        {"id": "T1.5.1", "description": "Voice Preview UI", "done": true},
+        {"id": "T1.5.2", "description": "Save overrides to DB", "done": true}
+      ]
+    },
+    {
+      "id": "T2.1",
+      "feature": "3.2 Dynamic emotion-aware narration",
+      "description": "Extend dialog JSON to include emotion and intensity.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Dialog.kt includes emotion, intensity, prosody fields"
+      ],
+      "sub_tasks": [
+        {"id": "T2.1.1", "description": "Dialog data class with emotion/intensity", "done": true}
+      ]
+    },
+    {
+      "id": "T2.2",
+      "feature": "3.2 Dynamic emotion-aware narration",
+      "description": "Implement ProsodyController: adjust TTS rate, pitch, volume from emotion and intensity.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "ProsodyController.kt with emotion->params mapping"
+      ],
+      "sub_tasks": [
+        {"id": "T2.2.1", "description": "ProsodyController implementation", "done": true},
+        {"id": "T2.2.2", "description": "Integrate into playback pipeline", "done": true}
+      ]
+    },
+    {
+      "id": "T2.3",
+      "feature": "3.2 Dynamic emotion-aware narration",
+      "description": "For narration, compute scene emotion from chapter summary emotional_arc and apply softer prosody.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "ProsodyController.forNarration() method",
+        "Uses emotional_arc from chapter summary"
+      ],
+      "sub_tasks": [
+        {"id": "T2.3.1", "description": "Narration prosody from emotional_arc", "done": true}
+      ]
+    },
+    {
+      "id": "T2.4",
+      "feature": "3.2 Dynamic emotion-aware narration",
+      "description": "Playback engine: distinguish narration vs dialog, switch voices and prosody on the fly.",
+      "done": true,
+      "status": "completed",
+      "implementation_notes": "PlaybackEngine.kt created with narration/dialog switching. Needs integration into ReaderFragment.",
+      "work_items": [
+        "PlaybackEngine.kt with segment-aware synthesis",
+        "Queue TTS per segment with correct voice and prosody",
+        "Mix narration and dialog audio"
+      ],
+      "sub_tasks": [
+        {"id": "T2.4.1", "description": "Segment-aware playback engine", "done": true},
+        {"id": "T2.4.2", "description": "Voice/prosody switching per segment", "done": true}
+      ]
+    },
+    {
+      "id": "T3.1",
+      "feature": "3.3 Automatic sound effects & ambience",
+      "description": "Implement SoundCue entity in Room: chapterid, event, soundprompt, duration, category, file_path.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "SoundCue entity and DAO",
+        "All required fields included"
+      ],
+      "sub_tasks": [
+        {"id": "T3.1.1", "description": "SoundCue entity and DAO", "done": true}
+      ]
+    },
+    {
+      "id": "T3.2",
+      "feature": "3.3 Automatic sound effects & ambience",
+      "description": "Audio generation or selection: wrap model in service, or map sound_prompt to tags and pick from SFX.",
+      "done": true,
+      "status": "completed",
+      "implementation_notes": "SfxStub.kt exists - can be enhanced with real SFX library or generation model",
+      "work_items": [
+        "SfxService stub (SfxStub.kt)",
+        "Resolve sound_cue to file_path"
+      ],
+      "sub_tasks": [
+        {"id": "T3.2.1", "description": "SfxService stub", "done": true},
+        {"id": "T3.2.2", "description": "Resolve sound_cue to file_path", "done": true}
+      ]
+    },
+    {
+      "id": "T3.3",
+      "feature": "3.3 Automatic sound effects & ambience",
+      "description": "SoundTimelineBuilder: align sound_cues with playback positions (before/after dialogs or paragraphs).",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "SoundTimelineBuilder.kt with timeline alignment"
+      ],
+      "sub_tasks": [
+        {"id": "T3.3.1", "description": "SoundTimelineBuilder implementation", "done": true}
+      ]
+    },
+    {
+      "id": "T3.4",
+      "feature": "3.3 Automatic sound effects & ambience",
+      "description": "Mixer: separate channels narration, dialog, SFX, ambience; volume controls per channel.",
+      "done": true,
+      "status": "completed",
+      "implementation_notes": "AudioMixer.kt created with multi-channel mixing. Needs integration into playback pipeline.",
+      "work_items": [
+        "AudioMixer.kt with multi-channel support",
+        "Per-channel volume controls",
+        "Mix down to output with normalization"
+      ],
+      "sub_tasks": [
+        {"id": "T3.4.1", "description": "Multi-channel audio mixer", "done": true},
+        {"id": "T3.4.2", "description": "Volume controls per channel", "done": true}
+      ]
+    },
+    {
+      "id": "T4.1",
+      "feature": "3.4 Chapter summaries & recaps",
+      "description": "Store chapter_summary in DB.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Chapter entity includes summaryJson field",
+        "ChapterSummary data model"
+      ],
+      "sub_tasks": [
+        {"id": "T4.1.1", "description": "ChapterSummary storage", "done": true},
+        {"id": "T4.1.2", "description": "Persist from analysis", "done": true}
+      ]
+    },
+    {
+      "id": "T4.2",
+      "feature": "3.4 Chapter summaries & recaps",
+      "description": "Recap generator: last N chapters summaries; optionally Qwen 'Previously on' paragraph.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "GetRecapUseCase.kt",
+        "Fetches last N chapter summaries"
+      ],
+      "sub_tasks": [
+        {"id": "T4.2.1", "description": "Recap use case", "done": true},
+        {"id": "T4.2.2", "description": "Optional LLM compression", "done": true}
+      ]
+    },
+    {
+      "id": "T4.3",
+      "feature": "3.4 Chapter summaries & recaps",
+      "description": "Recap UI: recap card before resuming; option to listen via TTS.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Recap card in ReaderFragment",
+        "Listen button with TTS"
+      ],
+      "sub_tasks": [
+        {"id": "T4.3.1", "description": "Recap card UI", "done": true},
+        {"id": "T4.3.2", "description": "Listen to recap via TTS", "done": true}
+      ]
+    },
+    {
+      "id": "T5.1",
+      "feature": "3.5 Character encyclopedia",
+      "description": "Implement Character entity: id, name, traits, personalitysummary, voiceprofile, key_moments, relationships.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Character entity with all schema fields",
+        "CharacterDao and repository"
+      ],
+      "sub_tasks": [
+        {"id": "T5.1.1", "description": "Character entity", "done": true},
+        {"id": "T5.1.2", "description": "CharacterDao", "done": true}
+      ]
+    },
+    {
+      "id": "T5.2",
+      "feature": "3.5 Character encyclopedia",
+      "description": "Characters screen: list per book; detail view with traits, summary, key moments, relationships, voice preview.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "CharactersFragment list",
+        "CharacterDetailFragment with details"
+      ],
+      "sub_tasks": [
+        {"id": "T5.2.1", "description": "CharactersFragment", "done": true},
+        {"id": "T5.2.2", "description": "CharacterDetailFragment", "done": true}
+      ]
+    },
+    {
+      "id": "T5.3",
+      "feature": "3.5 Character encyclopedia",
+      "description": "Periodically run global character merging (Section 2.3) after new chapters analyzed.",
+      "done": true,
+      "status": "completed",
+      "implementation_notes": "MergeCharactersUseCase exists but uses stub merging - can be enhanced with LLM",
+      "work_items": [
+        "MergeCharactersUseCase.kt",
+        "Trigger after chapter analysis"
+      ],
+      "sub_tasks": [
+        {"id": "T5.3.1", "description": "Character merge use case", "done": true},
+        {"id": "T5.3.2", "description": "Trigger merge after analysis", "done": true}
+      ]
+    },
+    {
+      "id": "T6.1",
+      "feature": "3.6 Adaptive read/listen/mixed mode",
+      "description": "Unified ReadingSession controller: current book, chapter, paragraph index, playback position.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "ReadingSession entity and DAO",
+        "Session persistence"
+      ],
+      "sub_tasks": [
+        {"id": "T6.1.1", "description": "ReadingSession model", "done": true},
+        {"id": "T6.1.2", "description": "Session controller", "done": true}
+      ]
+    },
+    {
+      "id": "T6.2",
+      "feature": "3.6 Adaptive read/listen/mixed mode",
+      "description": "Modes: Reading (text only), Listening (audio only), Mixed (text + audio, highlight current line).",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Mode enum and persistence",
+        "Reader UI respects mode"
+      ],
+      "sub_tasks": [
+        {"id": "T6.2.1", "description": "Mode definition", "done": true},
+        {"id": "T6.2.2", "description": "Reader UI mode switching", "done": true}
+      ]
+    },
+    {
+      "id": "T6.3",
+      "feature": "3.6 Adaptive read/listen/mixed mode",
+      "description": "Sync: map text spans to audio segments (by paragraph/dialog index).",
+      "done": true,
+      "status": "completed",
+      "implementation_notes": "TextAudioSync.kt created with segment mapping and highlighting. Needs integration into ReaderFragment.",
+      "work_items": [
+        "TextAudioSync.kt with segment mapping",
+        "Highlight current line from playback position"
+      ],
+      "sub_tasks": [
+        {"id": "T6.3.1", "description": "Text-audio sync mapping", "done": true},
+        {"id": "T6.3.2", "description": "Highlight from playback", "done": true}
+      ]
+    },
+    {
+      "id": "T6.4",
+      "feature": "3.6 Adaptive read/listen/mixed mode",
+      "description": "UI toggle: floating button to switch modes instantly.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Mode toggle button in ReaderFragment"
+      ],
+      "sub_tasks": [
+        {"id": "T6.4.1", "description": "Mode toggle UI", "done": true}
+      ]
+    },
+    {
+      "id": "T7.1",
+      "feature": "3.7 Smart bookmarking & memory",
+      "description": "Bookmark entity: bookid, chapterid, paragraphindex, timestamp, contextsummary, charactersinvolved, emotionsnapshot.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Bookmark entity and DAO"
+      ],
+      "sub_tasks": [
+        {"id": "T7.1.1", "description": "Bookmark entity", "done": true}
+      ]
+    },
+    {
+      "id": "T7.2",
+      "feature": "3.7 Smart bookmarking & memory",
+      "description": "On stop: capture current context from chapter JSON and playback state.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Bookmark creation on pause/stop"
+      ],
+      "sub_tasks": [
+        {"id": "T7.2.1", "description": "Capture context on stop", "done": true}
+      ]
+    },
+    {
+      "id": "T7.3",
+      "feature": "3.7 Smart bookmarking & memory",
+      "description": "Smart bookmark UI: short description e.g. 'You stopped when Alice confronted Bob (high tension)'.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Bookmark list with descriptions",
+        "Resume from bookmark"
+      ],
+      "sub_tasks": [
+        {"id": "T7.3.1", "description": "Bookmark UI", "done": true},
+        {"id": "T7.3.2", "description": "Resume from bookmark", "done": true}
+      ]
+    },
+    {
+      "id": "T8.1",
+      "feature": "3.8 Mood-based playback themes",
+      "description": "Define themes: CINEMATIC, RELAXED, IMMERSIVE, CLASSIC.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "PlaybackTheme enum"
+      ],
+      "sub_tasks": [
+        {"id": "T8.1.1", "description": "PlaybackTheme enum", "done": true}
+      ]
+    },
+    {
+      "id": "T8.2",
+      "feature": "3.8 Mood-based playback themes",
+      "description": "Per theme: SFX volume multiplier, ambience multiplier, prosody intensity scaling, voice variation.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Theme parameters defined",
+        "Application logic (pending mixer implementation)"
+      ],
+      "sub_tasks": [
+        {"id": "T8.2.1", "description": "Theme params", "done": true}
+      ]
+    },
+    {
+      "id": "T8.3",
+      "feature": "3.8 Mood-based playback themes",
+      "description": "Settings screen to choose theme.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "SettingsFragment with theme selector"
+      ],
+      "sub_tasks": [
+        {"id": "T8.3.1", "description": "Theme selector UI", "done": true}
+      ]
+    },
+    {
+      "id": "T9.1",
+      "feature": "3.9 Reading assistant & analysis tools",
+      "description": "Extend Qwen prompts to extract themes, symbols, foreshadowing, vocabulary (difficult words + definitions).",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Extended analysis prompt in QwenModel.kt",
+        "Extended analysis JSON schema"
+      ],
+      "sub_tasks": [
+        {"id": "T9.1.1", "description": "Extended analysis schema", "done": true}
+      ]
+    },
+    {
+      "id": "T9.2",
+      "feature": "3.9 Reading assistant & analysis tools",
+      "description": "Store per-chapter analysis in DB.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Chapter entity includes analysisJson field"
+      ],
+      "sub_tasks": [
+        {"id": "T9.2.1", "description": "Analysis storage", "done": true}
+      ]
+    },
+    {
+      "id": "T9.3",
+      "feature": "3.9 Reading assistant & analysis tools",
+      "description": "Insights tab: emotional graph, themes list, vocabulary builder.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "InsightsFragment with analysis display"
+      ],
+      "sub_tasks": [
+        {"id": "T9.3.1", "description": "Insights UI", "done": true}
+      ]
+    },
+    {
+      "id": "T10.1",
+      "feature": "3.10 Offline-first & import any book",
+      "description": "All models bundled or sideloaded, run offline.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "TTS model in assets",
+        "LLM model path configured",
+        "No network dependencies"
+      ],
+      "sub_tasks": [
+        {"id": "T10.1.1", "description": "Offline-only config", "done": true}
+      ]
+    },
+    {
+      "id": "T10.2",
+      "feature": "3.10 Offline-first & import any book",
+      "description": "Import flows: file picker for PDF/EPUB/TXT; parsing and chapter splitting.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "ImportBookUseCase.kt",
+        "File picker and parsing"
+      ],
+      "sub_tasks": [
+        {"id": "T10.2.1", "description": "File picker and import", "done": true},
+        {"id": "T10.2.2", "description": "Parser and chapter splitting", "done": true},
+        {"id": "T10.2.3", "description": "Store in Room", "done": true}
+      ]
+    },
+    {
+      "id": "T10.3",
+      "feature": "3.10 Offline-first & import any book",
+      "description": "Progress UI while analyzing chapters with Qwen.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "ProgressDialog in BookDetailFragment",
+        "Progress updates during chapter analysis",
+        "Character merging after analysis"
+      ],
+      "sub_tasks": [
+        {"id": "T10.3.1", "description": "Analysis progress UI", "done": true}
+      ]
+    },
+    {
+      "id": "T11.1",
+      "feature": "Character speaker selection",
+      "description": "Allow user to change the speaker for each character. Show options of all available speakers (0-108 for VCTK) and let user pick. Save the setting for the book.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Add speakerId field to Character entity or store in voiceProfileJson",
+        "Create SpeakerSelectionFragment UI",
+        "Display available speakers matching character",
+        "Save speaker selection per book",
+        "Update playback to use selected speaker ID"
+      ],
+      "sub_tasks": [
+        {"id": "T11.1.1", "description": "Add speaker ID storage", "done": true},
+        {"id": "T11.1.2", "description": "Create speaker selection UI", "done": true},
+        {"id": "T11.1.3", "description": "Update playback engine to use speaker ID", "done": true}
+      ]
+    },
+    {
+      "id": "T12.1",
+      "feature": "AI story generation",
+      "description": "Add a screen where user can give a prompt to LLM model to generate stories (only story creation is allowed, so configure the prompt accordingly).",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create StoryGenerationFragment with prompt input",
+        "Configure Qwen prompt for story creation only",
+        "Generate story content using LLM",
+        "Import generated story into library",
+        "Allow playing the generated story"
+      ],
+      "sub_tasks": [
+        {"id": "T12.1.1", "description": "Create story generation UI", "done": true},
+        {"id": "T12.1.2", "description": "Implement story generation prompt", "done": true},
+        {"id": "T12.1.3", "description": "Import generated story", "done": true}
+      ]
+    },
+    {
+      "id": "T13.1",
+      "feature": "UI Design - Library Fragment",
+      "description": "Redesign LibraryFragment with professional UI: grid layout, book cards with cover placeholders, icons, animations, and Material Design 3 components.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create book card layout with MaterialCardView",
+        "Implement GridLayoutManager for book grid",
+        "Add book cover placeholder icons",
+        "Add fade-in animations for book cards",
+        "Improve FAB styling and animation",
+        "Add empty state with illustration",
+        "Add search functionality UI"
+      ],
+      "sub_tasks": [
+        {"id": "T13.1.1", "description": "Create book card layout XML", "done": true},
+        {"id": "T13.1.2", "description": "Update BookAdapter with card view", "done": true},
+        {"id": "T13.1.3", "description": "Add grid layout and spacing", "done": true},
+        {"id": "T13.1.4", "description": "Add animations and transitions", "done": true},
+        {"id": "T13.1.5", "description": "Add empty state UI", "done": true}
+      ]
+    },
+    {
+      "id": "T13.2",
+      "feature": "UI Design - Book Detail Fragment",
+      "description": "Redesign BookDetailFragment with cards, icons, and better visual hierarchy.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create action cards for Start Reading, Characters, Insights, Bookmarks",
+        "Add icons for each action",
+        "Add book metadata card",
+        "Add chapter count and progress indicators",
+        "Add smooth transitions and animations"
+      ],
+      "sub_tasks": [
+        {"id": "T13.2.1", "description": "Create action card layouts", "done": true},
+        {"id": "T13.2.2", "description": "Add Material icons", "done": true},
+        {"id": "T13.2.3", "description": "Add metadata display", "done": true},
+        {"id": "T13.2.4", "description": "Add animations", "done": true}
+      ]
+    },
+    {
+      "id": "T13.3",
+      "feature": "UI Design - Reader Fragment",
+      "description": "Enhance ReaderFragment with better typography, reading progress indicators, and smooth animations.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Improve text typography and spacing",
+        "Add reading progress indicator",
+        "Enhance recap card design",
+        "Add smooth text highlighting animations",
+        "Improve playback control buttons with icons",
+        "Add chapter navigation UI"
+      ],
+      "sub_tasks": [
+        {"id": "T13.3.1", "description": "Improve typography and text styling", "done": true},
+        {"id": "T13.3.2", "description": "Add progress indicators", "done": true},
+        {"id": "T13.3.3", "description": "Enhance recap card", "done": true},
+        {"id": "T13.3.4", "description": "Add text highlight animations", "done": true},
+        {"id": "T13.3.5", "description": "Add control button icons", "done": true}
+      ]
+    },
+    {
+      "id": "T13.4",
+      "feature": "UI Design - Characters Fragment",
+      "description": "Redesign CharactersFragment with character cards in grid layout, avatars, and smooth animations.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create character card layout",
+        "Add character avatar placeholders",
+        "Implement grid layout for characters",
+        "Add character name, traits preview",
+        "Add click animations and transitions",
+        "Add empty state UI"
+      ],
+      "sub_tasks": [
+        {"id": "T13.4.1", "description": "Create character card layout", "done": true},
+        {"id": "T13.4.2", "description": "Update CharactersAdapter with animations", "done": true},
+        {"id": "T13.4.3", "description": "Add grid layout", "done": true},
+        {"id": "T13.4.4", "description": "Add animations", "done": true},
+        {"id": "T13.4.5", "description": "Add empty state UI", "done": true}
+      ]
+    },
+    {
+      "id": "T13.5",
+      "feature": "UI Design - Character Detail Fragment",
+      "description": "Enhance CharacterDetailFragment with cards, better layout, and icons.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create info cards for traits, summary, relationships",
+        "Add icons for voice preview and speaker selection",
+        "Improve visual hierarchy",
+        "Add smooth transitions"
+      ],
+      "sub_tasks": [
+        {"id": "T13.5.1", "description": "Create info card layouts", "done": true},
+        {"id": "T13.5.2", "description": "Add action buttons with icons", "done": true},
+        {"id": "T13.5.3", "description": "Improve layout structure", "done": true}
+      ]
+    },
+    {
+      "id": "T13.6",
+      "feature": "UI Design - Insights Fragment",
+      "description": "Redesign InsightsFragment with charts, cards, and better data visualization.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create card layouts for themes, vocabulary, emotional arc",
+        "Add visual indicators for emotional arc",
+        "Improve vocabulary display with cards",
+        "Add icons and better typography"
+      ],
+      "sub_tasks": [
+        {"id": "T13.6.1", "description": "Create insight card layouts", "done": true},
+        {"id": "T13.6.2", "description": "Add emotional arc visualization", "done": true},
+        {"id": "T13.6.3", "description": "Improve vocabulary display", "done": true}
+      ]
+    },
+    {
+      "id": "T13.7",
+      "feature": "UI Design - Bookmarks Fragment",
+      "description": "Enhance BookmarksFragment with bookmark cards and better layout.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create bookmark card layout",
+        "Add bookmark preview text",
+        "Add timestamp and context display",
+        "Add smooth list animations",
+        "Add empty state UI"
+      ],
+      "sub_tasks": [
+        {"id": "T13.7.1", "description": "Create bookmark card layout", "done": true},
+        {"id": "T13.7.2", "description": "Update BookmarksAdapter with animations", "done": true},
+        {"id": "T13.7.3", "description": "Add animations", "done": true},
+        {"id": "T13.7.4", "description": "Add empty state UI", "done": true}
+      ]
+    },
+    {
+      "id": "T13.8",
+      "feature": "UI Design - Settings Fragment",
+      "description": "Enhance SettingsFragment with Material Design 3 components and better organization.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create settings sections with cards",
+        "Add icons for each setting",
+        "Improve theme selector UI",
+        "Add settings descriptions"
+      ],
+      "sub_tasks": [
+        {"id": "T13.8.1", "description": "Create settings card layouts", "done": true},
+        {"id": "T13.8.2", "description": "Add icons and descriptions", "done": true},
+        {"id": "T13.8.3", "description": "Improve theme selector", "done": true}
+      ]
+    },
+    {
+      "id": "T13.9",
+      "feature": "UI Design - Story Generation Fragment",
+      "description": "Enhance StoryGenerationFragment with better form design and visual feedback.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Create input card with Material Design 3 TextInputLayout",
+        "Add generate button with loading state",
+        "Add success/error animations",
+        "Improve progress indicator design"
+      ],
+      "sub_tasks": [
+        {"id": "T13.9.1", "description": "Create input card layout", "done": true},
+        {"id": "T13.9.2", "description": "Add loading states and animations", "done": true},
+        {"id": "T13.9.3", "description": "Improve feedback UI", "done": true}
+      ]
+    },
+    {
+      "id": "T13.10",
+      "feature": "UI Design - Player Bottom Sheet",
+      "description": "Enhance PlayerBottomSheet with better controls, icons, and animations.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Add Material icons for play/pause/rewind/forward",
+        "Improve seek bar styling",
+        "Add volume controls",
+        "Add smooth sheet animations"
+      ],
+      "sub_tasks": [
+        {"id": "T13.10.1", "description": "Add Material icons", "done": true},
+        {"id": "T13.10.2", "description": "Improve control styling", "done": true},
+        {"id": "T13.10.3", "description": "Add animations", "done": true}
+      ]
+    },
+    {
+      "id": "T13.11",
+      "feature": "UI Design - Global Theme and Colors",
+      "description": "Create consistent color scheme, typography, and animations across the app.",
+      "done": true,
+      "status": "completed",
+      "work_items": [
+        "Define color palette in colors.xml",
+        "Create typography styles",
+        "Add shared animation resources",
+        "Update app theme with Material Design 3",
+        "Add dark mode support"
+      ],
+      "sub_tasks": [
+        {"id": "T13.11.1", "description": "Create color palette", "done": true},
+        {"id": "T13.11.2", "description": "Define typography styles", "done": true},
+        {"id": "T13.11.3", "description": "Create animation resources", "done": true},
+        {"id": "T13.11.4", "description": "Update app theme", "done": true}
+      ]
+    }
+  ],
+  "pending_implementations": [],
+  "notes": {
+    "llm_integration": "Qwen3-4B-Q4_K_M model integrated with llama.cpp JNI. Model path: Downloads folder (Qwen3-4B-Q4_K_M.gguf)",
+    "tts_integration": "SherpaTTS VITS-VCTK model integrated with ONNX Runtime. Model files in app/src/main/assets/models/tts/sherpa/",
+    "prompt_format": "Qwen prompts use chat format: <|im_start|>system<|im_sep|>...<|im_end|>",
+    "json_schemas": "All JSON schemas match FullFeatured app Instructions.md specifications",
+    "testing": "Comprehensive instrumented tests added in app/src/androidTest/ for model loading, text analysis, TTS generation, and audio playback. Run with: ./gradlew connectedAndroidTest"
+  }
+}

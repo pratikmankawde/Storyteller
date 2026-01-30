@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AppCompatActivity requires Theme.AppCompat or descendant (e.g. MaterialComponents) -->
+    <style name="Theme.Dramebaz" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryVariant">@color/secondary_variant</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnimationTransition</item>
+        <item name="materialButtonStyle">@style/Widget.Dramebaz.Button</item>
+    </style>
+
+    <!-- Buttons: readable text size (16sp). Use Material3 parents (available in Material 1.11+). -->
+    <style name="Widget.Dramebaz.Button" parent="Widget.Material3.Button">
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="Widget.Dramebaz.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="Widget.Dramebaz.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:textSize">16sp</item>
+    </style>
+    <style name="Widget.Dramebaz.Button.Text" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textSize">16sp</item>
+    </style>
+    
+    <style name="WindowAnimationTransition">
+        <item name="android:windowEnterAnimation">@anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
+
+    <!-- Splash: no title bar, full background -->
+    <style name="Theme.Dramebaz.Splash" parent="Theme.Dramebaz">
+        <item name="android:windowBackground">@color/primary</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">@color/primary_variant</item>
+        <item name="android:navigationBarColor">@color/primary_variant</item>
+    </style>
+</resources>

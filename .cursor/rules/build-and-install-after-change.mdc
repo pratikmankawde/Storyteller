@@ -1,0 +1,25 @@
+---
+description: After each change, build successfully and install to current active device
+alwaysApply: true
+---
+
+# Build and Install After Each Change
+
+## Rule
+
+After each change (code edit, feature add, fix, etc.), the agent must:
+
+1. **Build successfully** in release mode: run `.\gradlew.bat assembleRelease` (Windows) or `./gradlew assembleRelease` (Unix) from the project root.
+2. **Install to the current active device**: run `adb install -r app\build\outputs\apk\release\app-release.apk` (Windows) or `adb install -r app/build/outputs/apk/release/app-release.apk` (Unix).
+   - To target a specific device (e.g. emulator): use `adb -s <device_id> install -r ...` after checking `adb devices` for the active device.
+
+## When to Apply
+
+- After completing a task that modified app code, resources, or config.
+- Omit only when the user explicitly asks not to build/install, or when the change is documentation-only and does not affect the app binary.
+
+## Implementation
+
+1. After making changes, run the release build. If it fails, fix errors (and respect the retry-on-failure rule if applicable).
+2. Once the build succeeds, run adb install -r with the release APK path.
+3. Confirm "Success" from the install command before considering the task done.
