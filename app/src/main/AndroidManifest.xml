@@ -56,12 +56,14 @@
             android:name=".ai.llm.ChapterAnalysisService"
             android:exported="false" />
 
-        <!-- CharacterAnalysisForegroundService for 5-pass character analysis
+        <!-- CharacterAnalysisForegroundService for 2-pass character analysis
              Uses foreground service with wake lock to prevent OS from freezing
-             the app during long-running LLM inference when screen is off. -->
+             the app during long-running LLM inference when screen is off.
+             stopWithTask="true" ensures service stops when app is closed (swiped from recents). -->
         <service
             android:name=".ai.llm.CharacterAnalysisForegroundService"
             android:exported="false"
+            android:stopWithTask="true"
             android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

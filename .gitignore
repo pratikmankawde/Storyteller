@@ -53,6 +53,8 @@ test_results.log
 *.zip
 *.dll
 *.exe
+*.onnx
+*.gguf
 
 #llama-cpp server
 scripts/llama-cpp/

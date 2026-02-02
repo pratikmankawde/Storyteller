@@ -241,14 +241,18 @@ class CharacterAnalysisForegroundService : Service() {
     private fun parseProgress(message: String): Int {
         // Gemma 2-pass workflow progress parsing:
         // Initializing (0-5%): Engine initialization with GPU/CPU backend
-        // Pass-1 (5-45%): Extract character names + voice profiles per segment
-        // Pass-1 complete (45%): Database save after Pass 1
-        // Pass-2 (45-85%): Extract dialogs with speaker attribution per segment
-        // Pass-2 complete (85-90%): Dialog extraction complete
+        // Pass 1 (5-45%): Extract character names + voice profiles per segment
+        // Pass 1 complete (45%): Database save after Pass 1
+        // Pass 2 (45-85%): Extract dialogs with speaker attribution per segment
+        // Pass 2 complete (85-90%): Dialog extraction complete
         // Saving (90-100%): Final database persistence
+        //
+        // Note: Check more specific patterns FIRST (e.g., "Pass 1 complete" before "Pass 1")
         return when {
             message.contains("Initializing") -> 2
             message.contains("Pass 1 complete") -> 45
+            message.contains("Pass 2 complete") -> 88
+            message.contains("Saving") && message.contains("database") -> 92
             message.contains("Pass 1") -> {
                 val segmentMatch = Regex("Segment (\\d+)/(\\d+)").find(message)
                 if (segmentMatch != null) {
@@ -258,7 +262,6 @@ class CharacterAnalysisForegroundService : Service() {
                     8
                 } else 25
             }
-            message.contains("Pass 2 complete") -> 88
             message.contains("Pass 2") -> {
                 val segmentMatch = Regex("Segment (\\d+)/(\\d+)").find(message)
                 if (segmentMatch != null) {
@@ -268,7 +271,6 @@ class CharacterAnalysisForegroundService : Service() {
                     50
                 } else 65
             }
-            message.contains("Saving") -> 92
             message.contains("complete") -> 100
             else -> currentProgress
         }
@@ -356,6 +358,18 @@ class CharacterAnalysisForegroundService : Service() {
         AppLogger.d(TAG, "   Calling stopSelf...")
         stopSelf()
         AppLogger.i(TAG, "   stopAnalysis() complete")
+    }
+
+    /**
+     * Called when the app is removed from recent tasks (user swipes it away).
+     * This ensures the service stops when the app is "closed" by the user.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        AppLogger.i(TAG, "🔴 onTaskRemoved() - App closed by user, stopping analysis")
+        analysisJob?.cancel()
+        sendCompleteBroadcast(success = false, errorMessage = "App closed")
+        stopAnalysis()
     }
 
     override fun onDestroy() {

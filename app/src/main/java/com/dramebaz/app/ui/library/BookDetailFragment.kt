@@ -353,9 +353,17 @@ class BookDetailFragment : Fragment() {
                         val percent = intent.getIntExtra(CharacterAnalysisForegroundService.EXTRA_PROGRESS_PERCENT, 0)
                         AppLogger.d("BookDetailFragment", "   Progress: $percent% - $message")
                         if (isAdded && !isCancelled) {
-                            progressDialog?.apply {
-                                progress = percent
-                                setMessage(message)
+                            // Ensure UI update happens on main thread
+                            activity?.runOnUiThread {
+                                progressDialog?.let { dialog ->
+                                    if (dialog.isShowing) {
+                                        dialog.progress = percent
+                                        dialog.setMessage(message)
+                                        AppLogger.d("BookDetailFragment", "   ✅ Dialog updated: $percent% - ${message.take(50)}...")
+                                    } else {
+                                        AppLogger.w("BookDetailFragment", "   Dialog not showing, skipping update")
+                                    }
+                                } ?: AppLogger.w("BookDetailFragment", "   progressDialog is null")
                             }
                         } else {
                             AppLogger.w("BookDetailFragment", "   Cannot update UI: isAdded=$isAdded, isCancelled=$isCancelled")

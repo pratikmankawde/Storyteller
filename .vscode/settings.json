@@ -1,4 +1,14 @@
 {
     "java.configuration.updateBuildConfiguration": "automatic",
-    "workbench.activityBar.location": "default"
+    "workbench.activityBar.location": "default",
+    "augment.advanced": {
+        "apiToken": "9808352456b254f80e35f14350b8d03a94e48619ff56ed8ecb3377456e56882e",
+        "accessToken": "9808352456b254f80e35f14350b8d03a94e48619ff56ed8ecb3377456e56882e",
+        "tenantURL": "https://e10.api.augmentcode.com/",
+        "completionURL": "https://e10.api.augmentcode.com/v1/completions",
+        "scopes": [
+            "read",
+            "write"
+        ],
+    }
 }

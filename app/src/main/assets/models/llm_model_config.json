@@ -3,7 +3,8 @@
     {
       "modelFileName": "gemma-3n-E2B-it-int4.litertlm",
       "displayName": "Gemma 3n E2B (int4)",
-      "estimatedPeakMemoryInBytes": 5905580032,
+      "estimatedPeakMemoryInBytes": 4294967296,
+      "skipMemoryCheck": true,
       "defaultConfig": {
         "topK": 48,
         "topP": 0.9,

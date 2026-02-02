@@ -176,7 +176,7 @@ class GemmaCharacterAnalysisUseCase(
             for (segmentIndex in pass1StartSegment until pass1Segments.size) {
                 val segmentText = pass1Segments[segmentIndex]
                 AppLogger.d(TAG, "   Pass-1: Segment ${segmentIndex + 1}/${pass1Segments.size} (${segmentText.length} chars)")
-                onProgress?.invoke("Chapter ${chapterIndex + 1}/$totalChapters: Pass 1 - Segment ${segmentIndex + 1}/${pass1Segments.size}")
+                onProgress?.invoke("Chapter ${chapterIndex + 1}/$totalChapters: Pass 1 - Segment ${segmentIndex + 1}/${pass1Segments.size} - Extracting characters...")
 
                 try {
                     val characters = engine!!.pass1ExtractCharactersAndVoiceProfiles(segmentText)
@@ -237,7 +237,7 @@ class GemmaCharacterAnalysisUseCase(
 
             val segmentText = pass2Segments[segmentIndex]
             AppLogger.d(TAG, "   Pass-2: Segment ${segmentIndex + 1}/${pass2Segments.size} (${segmentText.length} chars)")
-            onProgress?.invoke("Chapter ${chapterIndex + 1}/$totalChapters: Pass 2 - Segment ${segmentIndex + 1}/${pass2Segments.size}")
+            onProgress?.invoke("Chapter ${chapterIndex + 1}/$totalChapters: Pass 2 - Segment ${segmentIndex + 1}/${pass2Segments.size} - Extracting dialogs...")
 
             try {
                 val dialogs = engine!!.pass2ExtractDialogs(segmentText, characterNames + listOf("Narrator"))

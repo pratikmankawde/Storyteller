@@ -447,7 +447,7 @@ class ThreePassCharacterAnalysisUseCase(
             val pageNum = pageIndex + 1
             val pageStartMs = System.currentTimeMillis()
             AppLogger.i(TAG, "📄 Processing page $pageNum/${pages.size} (${pageText.length} chars)")
-            onProgress?.invoke("Chapter ${chapterIndex + 1}/$totalChapters: Pass 1 - Page $pageNum/${pages.size}")
+            onProgress?.invoke("Chapter ${chapterIndex + 1}/$totalChapters: Pass 1 - Page $pageNum/${pages.size} - Extracting characters...")
 
             // Pass 1: Extract character names from this page (skip if already done)
             val pageCharacterNames: List<String>

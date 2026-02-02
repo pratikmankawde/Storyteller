@@ -12,6 +12,9 @@
 -keep class com.dramebaz.app.** { *; }
 -dontwarn com.google.ai.edge.litertlm.**
 
+# Sherpa-ONNX TTS - keep all classes for JNI access from native code
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+
 # PDFBox optional JPX/JPEG2000 (Gemalto) - not bundled; R8 must not fail on missing class
 -dontwarn com.gemalto.jp2.JP2Decoder
 -dontwarn com.tom_roush.pdfbox.filter.JPXFilter

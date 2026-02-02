@@ -18,7 +18,9 @@ data class LlmModelEntry(
     val estimatedPeakMemoryInBytes: Long? = null,
     val defaultConfig: LlmDefaultConfig,
     val pass1: LlmPassOverride? = null,
-    val pass2: LlmPassOverride? = null
+    val pass2: LlmPassOverride? = null,
+    /** If true, skip the memory availability check and attempt to load anyway */
+    val skipMemoryCheck: Boolean = false
 )
 
 /**

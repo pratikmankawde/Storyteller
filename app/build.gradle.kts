@@ -25,6 +25,8 @@ android {
                 arguments += "-DANDROID_STL=c++_shared"
                 // Let CMakeLists.txt auto-detect Vulkan capability (don't force GGML_VULKAN=ON)
                 arguments += "-DGGML_VULKAN_TRY=ON"
+                // Force Release build type for maximum optimization (not RelWithDebInfo)
+                arguments += "-DCMAKE_BUILD_TYPE=Release"
             }
         }
 
@@ -102,6 +104,7 @@ dependencies {
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-process:2.6.2")
 
     // Media playback notification support
     implementation("androidx.media:media:1.7.0")

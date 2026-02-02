@@ -8,7 +8,6 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
-import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
@@ -38,7 +37,10 @@ class LiteRtLmEngine(private val context: Context) {
         private const val TAG = "LiteRtLmEngine"
         private const val CONFIG_ASSET_PATH = "models/llm_model_config.json"
         private const val MAX_TOKENS_DEFAULT = 2048
-        private const val MEMORY_SAFETY_FRACTION = 0.8  // Require 80% of estimated peak to be available
+
+        // Memory check: require only 50% of estimated peak since LiteRT-LM uses memory mapping
+        // and int4 quantized models have much lower runtime memory footprint than peak estimate
+        private const val MEMORY_SAFETY_FRACTION = 0.5
 
         // Max total prompt length (system + user including segment text) in characters
         private const val PASS1_MAX_PROMPT_CHARS = 15_000
@@ -85,16 +87,18 @@ class LiteRtLmEngine(private val context: Context) {
             val root = gson.fromJson(json, LlmModelConfigRoot::class.java)
             val entry = root.models.getOrNull(root.selectedModelId) ?: root.models.firstOrNull()
             modelConfig = entry
+            AppLogger.d(TAG, "Loaded model config: ${entry?.displayName}, skipMemoryCheck=${entry?.skipMemoryCheck}")
             entry
         } catch (e: Exception) {
             AppLogger.w(TAG, "Could not load LLM config from assets, using fallback: ${e.message}")
             modelConfig = LlmModelEntry(
                 modelFileName = "gemma-3n-E2B-it-int4.litertlm",
                 displayName = "Gemma 3n E2B (int4)",
-                estimatedPeakMemoryInBytes = 5905580032L,
+                estimatedPeakMemoryInBytes = 4294967296L, // 4GB - more realistic for int4 model
                 defaultConfig = LlmDefaultConfig(topK = 48, topP = 0.9, temperature = 0.6, maxTokens = 2048, accelerators = "gpu,cpu"),
                 pass1 = LlmPassOverride(temperature = 0.1, maxTokens = 1024),
-                pass2 = LlmPassOverride(temperature = 0.15, maxTokens = 1024)
+                pass2 = LlmPassOverride(temperature = 0.15, maxTokens = 1024),
+                skipMemoryCheck = true // Enable by default in fallback
             )
             modelConfig
         }
@@ -108,13 +112,25 @@ class LiteRtLmEngine(private val context: Context) {
         }.ifEmpty { listOf(Backend.GPU, Backend.CPU) }
     }
 
-    private fun hasEnoughMemory(estimatedPeakBytes: Long): Boolean {
-        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return true
+    /**
+     * Check if device has enough memory for model loading.
+     * Returns a Pair of (hasEnough, availableMB) for logging purposes.
+     */
+    private fun checkMemory(estimatedPeakBytes: Long): Pair<Boolean, Long> {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            ?: return Pair(true, -1L)
         val memInfo = ActivityManager.MemoryInfo()
         am.getMemoryInfo(memInfo)
-        val available = memInfo.availMem
-        val required = (estimatedPeakBytes * MEMORY_SAFETY_FRACTION).toLong()
-        return available >= required
+        val availableMB = memInfo.availMem / (1024 * 1024)
+        val requiredMB = ((estimatedPeakBytes * MEMORY_SAFETY_FRACTION) / (1024 * 1024)).toLong()
+        return Pair(availableMB >= requiredMB, availableMB)
+    }
+
+    /**
+     * @deprecated Use checkMemory() instead for better logging
+     */
+    private fun hasEnoughMemory(estimatedPeakBytes: Long): Boolean {
+        return checkMemory(estimatedPeakBytes).first
     }
 
     private fun buildSamplerConfig(defaultConfig: LlmDefaultConfig, passOverride: LlmPassOverride?): SamplerConfig {
@@ -131,8 +147,10 @@ class LiteRtLmEngine(private val context: Context) {
     /**
      * Initialize the LiteRT-LM engine. Loads config, checks memory, finds model file,
      * then tries backends in config order (e.g. gpu,cpu or gpu,npu,cpu).
+     *
+     * @param skipMemoryCheckOverride If true, bypass memory check regardless of config
      */
-    suspend fun initialize(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun initialize(skipMemoryCheckOverride: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         if (isInitialized) return@withContext true
 
         val entry = getSelectedModelEntry() ?: run {
@@ -143,13 +161,33 @@ class LiteRtLmEngine(private val context: Context) {
         val modelPath = findModelFile(entry.modelFileName)
         if (modelPath == null) {
             AppLogger.e(TAG, "Model file not found. Expected: ${entry.modelFileName}")
+            AppLogger.e(TAG, "Please download the model to /sdcard/Download/${entry.modelFileName}")
             return@withContext false
         }
 
+        // Log model file size
+        val modelFile = java.io.File(modelPath)
+        val modelSizeMB = modelFile.length() / (1024 * 1024)
+        AppLogger.i(TAG, "Found model at: $modelPath (${modelSizeMB} MB)")
+
+        // Use skipMemoryCheck from config, or override if explicitly passed
+        val shouldSkipMemoryCheck = skipMemoryCheckOverride || entry.skipMemoryCheck
+
+        // Memory check with detailed logging
         entry.estimatedPeakMemoryInBytes?.let { peak ->
-            if (!hasEnoughMemory(peak)) {
-                AppLogger.e(TAG, "Insufficient memory for model (need ~${peak / (1024 * 1024)} MB)")
-                return@withContext false
+            val (hasEnough, availableMB) = checkMemory(peak)
+            val requiredMB = ((peak * MEMORY_SAFETY_FRACTION) / (1024 * 1024)).toLong()
+
+            AppLogger.i(TAG, "Memory check: available=${availableMB}MB, required=${requiredMB}MB (${(MEMORY_SAFETY_FRACTION * 100).toInt()}% of ${peak / (1024 * 1024)}MB peak)")
+
+            if (!hasEnough) {
+                if (shouldSkipMemoryCheck) {
+                    AppLogger.w(TAG, "⚠️ Memory check failed but skipMemoryCheck=true, attempting load anyway...")
+                } else {
+                    AppLogger.e(TAG, "❌ Insufficient memory: need ${requiredMB}MB but only ${availableMB}MB available")
+                    AppLogger.e(TAG, "💡 Try closing other apps or set skipMemoryCheck=true in config to bypass")
+                    return@withContext false
+                }
             }
         }
 
@@ -166,14 +204,16 @@ class LiteRtLmEngine(private val context: Context) {
                 engine?.initialize()
                 chosenBackend = backend
                 isInitialized = true
-                AppLogger.i(TAG, "LiteRT-LM initialized successfully with ${backend.name} backend")
+                AppLogger.i(TAG, "✅ LiteRT-LM initialized successfully with ${backend.name} backend")
                 return@withContext true
             } catch (e: Exception) {
                 AppLogger.w(TAG, "${backend.name} backend failed: ${e.message}")
+                // Log full stack trace for debugging
+                AppLogger.d(TAG, "Stack trace: ${e.stackTraceToString()}")
             }
         }
 
-        AppLogger.e(TAG, "All backends failed")
+        AppLogger.e(TAG, "❌ All backends failed to initialize")
         isInitialized = false
         false
     }
@@ -210,7 +250,7 @@ class LiteRtLmEngine(private val context: Context) {
         }
 
         val conversationConfig = ConversationConfig(
-            systemInstruction = Contents.of(systemPrompt),
+            systemMessage = Message.of(systemPrompt),
             samplerConfig = samplerConfig
         )
 
@@ -232,11 +272,12 @@ class LiteRtLmEngine(private val context: Context) {
 
     /**
      * Uses sendMessageAsync with MessageCallback and collects full response via suspendCancellableCoroutine.
+     * Note: LiteRT-LM API requires Message.of() wrapper for the user prompt string.
      */
     private suspend fun sendMessageAsyncAndCollect(conversation: Conversation, userPrompt: String): String =
         suspendCancellableCoroutine { cont ->
             val sb = StringBuilder()
-            conversation.sendMessageAsync(userPrompt, object : MessageCallback {
+            conversation.sendMessageAsync(Message.of(userPrompt), object : MessageCallback {
                 override fun onMessage(message: Message) {
                     sb.append(message.toString())
                 }

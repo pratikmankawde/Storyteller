@@ -195,6 +195,9 @@ class SherpaTtsEngine(private val context: Context) {
 
                 val modelConfig = OfflineTtsModelConfig(
                     vits = vitsConfig,
+                    matcha = OfflineTtsMatchaModelConfig(),
+                    kokoro = OfflineTtsKokoroModelConfig(),
+                    kitten = OfflineTtsKittenModelConfig(),
                     numThreads = numThreads,
                     debug = false,
                     provider = provider
