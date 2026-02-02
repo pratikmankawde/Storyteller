@@ -141,4 +141,31 @@
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
+    <!-- AUG-021: Playback Speed Control -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Speed"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="16dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_speed"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="1.0x"
+            android:textSize="14sp"
+            android:minWidth="72dp"
+            style="@style/Widget.Material3.Button.TonalButton" />
+
+    </LinearLayout>
+
 </LinearLayout>

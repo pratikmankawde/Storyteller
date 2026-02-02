@@ -4,9 +4,11 @@ import android.content.Context
 import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.data.db.Chapter
 import com.dramebaz.app.data.repositories.BookRepository
+import com.dramebaz.app.domain.exceptions.ImportException
 import com.dramebaz.app.pdf.PdfChapterDetector
 import com.dramebaz.app.pdf.PdfExtractor
 import com.dramebaz.app.utils.AppLogger
+import com.dramebaz.app.utils.InputValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -26,61 +28,76 @@ class ImportBookUseCase(private val bookRepository: BookRepository) {
     suspend fun importFromFile(context: Context?, filePath: String, format: String): Long = withContext(Dispatchers.IO) {
         val startTime = System.currentTimeMillis()
         val file = File(filePath)
-        if (!file.exists()) {
-            AppLogger.e(tag, "File does not exist: $filePath")
-            return@withContext -1L
+
+        // AUG-040: Validate file before importing
+        val validationResult = InputValidator.validateFileForImport(file, format)
+        if (validationResult.isFailure) {
+            val error = validationResult.exceptionOrNull()
+            AppLogger.e(tag, "File validation failed: ${error?.message}")
+            throw error as? ImportException
+                ?: ImportException(error?.message ?: "File validation failed", error)
         }
-        
+
         AppLogger.i(tag, "Importing book: path=$filePath, format=$format, size=${file.length()} bytes")
-        
+
         val title = file.nameWithoutExtension
         val book = Book(title = title, filePath = filePath, format = format)
         val bookId = bookRepository.insertBook(book)
-        
-        // For PDF: extract text per page, detect chapter boundaries (start/end pages), then split (my_prompt workflow)
-        val chunks = if (format.equals("pdf", ignoreCase = true) && context != null) {
+
+        // For PDF: extract text per page, detect chapter boundaries with PDF page info
+        if (format.equals("pdf", ignoreCase = true) && context != null) {
             try {
                 val pages = PdfExtractor(context).extractText(file)
                 AppLogger.i(tag, "PDF text extracted: ${pages.size} pages")
-                // Log preview of first page to verify extraction worked
                 if (pages.isNotEmpty()) {
                     val firstPagePreview = pages[0].take(300).replace("\n", " ").trim()
                     AppLogger.d(tag, "First page preview: \"$firstPagePreview...\"")
                 }
-                val detected = PdfChapterDetector.detectChaptersFromPages(pages, title)
-                // INFO so on-device logcat shows chapter count; page ranges are in PdfChapterDetector tag
-                AppLogger.i(tag, "PDF chapter detection complete: ${detected.size} chapters (filter logcat by PdfChapterDetector for page boundaries)")
-                for ((idx, ch) in detected.withIndex()) {
-                    AppLogger.i(tag, "Chapter ${idx + 1} \"${ch.first}\": ${ch.second.length} chars")
+                // Use new method that preserves PDF page info
+                val chaptersWithPages = PdfChapterDetector.detectChaptersWithPages(pages, title)
+                AppLogger.i(tag, "PDF chapter detection complete: ${chaptersWithPages.size} chapters")
+                for ((idx, ch) in chaptersWithPages.withIndex()) {
+                    AppLogger.i(tag, "Chapter ${idx + 1} \"${ch.title}\": ${ch.pdfPages.size} PDF pages, ${ch.body.length} chars")
                 }
-                detected
+                // Insert chapters with PDF page info
+                val chapterList = chaptersWithPages.mapIndexed { index, ch ->
+                    Chapter(
+                        bookId = bookId,
+                        title = ch.title,
+                        body = ch.body,
+                        orderIndex = index,
+                        pdfPagesJson = PdfChapterDetector.pdfPagesToJson(ch.pdfPages)
+                    )
+                }
+                bookRepository.insertChapters(chapterList)
+                AppLogger.d(tag, "Inserted ${chapterList.size} chapters with PDF page info")
             } catch (e: Exception) {
-                AppLogger.e(tag, "PDF extraction/detection failed; falling back to single chapter", e)
-                listOf(title to " ")
+                AppLogger.e(tag, "PDF extraction/detection failed", e)
+                bookRepository.deleteBookWithChapters(bookId)
+                throw ImportException("Failed to extract text from PDF: ${e.message}", e)
             }
         } else {
+            // Non-PDF files: use text-based chapter splitting (no PDF page info)
             val body = async(Dispatchers.IO) {
                 AppLogger.d(tag, "Reading file content")
                 file.readText()
             }.await().also {
                 AppLogger.d(tag, "File read complete: ${it.length} characters")
             }
-            async(Dispatchers.Default) {
+            val chunks = async(Dispatchers.Default) {
                 AppLogger.d(tag, "Splitting into chapters")
                 splitChapters(body, title)
             }.await()
+            AppLogger.d(tag, "Split into ${chunks.size} chapters")
+            val chapterList = chunks.mapIndexed { index, (t, b) ->
+                Chapter(bookId = bookId, title = t, body = b, orderIndex = index)
+            }
+            bookRepository.insertChapters(chapterList)
+            AppLogger.i(tag, "Book imported successfully: bookId=$bookId, chapters=${chapterList.size}")
         }
-        AppLogger.d(tag, "Split into ${chunks.size} chapters")
-        
-        // Insert chapters in batch (Room handles this efficiently)
-        val chapterList = chunks.mapIndexed { index, (t, b) -> 
-            Chapter(bookId = bookId, title = t, body = b, orderIndex = index) 
-        }
-        bookRepository.insertChapters(chapterList)
-        
+
         AppLogger.logPerformance(tag, "Import book '$title'", System.currentTimeMillis() - startTime)
-        AppLogger.i(tag, "Book imported successfully: bookId=$bookId, chapters=${chunks.size}")
-        
+
         return@withContext bookId
     }
 

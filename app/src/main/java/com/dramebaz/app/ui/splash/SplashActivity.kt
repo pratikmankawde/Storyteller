@@ -18,6 +18,7 @@ import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.ai.llm.QwenStub
 import com.dramebaz.app.ui.main.MainActivity
+import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,7 +30,7 @@ import kotlinx.coroutines.withContext
 class SplashActivity : AppCompatActivity() {
     private val app get() = applicationContext as DramebazApplication
     private var statusText: TextView? = null
-    
+
     // Permission request launcher for Android 11+
     private val manageStorageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -45,7 +46,7 @@ class SplashActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     // Legacy permission request
     private val legacyStorageLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -57,13 +58,13 @@ class SplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
-        
+
         statusText = findViewById(R.id.splash_status)
-        
+
         // Check and request storage permissions
         checkStoragePermissions()
     }
-    
+
     private fun checkStoragePermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Android 11+ needs MANAGE_EXTERNAL_STORAGE for Downloads access
@@ -100,9 +101,10 @@ class SplashActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     private fun loadModelsAndStart() {
         lifecycleScope.launch(Dispatchers.IO) {
+            // Load TTS model
             try {
                 withContext(Dispatchers.Main) { updateStatus("Loading TTS model...") }
                 if (!app.ttsEngine.isInitialized()) {
@@ -111,18 +113,42 @@ class SplashActivity : AppCompatActivity() {
             } catch (_: OutOfMemoryError) {
                 // Continue to main; TTS will fail later on low-memory devices
             }
-            
-            withContext(Dispatchers.Main) { updateStatus("Loading LLM model...") }
-            QwenStub.initialize(app)
-            
+
+            // Load LLM model (llama.cpp with GGUF)
+            var llmLoaded = false
+            var gpuStatus = "unknown"
+            var isGpu = false
+            try {
+                withContext(Dispatchers.Main) { updateStatus("Loading LLM model...") }
+                QwenStub.ensureInitialized()
+                llmLoaded = QwenStub.isUsingLlama()
+                gpuStatus = QwenStub.getExecutionProvider()
+                isGpu = QwenStub.isUsingGpu()
+
+                // Log GPU hand-off status
+                AppLogger.i("SplashActivity", "LLM loaded: $llmLoaded, Execution provider: $gpuStatus, GPU: $isGpu")
+            } catch (e: Exception) {
+                // Continue to main; LLM will use stub fallback
+                AppLogger.w("SplashActivity", "LLM initialization failed, using stub", e)
+            }
+
             withContext(Dispatchers.Main) {
+                // Show Toast with model load and GPU hand-off status
+                val message = when {
+                    llmLoaded && isGpu -> "✅ LLM loaded with GPU (Vulkan) acceleration"
+                    llmLoaded -> "⚠️ LLM loaded (CPU only - Vulkan unavailable)"
+                    else -> "❌ LLM Model failed to load (using stub)"
+                }
+                Toast.makeText(this@SplashActivity, message, Toast.LENGTH_LONG).show()
+                AppLogger.i("SplashActivity", "Model status: $message")
+
                 updateStatus("Ready!")
                 startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                 finish()
             }
         }
     }
-    
+
     private fun updateStatus(status: String) {
         statusText?.text = status
     }

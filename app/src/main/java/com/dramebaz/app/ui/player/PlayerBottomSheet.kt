@@ -1,9 +1,11 @@
 package com.dramebaz.app.ui.player
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.TextView
 import com.dramebaz.app.playback.mixer.PlaybackTheme
@@ -14,34 +16,44 @@ import java.util.concurrent.TimeUnit
 
 /**
  * T2.4 / T8.3: PlayerBottomSheet - Play/pause, seek, theme selection.
+ * AUG-021: Added playback speed control.
  */
 class PlayerBottomSheet : BottomSheetDialogFragment() {
-    
+
     interface PlayerControlsListener {
         fun onPlayPause()
         fun onSeek(position: Long)
         fun onRewind()
         fun onForward()
         fun onThemeChanged(theme: PlaybackTheme)
+        fun onSpeedChanged(speed: Float) {} // AUG-021: Speed control callback (default no-op for backward compatibility)
     }
-    
+
+    companion object {
+        // AUG-021: Available speed options
+        val SPEED_OPTIONS = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+        private const val PREFS_NAME = "playback_prefs"
+        private const val KEY_SPEED = "playback_speed"
+    }
+
     private var listener: PlayerControlsListener? = null
     private var currentPosition = 0L
     private var totalDuration = 0L
     private var isPlaying = false
     private var currentTheme = PlaybackTheme.CLASSIC
-    
+    private var currentSpeed = 1.0f  // AUG-021: Default speed
+
     fun setListener(listener: PlayerControlsListener) {
         this.listener = listener
     }
-    
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(com.dramebaz.app.R.layout.bottom_sheet_player, container, false)
     }
-    
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         val seekBar = view.findViewById<SeekBar>(com.dramebaz.app.R.id.seek_bar)
         val btnPlayPause = view.findViewById<MaterialButton>(com.dramebaz.app.R.id.btn_play_pause)
         val btnRewind = view.findViewById<MaterialButton>(com.dramebaz.app.R.id.btn_rewind)
@@ -49,27 +61,27 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
         val currentTime = view.findViewById<TextView>(com.dramebaz.app.R.id.current_time)
         val totalTime = view.findViewById<TextView>(com.dramebaz.app.R.id.total_time)
         val themeGroup = view.findViewById<MaterialButtonToggleGroup>(com.dramebaz.app.R.id.theme_group)
-        
+
         // Initialize seek bar
         seekBar.max = 1000
         seekBar.progress = 0
-        
+
         // Play/Pause button
         btnPlayPause.setOnClickListener {
             listener?.onPlayPause()
             updatePlayPauseButton(btnPlayPause)
         }
-        
+
         // Rewind button
         btnRewind.setOnClickListener {
             listener?.onRewind()
         }
-        
+
         // Forward button
         btnForward.setOnClickListener {
             listener?.onForward()
         }
-        
+
         // Seek bar
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -78,11 +90,11 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
                     listener?.onSeek(position)
                 }
             }
-            
+
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-        
+
         // Theme selection
         val themeButtons = mapOf(
             com.dramebaz.app.R.id.theme_cinematic to PlaybackTheme.CINEMATIC,
@@ -90,7 +102,7 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
             com.dramebaz.app.R.id.theme_immersive to PlaybackTheme.IMMERSIVE,
             com.dramebaz.app.R.id.theme_classic to PlaybackTheme.CLASSIC
         )
-        
+
         themeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 themeButtons[checkedId]?.let { theme ->
@@ -99,7 +111,7 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
                 }
             }
         }
-        
+
         // Set initial theme selection
         when (currentTheme) {
             PlaybackTheme.CINEMATIC -> themeGroup.check(com.dramebaz.app.R.id.theme_cinematic)
@@ -107,30 +119,79 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
             PlaybackTheme.IMMERSIVE -> themeGroup.check(com.dramebaz.app.R.id.theme_immersive)
             PlaybackTheme.CLASSIC -> themeGroup.check(com.dramebaz.app.R.id.theme_classic)
         }
-        
+
+        // AUG-021: Speed control button
+        val btnSpeed = view.findViewById<MaterialButton>(com.dramebaz.app.R.id.btn_speed)
+        loadSavedSpeed()
+        updateSpeedButton(btnSpeed)
+
+        btnSpeed.setOnClickListener { button ->
+            val popup = PopupMenu(requireContext(), button)
+            SPEED_OPTIONS.forEachIndexed { index, speed ->
+                popup.menu.add(0, index, index, formatSpeed(speed))
+            }
+            popup.setOnMenuItemClickListener { menuItem ->
+                val selectedSpeed = SPEED_OPTIONS[menuItem.itemId]
+                currentSpeed = selectedSpeed
+                saveSpeed(selectedSpeed)
+                updateSpeedButton(btnSpeed)
+                listener?.onSpeedChanged(selectedSpeed)
+                true
+            }
+            popup.show()
+        }
+
         // Update UI
         updateProgress(currentPosition, totalDuration)
         updatePlayPauseButton(btnPlayPause)
     }
-    
+
+    // AUG-021: Speed persistence
+    private fun loadSavedSpeed() {
+        context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)?.let { prefs ->
+            currentSpeed = prefs.getFloat(KEY_SPEED, 1.0f)
+        }
+    }
+
+    private fun saveSpeed(speed: Float) {
+        context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)?.edit()?.apply {
+            putFloat(KEY_SPEED, speed)
+            apply()
+        }
+    }
+
+    private fun updateSpeedButton(button: MaterialButton) {
+        button.text = formatSpeed(currentSpeed)
+    }
+
+    private fun formatSpeed(speed: Float): String {
+        return if (speed == speed.toLong().toFloat()) {
+            "${speed.toInt()}.0x"
+        } else {
+            "${speed}x"
+        }
+    }
+
+    fun getCurrentSpeed(): Float = currentSpeed
+
     fun updateProgress(position: Long, duration: Long) {
         currentPosition = position
         totalDuration = duration
-        
+
         view?.let {
             val seekBar = it.findViewById<SeekBar>(com.dramebaz.app.R.id.seek_bar)
             val currentTime = it.findViewById<TextView>(com.dramebaz.app.R.id.current_time)
             val totalTime = it.findViewById<TextView>(com.dramebaz.app.R.id.total_time)
-            
+
             if (duration > 0) {
                 seekBar.progress = ((position.toFloat() / duration) * 1000).toInt()
             }
-            
+
             currentTime.text = formatTime(position)
             totalTime.text = formatTime(duration)
         }
     }
-    
+
     fun updatePlaybackState(playing: Boolean) {
         isPlaying = playing
         view?.let {
@@ -138,11 +199,11 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
             updatePlayPauseButton(btnPlayPause)
         }
     }
-    
+
     private fun updatePlayPauseButton(button: MaterialButton) {
         button.text = if (isPlaying) "⏸" else "▶"
     }
-    
+
     private fun formatTime(millis: Long): String {
         val minutes = TimeUnit.MILLISECONDS.toMinutes(millis)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60

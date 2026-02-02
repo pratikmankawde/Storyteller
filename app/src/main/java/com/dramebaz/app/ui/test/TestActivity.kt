@@ -15,6 +15,7 @@ import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.ai.llm.QwenStub
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
 import com.dramebaz.app.ui.main.MainActivity
+import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -88,14 +89,14 @@ class TestActivity : AppCompatActivity() {
                     }
                 }
                 log("Demo: copied to ${destFile.absolutePath}")
-                
+
                 // Delete existing book with the same title (re-import with proper PDF extraction)
                 val existingBook = app.bookRepository.findBookByTitle("Space story")
                 if (existingBook != null) {
                     log("Demo: deleting existing book (id=${existingBook.id}) to re-import with PDF extraction...")
                     app.bookRepository.deleteBookWithChapters(existingBook.id)
                 }
-                
+
                 val importUseCase = ImportBookUseCase(app.bookRepository)
                 val bookId = importUseCase.importFromFile(this@TestActivity, destFile.absolutePath, "pdf")
                 withContext(Dispatchers.Main) {
@@ -108,7 +109,7 @@ class TestActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("TestActivity", "Load demo book failed", e)
+                AppLogger.e("TestActivity", "Load demo book failed", e)
                 log("Demo: ERROR ${e.message}")
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@TestActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
@@ -125,7 +126,7 @@ class TestActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     private fun testTts(text: String) {
         log("TTS: starting (text length=${text.length})")
         lifecycleScope.launch(Dispatchers.IO) {
@@ -138,7 +139,7 @@ class TestActivity : AppCompatActivity() {
                     val initialized = try {
                         app.ttsEngine.init()
                     } catch (e: OutOfMemoryError) {
-                        android.util.Log.e("TestActivity", "TTS init OOM on device", e)
+                        AppLogger.e("TestActivity", "TTS init OOM on device", e)
                         log("TTS: ERROR Out of memory during init")
                         withContext(Dispatchers.Main) {
                             Toast.makeText(this@TestActivity, "TTS needs more memory (try on emulator or high-RAM device)", Toast.LENGTH_LONG).show()
@@ -158,7 +159,7 @@ class TestActivity : AppCompatActivity() {
                 val result = try {
                     app.ttsEngine.speak(text, null, null, null)
                 } catch (e: OutOfMemoryError) {
-                    android.util.Log.e("TestActivity", "TTS synthesis OOM", e)
+                    AppLogger.e("TestActivity", "TTS synthesis OOM", e)
                     log("TTS: ERROR Out of memory during synthesis")
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@TestActivity, "TTS ran out of memory", Toast.LENGTH_LONG).show()
@@ -186,7 +187,7 @@ class TestActivity : AppCompatActivity() {
                     }
                 }
                 result.onFailure { error ->
-                    android.util.Log.e("TestActivity", "TTS synthesis failed", error)
+                    AppLogger.e("TestActivity", "TTS synthesis failed", error)
                     val msg = error.message ?: error.toString()
                     log("TTS: FAILED $msg")
                     error.cause?.let { log("TTS: cause: ${it.message}") }
@@ -195,7 +196,7 @@ class TestActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("TestActivity", "TTS test error", e)
+                AppLogger.e("TestActivity", "TTS test error", e)
                 val msg = e.message ?: e.toString()
                 log("TTS: ERROR $msg")
                 e.cause?.let { log("TTS: cause: ${it.message}") }
@@ -217,16 +218,16 @@ class TestActivity : AppCompatActivity() {
             audioFile.copyTo(dest, overwrite = true)
             dest.absolutePath
         } catch (e: Exception) {
-            android.util.Log.e("TestActivity", "Failed to copy to Downloads", e)
+            AppLogger.e("TestActivity", "Failed to copy to Downloads", e)
             null
         }
     }
-    
+
     private fun playAudioFile(filePath: String) {
         try {
             // Stop any currently playing audio
             mediaPlayer?.release()
-            
+
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(filePath)
                 prepare()
@@ -236,7 +237,7 @@ class TestActivity : AppCompatActivity() {
                     Toast.makeText(this@TestActivity, "Audio playback completed", Toast.LENGTH_SHORT).show()
                 }
                 setOnErrorListener { _, what, extra ->
-                    android.util.Log.e("TestActivity", "MediaPlayer error: what=$what, extra=$extra")
+                    AppLogger.e("TestActivity", "MediaPlayer error: what=$what, extra=$extra")
                     release()
                     mediaPlayer = null
                     Toast.makeText(this@TestActivity, "Audio playback error", Toast.LENGTH_SHORT).show()
@@ -245,13 +246,13 @@ class TestActivity : AppCompatActivity() {
                 start()
             }
         } catch (e: Exception) {
-            android.util.Log.e("TestActivity", "Error playing audio file", e)
+            AppLogger.e("TestActivity", "Error playing audio file", e)
             Toast.makeText(this@TestActivity, "Error playing audio: ${e.message}", Toast.LENGTH_LONG).show()
             mediaPlayer?.release()
             mediaPlayer = null
         }
     }
-    
+
     private fun testLlmAnalysis() {
         log("LLM: starting chapter analysis (Space story - Chapter 2)")
         lifecycleScope.launch {
@@ -259,28 +260,28 @@ class TestActivity : AppCompatActivity() {
             // Using Chapter 2: The Hydra's Riddle from Space story.pdf
             val testChapter = """
                 Chapter 2: The Hydra's Riddle
-                
+
                 The trek through the Whispering Jungles was a test of nerves. Lyra was distracted every five
                 minutes, trying to pet Echo-Foxes—creatures that could mimic a person's deepest secrets.
-                
+
                 "Don't listen to it, Zane!" Lyra laughed as a fox chirped in Zane's own voice about his secret fear
                 of space-toasters.
-                
+
                 Suddenly, the ground shook. They reached the Chasm of Glass, where the Hydra waited. It
                 wasn't a beast of flesh, but of translucent quartz, its three heads refracting the sunlight into
                 blinding lasers.
-                
+
                 "Standard protocol?" Kael asked, his arm transforming into a kinetic shield.
-                
+
                 "Standard protocol," Jax smirked. "Zane, cause a distraction. Lyra, find its weak
                 spot. Kael, try not to get shattered."
-                
+
                 The battle was a chaotic dance. The Hydra fired beams of concentrated violet light that turned
                 the ground to magma. Zane threw "glitter-bombs"—conductive dust that scrambled the Hydra's
                 internal resonance—while Lyra noticed the beast's heads pulsed in rhythm with the wind.
-                
+
                 "It's not attacking!" Lyra shouted over the roar. "It's harmonizing! We're out of tune!"
-                
+
                 Taking the hint, Jax grabbed a discarded metal plate and began drumming a counter-rhythm.
                 The Hydra paused, its crystalline scales dimming from an angry red to a calm azure. It lowered
                 its heads, allowing them to pass over the bridge of its own back.
@@ -296,9 +297,9 @@ class TestActivity : AppCompatActivity() {
                 }
                 log("LLM: $message")
                 Toast.makeText(this@TestActivity, message, Toast.LENGTH_LONG).show()
-                android.util.Log.i("TestActivity", "LLM Analysis Result: characters=$characters, dialogs=$dialogs")
+                AppLogger.i("TestActivity", "LLM Analysis Result: characters=$characters, dialogs=$dialogs")
             } catch (e: Exception) {
-                android.util.Log.e("TestActivity", "LLM analysis failed", e)
+                AppLogger.e("TestActivity", "LLM analysis failed", e)
                 log("LLM: FAILED ${e.message}")
                 Toast.makeText(this@TestActivity, "LLM Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
@@ -312,29 +313,29 @@ class TestActivity : AppCompatActivity() {
             // Using Chapter 3: The Ascent of the Void-Griffin from Space story.pdf
             val testChapter = """
                 Chapter 3: The Ascent of the Void-Griffin
-                
+
                 The final stretch took them to the Floating Spires, islands of rock held aloft by the planet's
                 massive magnetic core. To reach the Aether-Pulse at the summit, they had to bypass the
                 Void-Griffin, a creature of literal starlight and shadow.
-                
+
                 As they climbed the gravity-defying stairs, the air grew thin. The Griffin descended, its wings
                 spanning thirty feet, shedding feathers of pure dark matter. It didn't attack; it simply stood
                 between them and the glowing orb of the Pulse.
-                
+
                 "It requires a trade," Mina whispered. "The Griffin doesn't want gold. It wants a memory.
                 Something heavy enough to ground it to this world."
-                
+
                 The crew looked at each other. Jax stepped forward, but Kael stopped him. The cyborg touched
                 the Griffin's beak. He uploaded a file from his neural core—the memory of his first day as a
                 human, before the augmentations. A memory of feeling the sun on skin he no longer
                 possessed.
-                
+
                 The Griffin let out a haunting, melodic shriek and dissipated into a cloud of stardust, leaving the
                 Aether-Pulse pulsing gently on its pedestal.
-                
+
                 "Let's get out of here," Jax said, his voice unusually soft. "I think the Rambler has had enough
                 adventure for one day."
-                
+
                 With the Pulse in hand and Mina's blessing, they hiked back to the wreckage. By the violet sun
                 dipped below the horizon, the Stardust Rambler wasn't just flying—it was glowing,
                 trailing a wake of Aurelian light as it pierced the atmosphere.
@@ -348,15 +349,15 @@ class TestActivity : AppCompatActivity() {
                 }
                 log("LLM extended: $message")
                 Toast.makeText(this@TestActivity, message, Toast.LENGTH_LONG).show()
-                android.util.Log.i("TestActivity", "Extended Analysis Result: ${result.take(300)}")
+                AppLogger.i("TestActivity", "Extended Analysis Result: ${result.take(300)}")
             } catch (e: Exception) {
-                android.util.Log.e("TestActivity", "Extended analysis failed", e)
+                AppLogger.e("TestActivity", "Extended analysis failed", e)
                 log("LLM extended: FAILED ${e.message}")
                 Toast.makeText(this@TestActivity, "Extended Analysis Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
-    
+
     override fun onDestroy() {
         super.onDestroy()
         mediaPlayer?.release()

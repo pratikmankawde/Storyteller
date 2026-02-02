@@ -1,0 +1,7 @@
+﻿<|im_start|>system
+You extract character names from text. /no_think<|im_end|}
+<|im_start|>user
+Extract names from: "Jax was the captain. Lyra studied aliens. Kael was security."
+Output: {"characters": ["name1"]}
+<|im_end|>
+<|im_start|>assistant

@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.data.db.Book
+import com.dramebaz.app.ui.common.ErrorDialog
 import com.dramebaz.app.util.MemoryMonitor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.flow.collectLatest
@@ -25,7 +26,7 @@ class LibraryFragment : Fragment() {
     private val vm: LibraryViewModel by viewModels {
         LibraryViewModel.Factory(app.bookRepository)
     }
-    
+
     private var memoryMonitor: MemoryMonitor? = null
 
     private val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -39,11 +40,11 @@ class LibraryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val toolbar = view.findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
-        
+
         // Start memory monitoring on toolbar
         memoryMonitor = MemoryMonitor(requireContext(), toolbar)
         memoryMonitor?.start()
-        
+
         toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.settings -> { findNavController().navigate(R.id.settingsFragment); true }
@@ -83,9 +84,21 @@ class LibraryFragment : Fragment() {
                 recycler.visibility = if (books.isEmpty()) View.GONE else View.VISIBLE
             }
         }
+
+        // AUG-039: Observe import errors and show dialog with retry option
+        viewLifecycleOwner.lifecycleScope.launch {
+            vm.importError.collect { errorMessage ->
+                ErrorDialog.showWithRetry(
+                    context = requireContext(),
+                    title = "Import Failed",
+                    message = errorMessage,
+                    onRetry = { picker.launch("*/*") }
+                )
+            }
+        }
         view.findViewById<View>(R.id.fab_import).setOnClickListener { picker.launch("*/*") }
     }
-    
+
     private fun showDeleteConfirmationDialog(book: Book) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Delete Book")
@@ -100,7 +113,7 @@ class LibraryFragment : Fragment() {
             }
             .show()
     }
-    
+
     override fun onDestroyView() {
         super.onDestroyView()
         memoryMonitor?.stop()

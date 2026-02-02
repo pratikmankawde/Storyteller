@@ -1,0 +1,333 @@
+Gemma 3n E2B LiteRT-LM benchmark (per chapter)
+============================================================
+Model: D:\Learning\Ai\Models\LLM\gemma-3n-E2B-it-int4.litertlm
+PDF: C:\Users\Pratik\Downloads\HP First3Chapters.pdf
+============================================================
+
+=== Chapter 1: Full book ===
+
+--- PASS 1: Characters + Traits + Voice profile ---
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+## 1. Characters
+
+Mr. Dursley, Mrs. Dursley, Dudley, Mrs. Potter, Mr. Potter, Harry Potter
+
+## 2. Traits and Vibe
+
+**Mr. Dursley:**  A big, beefy, and seemingly normal man. He is outwardly proud of the "perfectly normal" life he leads. He is easily agitated, particularly by the presence of the Potters and the "strange" people in cloaks. He is focused on his work (drills) and is generally unpleasant. He is easily startled by the news of the Potters.
+
+**Mrs. Dursley:**  Thin, blonde, and gossipy.  She is more outwardly observant than Mr. Dursley, noticing the "strange" people in cloaks.  She is more outwardly friendly than Mr. Dursley, but also pretends to not know her sister.  She is easily disturbed by the Potters.
+
+**Dudley:**  A spoiled and difficult child.  He is the " "the finer boy anywhere."  He is easily angered and prone to tantrums.  He is a source of annoyance for Mr. and Mrs. Dursley.
+
+**Mrs. Potter:**  The sister of Mrs. Dursley.  She is a "good-for-nothing husband" and is "as unDursleyish as it was possible to be."  She is not in contact with the Dursleys.
+
+**Mr. Potter:**  The father of Harry Potter.  He is not mentioned in the text.
+
+**Harry Potter:**  The "small son" of the Potters.  He is the reason for the Dursleys' fear.  He is a "small boy" that the Dursleys "didn't want Dudley mixing with."
+
+## 3. Voice Profile (TTS)
+
+```json
+[
+  {
+    "character": "Mr. Dursley",
+    "voice_profile": {
+      "pitch": 0.8,
+      "speed": 1.0,
+      "energy": 0.7,
+      "gender": "male",
+      "age": "adult",
+      "tone": "gruffound, slightly condescending",
+      "accent": "neutral",
+      "emotion_bias": {"happy": 0.1, "sad": 0.1, "angry": 0.4, "neutral": 0.4, "fear": 0.1, "surprise": 0.1, "excited": 0.0, "disappointed": 0.1, "curious": 0.0, "defiant": 0.0}
+    }
+  },
+  {
+    "character": "Mrs. Dursley",
+    "voice_profile": {
+      "pitch": 0.7,
+      "speed": 1.0,
+      "energy": 0.6,
+      "gender": "female",
+      "age": "adult",
+      "tone": "slightly gossipy, slightly condescending",
+      "accent": "neutral",
+      "emotion_bias": {"happy": 0.3, "sad": 0.0, "angry": 0.1, "neutral": 0.6, "fear": 0.0, "surprise": 0.0, "excited": 0.0, "disappointed": 0.0, "curious": 0.0, "defiant": 0.0}
+    }
+  },
+  {
+    "character": "Dudley",
+    "voice_profile": {
+      "pitch": 0.9,
+      "speed": 1.2,
+      "energy": 0.8,
+      "gender": "male",
+      "age": "kid",
+      "tone": "silly, demanding",
+      "accent": "neutral",
+      "emotion_bias": {"happy": 0.2, "sad": 0.3, "angry": 0.4, "neutral": 0.1, "fear": 0.0, "surprise": 0.0, "excited": 0.0, "disappointed": 0.0, "curious": 0.0, "defiant": 0.0}
+    }
+  },
+  {
+    "character": "Mrs. Potter",
+    "voice_profile": {
+      "pitch": 0.7,
+      "speed": 1.0,
+      "energy": 0.5,
+      "gender": "female",
+      "age": "adult",
+      "tone": "distant, slightly sad",
+      "accent": "neutral",
+      "emotion_bias": {"happy": 0.0, "sad": 0.3, "angry": 0.0, "neutral": 0.7, "fear": 0.0, "surprise": 0.0, "excited": 0.0, "disappointed": 0.0, "curious": 0.0, "defiant": 0.0}
+    }
+  },
+  {
+    "character": "Mr. Potter",
+    "voice_profile": {
+      "pitch": 0.8,
+      "speed": 1.0,
+      "energy": 0.6,
+      "gender": "male",
+      "age": "adult",
+      "tone": "serious, concerned",
+      "accent": "neutral",
+      "emotion_bias": {"happy": 0.0, "sad": 0.1, "angry": 0.0, "neutral": 0.9, "fear": 0.0, "surprise": 0.0, "excited": 0.0, "disappointed": 0.0, "curious": 0.0, "defiant": 0.0}
+    }
+  }
+]
+```
+
+--- PASS 2: Character:Dialog mapping ---
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: The Boy Who Lived
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: Come to think of it, he wasn’t even sure his nephew was called Harry.
+Narrator: He’d never even seen the boy.
+Narrator: It might have been Harvey. Or Harold.
+Narrator: There was no point in worrying Mrs Dursley, she always got so upset at any mention of her sister.
+Narrator: He didn’t blame her – if he’d had a sister like that … but all the same, those people in cloaks … 
+Narrator: He found it a lot harder to concentrate on drills that afternoon, and when he left the building at five o’clock, he was still so worried that he walked straight into someone just outside the door.
+Narrator: Sorry, he grunted, as the tiny old man stumbled and almost fell.
+Narrator: It was a few seconds before Mr Dursley realised that the man was wearing a violet cloak.
+Narrator: He didn’t seem at all upset at being almost knocked to the ground.
+Narrator: On the contrary, his face split into a wide smile and he said in a squeaky voice that made passers-by stare: ‘Don’t be sorry, my dear sir, for nothing could upset me today! Rejoice, for You-Know-Who has gone at last! Even Muggles like yourself should be celebrating, this happy, happy day!’
+Narrator: And the old man hugged Mr Dursley around the middle and walked off.
+Narrator: Mr Dursley stood rooted to the spot.
+Narrator: He had been hugged by a complete stranger.
+Narrator: He also thought he had been called a Muggle, whatever that was.
+Narrator: He was rattled.
+Narrator: He hurried to his car and set off home, hoping he was imagining things, which he had never hoped before, because he didn’t approve of imagination.
+Narrator: As he pulled into the driveway of number four, the first thing he saw – and it didn’t improve his mood – was the tabby cat he’d spotted that morning.
+Narrator: It was now sitting on his garden wall.
+Narrator: He was sure it was the same one; it had the same markings around its eyes.
+Narrator: Shoo! said Mr Dursley loudly.
+Narrator: The cat didn’t move.
+Narrator: It just gave him a stern look.
+Narrator: Was this normal cat behaviour, Mr Dursley wondered.
+Narrator: Trying to pull himself together, he let himself into the house.
+Narrator: He was still determined not to mention anything to his wife.
+Narrator: Mrs Dursley had had a nice, normal day.
+Narrator: She told him over dinner all about Mrs Next Door’s problems with her daughter and how Dudley had learnt a new word (‘Shan’t!’).
+Narrator: Mr Dursley tried to act normally.
+Narrator: When Dudley had been put to bed, he went into the living-room in time to catch the last report on the evening news: ‘And finally, bird-watchers everywhere have reported that the nation’s owls have been behaving very unusually today. Although owls normally hunt at night and are hardly ever seen in daylight, there have been hundreds of sightings of these birds flying in every direction since sunrise. Experts are unable to explain why the owls have suddenly changed their sleeping pattern.’ The news reader allowed himself a grin. ‘Most mysterious. And now, over to Jim McGuffin with the weather. Going to be any more showers of owls tonight, Jim?’
+Narrator: Well, Ted, I don’t know about that, but it’s not only the owls that have been acting oddly today. Viewers as far apart as Kent, Yorkshire and Dundee have been phoning in to tell me that instead of the rain I promised yesterday, they’ve had a downpour of shooting stars! Perhaps people have been celebrating Bonfire Night early – it’s not until next week, folks! But I can promise a wet night tonight.’
+Narrator: Mr Dursley sat frozen in his armchair.
+Narrator: Shooting stars all over Britain? Owls flying by daylight? Mysterious people in cloaks all over the place? And a whisper, a whisper about the Potters …
+Narrator: Mrs Dursley came into the living-room carrying two cups of tea.
+Narrator: It was no good. He’d have to say something to her.
+Narrator: He cleared his throat nervously. ‘Er – Petunia, dear – you haven’t heard from your sister lately, have you?’
+Narrator: As he had expected, Mrs Dursley looked shocked and angry.
+Narrator: After all, they normally pretended she didn’t have a sister.
+Narrator: No, she said sharply. ‘Why?’
+Narrator: Funny stuff on the news, Mr Dursley mumbled. ‘Owls … shooting stars … and there were a lot of funny-looking people in town today …’
+Narrator: So?
+Narrator: Well, I just thought … maybe … it was something to do with … you know … her lot.’
+Narrator: Mrs Dursley sipped her tea through pursed lips. Mr Dursley wondered whether he dared tell her he’d heard the name ‘Potter’.
+Narrator: He decided he didn’t dare. Instead he said, as casually as he could, ‘Their son – he’d be about Dudley’s age now, wouldn’t he?’
+Narrator: ‘I suppose so,’ said Mrs Dursley stiffly.
+Narrator: ‘What’s his name again? Howard, isn’t it?’
+Narrator: ‘Harry. Nasty, common name, if you ask me.’
+Narrator: ‘Oh, yes,’ said Mr Dursley, his heart sinking horribly. ‘Yes, I quite agree.’
+Narrator: He didn’t say another word on the subject as they went upstairs to bed.
+Narrator: While Mrs Dursley was in the bathroom, Mr Dursley crept to the bedroom window and peered down into the front garden.
+Narrator: The cat was still there.
+Narrator: It was staring down Privet Drive as though it was waiting for something.
+Narrator: Was he imagining things? Could all this have anything to do with the Potters? If it did … if it got out that they were related to a pair of – well, he didn’t think he could bear it.
+Narrator: The Dursleys got into bed. Mrs Dursley fell asleep quickly but Mr Dursley lay awake, turning it all over in his mind.
+Narrator: His last, comforting thought before he fell asleep was that even if the Potters were involved, there was no reason for them to come near him and Mrs Dursley.
+Narrator: The Potters knew very well what he and Petunia thought about them and their kind … He couldn’t see how he and Petunia could get mixed up in anything that might be going on.
+Narrator: He yawned and turned over. It couldn’t affect them …
+Narrator: How very wrong he was.
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: In fact, it was nearly midnight before the cat moved at all.
+Narrator: A man appeared on the corner the cat had been watching,
+Narrator: The cat’s tail twitched and its eyes
+Narrator: Nothing like this man had ever been seen in Privet Drive.
+Narrator: He was tall, thin and very old, judging by the silver of his hair and beard, which were both long enough to tuck into his belt.
+Narrator: He was wearing long robes, a purple cloak which swept the ground and high-heeled, buckled boots.
+Narrator: His blue eyes were light, bright and sparkling behind half-moon spectacles and his nose was very long and crooked, as though it had been broken at least twice.
+Narrator: This man’s name was Albus Dumbledore.
+Narrator: Albus Dumbledore didn’t seem to realise that he had just arrived in a street where everything from his name to his boots was unwelcome.
+Narrator: He was busy rummaging in his cloak, looking for something.
+Narrator: But he did seem to realise he was being watched, because he looked up suddenly at the cat, which was still staring at him from the other end of the street.
+Narrator: For some reason, the sight of the cat seemed to amuse him.
+Narrator: He chuckled and muttered, ‘I should have known.’
+Narrator: He had found what he was looking for in his inside pocket. It seemed to be a silver cigarette lighter.
+Narrator: He flicked it open, held it up in the air and clicked it.
+Narrator: The nearest street lamp went out with a little pop.
+Narrator: He clicked it again – the next lamp flickered into darkness.
+Narrator: Twelve times he clicked the Put-Outer, until the only lights left in the whole street were two tiny pinpricks in the distance, which were the eyes of the cat watching him.
+Narrator: If anyone looked out of their window now, even beady-eyed Mrs Dursley, they wouldn’t be able to see anything that was happening down on the pavement.
+Narrator: Dumbledore slipped the Put-Outer back inside
+Narrator: his cloak and set off down the street towards number four, where he sat down on the wall next to the cat.
+Narrator: He didn’t look at it, but after a moment he spoke to it.
+Narrator: ‘Fancy seeing you here, Professor McGonagall.’
+Narrator: He turned to smile at the tabby, but it had gone.
+Narrator: Instead he was smiling at a rather severe-looking woman who was wearing square glasses exactly the shape of the markings the cat had had around its eyes.
+Narrator: She, too, was wearing a cloak, an emerald one.
+Narrator: Her black hair was drawn into a tight bun.
+Narrator: She looked distinctly ruffled.
+Narrator: ‘How did you know it was me?’ she asked.
+Narrator: ‘My dear Professor, I’ve never seen a cat sit so stiffly.’
+Narrator: ‘You’d be stiff if you’d been sitting on a brick wall all day,’ said Professor McGonagall.
+Narrator: ‘All day? When you could have been celebrating? I must have passed a dozen feasts and parties on my way here.’
+Narrator: Professor McGonagall sniffed angrily.
+Narrator: ‘Oh yes, everyone’s celebrating, all right,’ she said impatiently.
+Narrator: ‘You’d think they’d be a bit more careful, but no – even the Muggles have noticed something’s going on. It was on their news.’
+Narrator: She jerked her head back at the Dursleys’ dark living-room window.
+Narrator: ‘I heard it. Flocks of owls … shooting stars … Well, they’re not completely stupid. They were bound to notice something. Shooting stars down in Kent – I’ll bet that was Dedalus Diggle. He never had much sense.’
+Narrator: ‘You can’t blame them,’ said Dumbledore gently. ‘We’ve had precious little to celebrate for eleven years.’
+Narrator: ‘I know that,’ said Professor McGonagall irritably. ‘But that’s no reason to lose our heads. People are being downright careless, out on the streets in broad daylight, not even dressed in Muggle clothes, swapping rumours.’
+Narrator: She threw a sharp, sideways glance at Dumbledore here, as though hoping he was going to tell her something, but he didn’t, so she went on: ‘A fine thing it would be if, on the very day You-Know-Who seems to have disappeared at last, the Muggles found out about us all. I suppose he really has gone, Dumbledore?’
+Narrator: ‘It certainly seems so,’ said Dumbledore. ‘We’ve much to be thankful for. Would you care for a sherbet lemon?’
+Narrator: ‘A what?’
+Narrator: ‘A sherbet lemon. They’re a kind of Muggle sweet I’m rather fond of.’
+Narrator: ‘No, thank you,’ said Professor McGonagall coldly, as though she didn’t think this was the moment for sherbet lemons. ‘As I say, even if You-Know-Who has gone –’
+Narrator: ‘My dear Professor, surely a sensible person like yourself can call him by his name? All this “You-Know-Who” nonsense – for eleven years I have been trying to persuade people to call him by his proper name: Voldemort.’ Professor McGonagall flinched, but Dumbled, who was unsticking two sherbet lemons, seemed not to notice.
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Character: "What they’re saying," she pressed on, ‘is that last night Voldemort 
+turned up in Godric’s Hollow. He went to find the Potters. The 
+rumour is that Lily and James Potter are – are – that they’re – 
+dead.’
+Character: "Dumbledore bowed his head. Professor McGonagall gasped.
+Character: "Lily and James … I can’t believe it … Idn’t want to believe it 
+… Oh, Albus …’
+Character: "umbledore reached out and patted her on the shoulder. ‘I
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: The characters in this book are: Narrator.
+
+Character: "But I c-c-can’t stand it – Lily an’ James dead – an’ poor little Harry off ter live with Muggles –’"
+Character: "Yes, yes, it’s all very sad, but get a grip on yourself, Hagrid, or we’ll be found,"
+Character: "Well, said Dumbledore finally, ‘that’s that. We’ve no business staying here. We may as well go and join the celebrations.’"
+Character: "Yeah, said Hagrid in a very muffled voice. ‘I’d best get this bike away. G’night, Professor McGonagall – Professor Dumbledore, sir.’"
+Character: "I shall see you soon, I expect, Professor McGonagall,"
+Character: "Good luck, Harry,"
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: He had had it as long as he could remember and the first question he could ever remember asking his Aunt Petunia was how he had got it.
+Aunt Petunia: ‘In the car crash when your parents died,’ she had said. ‘And don’t ask questions.’
+Narrator: Don’t ask questions – that was the first rule for a quiet life with the Dursleys.
+Uncle Vernon: Comb your hair! he barked, by way of a morning greeting.
+Narrator: About once a week, Uncle Vernon looked over the top of his newspaper and shouted that Harry needed a haircut.
+Harry: The Vanishing Glass 21
+Narrator: Harry was frying eggs by the time Dudley arrived in the kitchen with his mother.
+Narrator: Dudley looked a lot like Uncle Vernon. He had a large, pink face, not much neck, small, watery blue eyes and thick, blond hair that lay smoothly on his thick, fat head.
+Aunt Petunia: Often said that Dudley looked like a baby angel – Harry often said that Dudley looked like a pig in a wig.
+Narrator: Harry put the plates of egg and bacon on the table, which was difficult as there wasn’t much room.
+Narrator: Dudley, meanwhile, was counting his presents. His face fell.
+Dudley: Thirty-six, he said, looking up at his mother and father. That’s two less than last year.
+Aunt Petunia: Darling, you haven’t counted Auntie Marge’s present, see, it’s here under this big one from Mummy and Daddy.
+Dudley: All right, thirty then, said Dudley, going red in the face.
+Narrator: Harry, who could see a huge Dudley tantrum coming on, began wolfing down his bacon as fast as possible in case Dudley turned the table over.
+Aunt Petunia: Obviously scented danger too, because she said quickly, And we’ll buy you another two presents while we’re out today. How’s that, popkin? Two more presents. Is that all right?
+Dudley: Thought for a moment. It looked like hard work. Finally he said slowly, Thirty… thirty…
+Aunt Petunia: Thirty-nine, sweetums.
+Dudley: Oh.
+Narrator: Dudley sat down heavily and grabbed the nearest parcel.
+Narrator: Uncle Vernon chuckled.
+Narrator: Little tyke wants his money’s worth, just like his father. Atta boy! He ruffled Dudley’s hair.
+Narrator: At that moment the telephone rang and Aunt Petunia went to answer it while Harry and Uncle Vernon watched Dudley unwrap the racing bike, a cine-camera, a remote-control aeroplane, sixteen new computer games and a video recorder. He was ripping the paper off a gold wristwatch when Aunt Petunia came back from the telephone, looking both angry and worried.
+Aunt Petunia: Bad news, Vernon. Mrs Figg’s broken her leg. She can’t take him. She jerked her head in Harry’s direction.
+Dudley’s mouth fell open in horror but Harry’s heart gave a
+Narrator: leap. Every year on Dudley’s birthday his parents took him and a friend out for the day, to adventure parks, hamburger bars or the cinema. Every year, Harry was left behind with Mrs Figg, a mad old lady who lived two streets away. Harry hated it there. The whole house smelled of cabbage and Mrs Figg made him look at photographs of all the cats she’d ever owned.
+Narrator: Now what? said Aunt Petunia, looking furiously at Harry as though he’d planned this. Harry knew he ought to feel sorry that Mrs Figg had broken her leg, but it wasn’t easy when he reminded himself it would be a whole year before he had to look at Tibbles, Snowy, Mr Paws and Tufty again.
+Narrator: We could phone Marge, said Uncle Vernon.
+Aunt Petunia: Don’t be silly, Vernon, she hates the boy.
+Narrator: The Dursleys often spoke about Harry like this, as though he wasn’t there – or rather, as though he was something very nasty that couldn’t understand them, like a slug.
+Narrator: What about what’s-her-name, your friend – Yvonne?
+Aunt Petunia: On holiday in Majorca.
+Narrator: You could just leave me here, put in hopefully (he’d be able to watch what he wanted on television for a change and maybe even have a go on Dudley’s computer).
+Aunt Petunia: Looked as though she’d just swallowed a lemon.
+Aunt Petunia: I won’t blow up the house, said Harry, but they weren’t listening.
+Narrator: Suppose we could take him to the zoo, said Aunt Petunia slowly, … and leave him in the car …
+Dudley: That car’s new, he’s not sitting in it alone …
+Dudley: Began to cry loudly. In fact, he wasn’t really crying, it had been years since he’d really cried, but he knew that if he screwed up his face and wailed, his mother would give him anything he wanted.
+Aunt Petunia: Dinky Duddydums, don’t cry, Mummy won’t let him spoil your special day! she cried, flinging her arms around him.
+Dudley: I … don’t … want … him … t-t-to come! he yelled between huge pretend sobs. He shot Harry a nasty grin through the gap in his mother’s arms.
+Narrator: Just then, the doorbell rang – Oh, Good Lord, they’re here! said Aunt Petunia frantically – and a moment later, Dudley’s best friend, Piers Polkiss, walked in with his mother. Piers was a scrawny boy with a face like a rat. He was usually the one who
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: The problem was, strange things often happened around Harry and it was just no good telling the Dursleys he didn’t make them happen.
+Aunt Petunia: … roaring along like maniacs, the young hoodlums,
+Uncle Vernon: … roaring along like maniacs, the young hoodlums,
+Harry: … roaring along like maniacs, the young hoodlums,
+Uncle Vernon: MOTORBIKES DON’T FLY!
+Harry: It was only a dream.
+Harry: It was the best morning he’d had in a long time.
+Harry: It was all too good to last.
+Harry: It was worse than having a cupboard as a bedroom, where the only visitor was Aunt Petunia hammering on the door to wake you up – at least he got to visit the rest of the house.
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: The snake nodded vigorously.
+Harry asked: "Where do you come from, anyway?"
+Harry: "The snake jabbed its tail at a little sign next to the glass. Harry peered at it."
+Harry: "Boa Constrictor, Brazil."
+Harry: "Was it nice there?"
+Harry: "The boa constrictor jabbed its tail at the sign again and Harry read on: This specimen was bred in the zoo."
+Harry: "Oh, I see – so you’ve never been to Brazil?"
+Harry: "As the snake shook its head, a deafening shout behind Harry made both them jump."
+Dudley: "DUDLEY! MR DURSLEY! COME AND LOOK AT THIS SNAKE! YOU WON’T BELIEVE WHAT IT’S DOING!"
+Dudley: "Out of the way, you," he said, punching Harry in the ribs.
+Harry: "Caught by surprise, Harry fell hard on the concrete floor."
+Harry: "What came next happened so fast no one saw how it happened – one second, Piers and Dudley were leaning right up close to the glass, the next, they had leapt back with howls of horror."
+Harry: "Harry sat up and gasped; the glass front of the boa constrictor’s tank had vanished."
+Harry: "The great snake was uncoiling itself rapidly, slithering out on to the floor – people throughout the reptile house screamed and started running for the exits."
+Harry: "As the snake slid swiftly past him, Harry could have sworn a low, hissing voice said, ‘Brazil, here I come … Thanksss, amigo.’"
+The keeper of the reptile house was in shock.
+The keeper: "But the glass, where did the glass go?"
+The zoo director: "The zoo director himself made Aunt Petunia a cup of strong sweet tea while he apologised over and over again."
+Piers: "Piers and Dudley could only gibber."
+Harry: "Harry was talking to it, weren’t you, Harry?"
+Uncle Vernon: "Go – cupboard – stay – no meals," before he collapsed into a chair and Aunt Petunia had to run and get him a large brandy.
+Harry: "He didn’t know what time it was and he couldn’t be sure the Dursleys were asleep yet."
+Harry: "He’d lived with the Dursleys almost ten years, ten miserable years, as long as he could remember, ever since he’d been a baby and his parents had died in that car crash."
+Harry: "Sometimes, when he strained his memory during long hours in his cupboard, he came up with a strange vision: a blinding flash of green light and a burning pain on his forehead."
+Harry: "This, he supposed, was the crash, though he couldn’t imagine where all the green light came from."
+Harry: "He couldn’t remember his parents at all."
+Harry aunt and similar to them never spoke about them, and of course જેમાં he was forbidden to ask questions."
+Harry: "There were no photographs of them in the house."
+Harry: "When he had been younger, Harry had dreamed and dreamed of some unknown relation coming to take him away, but it had never happened; the Dursleys were his only family."
+Harry: "Yet sometimes he thought (or maybe hoped) that strangers in the street seemed to know him."
+Harry: "Very strange strangers they were, too. A tiny man in a violet top hat had bowed to him once while out shopping with Aunt Petunia and Dudley."
+Aunt Petunia: "Harry furiously if he knew the man, Aunt Petunia rushed them out of the shop without buying anything."
+A wild-looking old woman dressed all in green had waved merrily at him once on a bus.
+A bald man in a very long purple coat had actually shaken his hand in the street the other day and then walked away without a word.
+Harry: "The weirdest thing about all these people was the way they seemed to vanish the second Harry tried to get a closer look."
+Harry: "At school, Harry had no one. Everybody knew that Dudley’s gang hated that odd Harry Potter in his baggy old clothes and broken glasses, and nobody liked to disagree with Dudley’s gang."
+
+Assuming you meant 'gemma3n-e2b.litertlm' from your local cache
+Narrator: One day in July, Aunt Petunia took Dudley to London to buy 
+his Smeltings uniform, leaving Harry at Mrs Figg’s.
+Mrs Figg: "Mrs Figg wasn't as bad as usual."
+Narrator: It turned out she’d broken her leg tripping 
+over one of her cats and she didn’t seem quite as fond of them  
+as before.
+Mrs Figg: "She let Harry watch television and gave him a bit of"
+

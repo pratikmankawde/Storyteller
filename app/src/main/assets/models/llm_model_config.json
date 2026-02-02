@@ -1,0 +1,25 @@
+{
+  "models": [
+    {
+      "modelFileName": "gemma-3n-E2B-it-int4.litertlm",
+      "displayName": "Gemma 3n E2B (int4)",
+      "estimatedPeakMemoryInBytes": 5905580032,
+      "defaultConfig": {
+        "topK": 48,
+        "topP": 0.9,
+        "temperature": 0.6,
+        "maxTokens": 2048,
+        "accelerators": "gpu,cpu"
+      },
+      "pass1": {
+        "temperature": 0.1,
+        "maxTokens": 1024
+      },
+      "pass2": {
+        "temperature": 0.15,
+        "maxTokens": 1024
+      }
+    }
+  ],
+  "selectedModelId": 0
+}

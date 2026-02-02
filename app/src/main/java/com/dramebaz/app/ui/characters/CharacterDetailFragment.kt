@@ -12,12 +12,20 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
+import com.google.android.material.card.MaterialCardView
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 
+/**
+ * AUG-023: Character detail with relationships display
+ * AUG-024: Character detail with key moments timeline
+ */
 class CharacterDetailFragment : Fragment() {
     private val app get() = requireContext().applicationContext as DramebazApplication
     private val vm: CharacterDetailViewModel by viewModels { CharacterDetailViewModel.Factory(app.db) }
     private var characterId: Long = 0L
+    private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,12 +41,23 @@ class CharacterDetailFragment : Fragment() {
         val name = view.findViewById<TextView>(R.id.name)
         val traits = view.findViewById<TextView>(R.id.traits)
         val summary = view.findViewById<TextView>(R.id.summary)
+        val relationshipsCard = view.findViewById<MaterialCardView>(R.id.relationships_card)
+        val relationshipsText = view.findViewById<TextView>(R.id.relationships)
+        val keyMomentsCard = view.findViewById<MaterialCardView>(R.id.key_moments_card)
+        val keyMomentsText = view.findViewById<TextView>(R.id.key_moments)
+
         viewLifecycleOwner.lifecycleScope.launch {
             val c = vm.getCharacter(characterId)
             c?.let {
                 name.text = it.name
                 traits.text = "Traits: ${it.traits}"
                 summary.text = it.personalitySummary.ifEmpty { "-" }
+
+                // AUG-023: Display relationships
+                displayRelationships(it.relationships, relationshipsCard, relationshipsText)
+
+                // AUG-024: Display key moments
+                displayKeyMoments(it.keyMoments, keyMomentsCard, keyMomentsText)
             }
         }
         view.findViewById<Button>(R.id.btn_voice_preview).setOnClickListener {
@@ -49,9 +68,6 @@ class CharacterDetailFragment : Fragment() {
                         putLong("characterId", character.id)
                         putString("characterName", character.name)
                     }
-                    val voicePreviewFragment = VoicePreviewFragment().apply {
-                        arguments = args
-                    }
                     // Navigate to voice preview using navigation
                     findNavController().navigate(
                         R.id.action_characterDetailFragment_to_voicePreviewFragment,
@@ -60,7 +76,7 @@ class CharacterDetailFragment : Fragment() {
                 }
             }
         }
-        
+
         view.findViewById<Button>(R.id.btn_select_speaker).setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 val c = vm.getCharacter(characterId)
@@ -76,6 +92,74 @@ class CharacterDetailFragment : Fragment() {
                     )
                 }
             }
+        }
+    }
+
+    // AUG-023: Parse and display relationships
+    private fun displayRelationships(relationshipsJson: String, card: MaterialCardView, textView: TextView) {
+        if (relationshipsJson.isBlank() || relationshipsJson == "[]") {
+            card.visibility = View.GONE
+            return
+        }
+
+        try {
+            val type = object : TypeToken<List<Map<String, String>>>() {}.type
+            val relationships: List<Map<String, String>> = gson.fromJson(relationshipsJson, type) ?: emptyList()
+
+            if (relationships.isEmpty()) {
+                card.visibility = View.GONE
+                return
+            }
+
+            val formattedText = relationships.joinToString("\n") { rel ->
+                val character = rel["character"] ?: rel["name"] ?: "Unknown"
+                val relType = rel["relationship"] ?: rel["type"] ?: ""
+                val nature = rel["nature"] ?: rel["description"] ?: ""
+                buildString {
+                    append("• $character")
+                    if (relType.isNotBlank()) append(" ($relType)")
+                    if (nature.isNotBlank()) append(": $nature")
+                }
+            }
+
+            textView.text = formattedText
+            card.visibility = View.VISIBLE
+        } catch (e: Exception) {
+            card.visibility = View.GONE
+        }
+    }
+
+    // AUG-024: Parse and display key moments
+    private fun displayKeyMoments(keyMomentsJson: String, card: MaterialCardView, textView: TextView) {
+        if (keyMomentsJson.isBlank() || keyMomentsJson == "[]") {
+            card.visibility = View.GONE
+            return
+        }
+
+        try {
+            val type = object : TypeToken<List<Map<String, Any>>>() {}.type
+            val moments: List<Map<String, Any>> = gson.fromJson(keyMomentsJson, type) ?: emptyList()
+
+            if (moments.isEmpty()) {
+                card.visibility = View.GONE
+                return
+            }
+
+            val formattedText = moments.mapIndexed { index, moment ->
+                val chapter = moment["chapter"]?.toString() ?: "Ch. ${index + 1}"
+                val description = moment["description"]?.toString() ?: moment["moment"]?.toString() ?: ""
+                val significance = moment["significance"]?.toString() ?: ""
+                buildString {
+                    append("📍 $chapter")
+                    if (description.isNotBlank()) append("\n   $description")
+                    if (significance.isNotBlank()) append("\n   ★ $significance")
+                }
+            }.joinToString("\n\n")
+
+            textView.text = formattedText
+            card.visibility = View.VISIBLE
+        } catch (e: Exception) {
+            card.visibility = View.GONE
         }
     }
 }

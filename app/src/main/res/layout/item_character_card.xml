@@ -64,6 +64,17 @@
                 tools:text="Brave, Loyal, Intelligent" />
         </LinearLayout>
 
+        <!-- AUG-031: Voice inconsistency warning icon -->
+        <ImageView
+            android:id="@+id/voice_warning_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:src="@android:drawable/stat_notify_error"
+            android:visibility="gone"
+            android:contentDescription="Voice inconsistency warning"
+            app:tint="#FF9800" />
+
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"

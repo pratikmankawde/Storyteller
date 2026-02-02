@@ -1,310 +1,298 @@
-// JNI bridge for Qwen LLM (GGUF). Path is provided by QwenModel.kt (e.g. qwen2.5-3b-instruct-q4_k_m.gguf in Downloads).
+/**
+ * Minimal JNI bridge for llama.cpp C API (Qwen3 GGUF on Android).
+ * Uses ggml-org/llama.cpp b7793 (supports Qwen3 architecture).
+ */
 #include <jni.h>
+#include <cstring>
 #include <string>
 #include <vector>
-#include <cstring>
-#include <algorithm>
-#include <unistd.h>
-#include <android/log.h>
+#include <mutex>
+
 #include "llama.h"
+#include <android/log.h>
 
-#define LOG_TAG "QwenModel"
+static bool s_backend_init = false;
+#define LOG_TAG "LlamaJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Structure to hold model and context together
-struct LlamaContextWrapper {
-    llama_model* model;
-    llama_context* ctx;
-    const llama_vocab* vocab;
-    llama_sampler* sampler;
-    
-    LlamaContextWrapper() : model(nullptr), ctx(nullptr), vocab(nullptr), sampler(nullptr) {}
+struct LlamaHandle
+{
+    llama_model *model = nullptr;
+    llama_context *ctx = nullptr;
+    llama_sampler *sampler = nullptr;
+    int n_gpu_layers_used = -1; // -1 = CPU only, >=0 = number of layers on GPU (Vulkan)
+    int n_total_layers = 0;     // Total number of layers in the model
+    std::mutex mtx;             // Mutex to prevent concurrent generation calls
 };
 
-extern "C" {
+extern "C"
+{
 
-JNIEXPORT jlong JNICALL
-Java_com_dramebaz_app_ai_llm_QwenModel_llamaInitFromFile(JNIEnv *env, jobject thiz, jstring model_path, jint n_gpu_layers) {
-    const char *path = env->GetStringUTFChars(model_path, nullptr);
-    int gpu_layers = (int) n_gpu_layers;
-    LOGI("llamaInitFromFile called with path: %s, n_gpu_layers: %d", path, gpu_layers);
-    
-    try {
-        // Initialize llama backend
-        llama_backend_init();
-        
-        // Load model with optimizations for mobile; n_gpu_layers from Kotlin (device config)
-        llama_model_params model_params = llama_model_default_params();
-        model_params.n_gpu_layers = gpu_layers; // -1 = all on GPU, 0 = CPU only, >0 = that many layers on GPU
-        model_params.use_mmap = true;  // Faster load and inference (default, explicit for clarity)
-        model_params.use_mlock = false; // Avoid locking full model in RAM (can OOM on mobile)
-        
-        LOGI("Loading model from: %s (n_gpu_layers=%d)", path, gpu_layers);
-        llama_model *model = llama_model_load_from_file(path, model_params);
-        
-        if (model == nullptr) {
-            LOGE("Failed to load model from: %s", path);
-            env->ReleaseStringUTFChars(model_path, path);
-            return 0;
+    JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved)
+    {
+        (void)reserved;
+        if (!s_backend_init)
+        {
+            llama_backend_init();
+            s_backend_init = true;
         }
-        LOGI("Model loaded successfully");
-        
-        // Get vocabulary
-        const llama_vocab *vocab = llama_model_get_vocab(model);
-        if (vocab == nullptr) {
-            LOGE("Failed to get vocabulary from model");
-            llama_model_free(model);
-            env->ReleaseStringUTFChars(model_path, path);
-            return 0;
-        }
-        LOGI("Vocabulary obtained successfully");
-        
-        // Create context with optimizations for mobile (tuned for speed)
-        int n_cores = (int) sysconf(_SC_NPROCESSORS_ONLN);
-        if (n_cores <= 0) n_cores = 4;
-        // Use all available cores (up to 8) for faster inference; leave 1 core for UI on 4+ core devices
-        int n_threads = (n_cores >= 4) ? std::min(8, n_cores - 1) : std::min(8, n_cores);
-        n_threads = std::max(1, n_threads);
-        int n_threads_batch = std::max(n_threads, std::min(8, n_cores));
-        LOGI("CPU cores=%d, n_threads=%d, n_threads_batch=%d", n_cores, n_threads, n_threads_batch);
-        
-        llama_context_params ctx_params = llama_context_default_params();
-        ctx_params.n_ctx = 2048; // Context size
-        ctx_params.n_batch = 2048; // Larger batch = faster prompt decode (up to n_ctx)
-        ctx_params.n_ubatch = 512;  // Micro batch (512 is a good default for mobile)
-        ctx_params.n_threads = n_threads;
-        ctx_params.n_threads_batch = n_threads_batch;
-        ctx_params.no_perf = true; // Disable performance counters
-        
-        LOGI("Creating context with n_ctx=%d, n_batch=%d, n_ubatch=%d", ctx_params.n_ctx, ctx_params.n_batch, ctx_params.n_ubatch);
-        llama_context *ctx = llama_init_from_model(model, ctx_params);
-        
-        if (ctx == nullptr) {
-            LOGE("Failed to create context");
-            llama_model_free(model);
-            env->ReleaseStringUTFChars(model_path, path);
-            return 0;
-        }
-        LOGI("Context created successfully");
-        
-        // Initialize sampler chain with greedy sampling
-        auto sparams = llama_sampler_chain_default_params();
-        sparams.no_perf = true;
-        llama_sampler *sampler = llama_sampler_chain_init(sparams);
-        llama_sampler_chain_add(sampler, llama_sampler_init_greedy());
-        LOGI("Sampler initialized");
-        
-        // Wrap in structure
-        LlamaContextWrapper *wrapper = new LlamaContextWrapper();
-        wrapper->model = model;
-        wrapper->ctx = ctx;
-        wrapper->vocab = vocab;
-        wrapper->sampler = sampler;
-        
-        LOGI("Model initialization complete");
-        env->ReleaseStringUTFChars(model_path, path);
-        return reinterpret_cast<jlong>(wrapper);
-        
-    } catch (const std::exception& e) {
-        LOGE("Exception in llamaInitFromFile: %s", e.what());
-        env->ReleaseStringUTFChars(model_path, path);
-        return 0;
-    } catch (...) {
-        LOGE("Unknown exception in llamaInitFromFile");
-        env->ReleaseStringUTFChars(model_path, path);
-        return 0;
+        return JNI_VERSION_1_6;
     }
-}
 
-JNIEXPORT jstring JNICALL
-Java_com_dramebaz_app_ai_llm_QwenModel_llamaGenerate(JNIEnv *env, jobject thiz, jlong context,
-                                                      jstring prompt, jint max_tokens,
-                                                      jfloat temperature, jfloat top_p, jfloat top_k) {
-    LOGD("llamaGenerate called");
-    
-    if (context == 0) {
-        LOGE("Invalid context (null)");
-        return env->NewStringUTF("");
+    JNIEXPORT jlong JNICALL
+    Java_com_dramebaz_app_ai_llm_LlamaNative_loadModel(JNIEnv *env, jclass clazz, jstring path_jstr)
+    {
+        (void)clazz;
+        if (!path_jstr)
+            return 0;
+        const char *path = env->GetStringUTFChars(path_jstr, nullptr);
+        if (!path)
+            return 0;
+
+        if (!s_backend_init)
+        {
+            llama_backend_init();
+            s_backend_init = true;
+        }
+
+        llama_model_params mparams = llama_model_default_params();
+        mparams.use_mmap = true;
+        mparams.use_mlock = false;
+
+        // Try GPU (Vulkan) first: offload all layers; fallback to CPU if unavailable
+        int n_gpu_used = -1;
+        mparams.n_gpu_layers = 99;
+        llama_model *model = llama_model_load_from_file(path, mparams);
+        if (model)
+            n_gpu_used = 99;
+        else
+        {
+            LOGI("GPU (Vulkan) load failed, falling back to CPU");
+            mparams.n_gpu_layers = -1;
+            model = llama_model_load_from_file(path, mparams);
+        }
+        env->ReleaseStringUTFChars(path_jstr, path);
+        if (!model)
+            return 0;
+
+        llama_context_params cparams = llama_context_default_params();
+        cparams.n_ctx = 4096;
+        cparams.n_threads = 4;       // Increased from 2 for better CPU utilization on modern devices
+        cparams.n_threads_batch = 4; // Increased from 2 for faster prompt processing
+
+        llama_context *ctx = llama_init_from_model(model, cparams);
+        if (!ctx)
+        {
+            llama_model_free(model);
+            return 0;
+        }
+
+        llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
+        llama_sampler *smpl = llama_sampler_chain_init(sparams);
+        // Reduced top_k from 50 to 40 for faster sampling with minimal quality loss
+        llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
+        llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.9f, 1));
+        llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.8f));
+        llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+        // Get the actual number of layers in the model
+        int n_total_layers = llama_model_n_layer(model);
+
+        // If GPU was used, the actual layers offloaded is min(requested, total)
+        int n_gpu_actual = (n_gpu_used > 0) ? (n_gpu_used > n_total_layers ? n_total_layers : n_gpu_used) : 0;
+
+        LlamaHandle *h = new LlamaHandle();
+        h->model = model;
+        h->ctx = ctx;
+        h->sampler = smpl;
+        h->n_gpu_layers_used = n_gpu_actual;
+        h->n_total_layers = n_total_layers;
+
+        LOGI("Model has %d layers total", n_total_layers);
+        LOGI("Execution provider: %s (GPU layers: %d/%d)",
+             n_gpu_actual > 0 ? "GPU (Vulkan)" : "CPU",
+             n_gpu_actual,
+             n_total_layers);
+        return reinterpret_cast<jlong>(h);
     }
-    
-    LlamaContextWrapper *wrapper = reinterpret_cast<LlamaContextWrapper*>(context);
-    if (wrapper == nullptr || wrapper->ctx == nullptr || wrapper->model == nullptr || 
-        wrapper->vocab == nullptr || wrapper->sampler == nullptr) {
-        LOGE("Invalid wrapper or null components");
-        return env->NewStringUTF("");
+
+    JNIEXPORT jstring JNICALL
+    Java_com_dramebaz_app_ai_llm_LlamaNative_getExecutionProvider(JNIEnv *env, jclass clazz, jlong handle)
+    {
+        (void)clazz;
+        LlamaHandle *h = reinterpret_cast<LlamaHandle *>(handle);
+        if (!h)
+            return env->NewStringUTF("unknown");
+
+        // Return provider with layer info: "GPU (Vulkan) [28/28 layers]" or "CPU"
+        char buffer[128];
+        if (h->n_gpu_layers_used > 0)
+        {
+            snprintf(buffer, sizeof(buffer), "GPU (Vulkan) [%d/%d layers]",
+                     h->n_gpu_layers_used, h->n_total_layers);
+        }
+        else
+        {
+            snprintf(buffer, sizeof(buffer), "CPU");
+        }
+        return env->NewStringUTF(buffer);
     }
-    
-    const char *prompt_str = env->GetStringUTFChars(prompt, nullptr);
-    if (prompt_str == nullptr) {
-        LOGE("Failed to get prompt string");
-        return env->NewStringUTF("");
+
+    JNIEXPORT jint JNICALL
+    Java_com_dramebaz_app_ai_llm_LlamaNative_getGpuLayerCount(JNIEnv *env, jclass clazz, jlong handle)
+    {
+        (void)env;
+        (void)clazz;
+        LlamaHandle *h = reinterpret_cast<LlamaHandle *>(handle);
+        if (!h)
+            return 0;
+        return h->n_gpu_layers_used;
     }
-    
-    size_t prompt_len = strlen(prompt_str);
-    LOGI("llamaGenerate: prompt length=%zu, max_tokens=%d", prompt_len, max_tokens);
-    
-    // Limit prompt length to prevent overflow; allow enough for a page of text
-    if (prompt_len > 8000) {
-        LOGI("Truncating prompt from %zu to 8000 chars", prompt_len);
-        prompt_len = 8000;
+
+    JNIEXPORT jint JNICALL
+    Java_com_dramebaz_app_ai_llm_LlamaNative_getTotalLayerCount(JNIEnv *env, jclass clazz, jlong handle)
+    {
+        (void)env;
+        (void)clazz;
+        LlamaHandle *h = reinterpret_cast<LlamaHandle *>(handle);
+        if (!h)
+            return 0;
+        return h->n_total_layers;
     }
-    
-    std::string result;
-    
-    try {
-        llama_context *ctx = wrapper->ctx;
-        const llama_vocab *vocab = wrapper->vocab;
-        llama_sampler *smpl = wrapper->sampler;
-        
-        // Tokenize prompt - first get the number of tokens needed
-        int n_prompt = -llama_tokenize(vocab, prompt_str, prompt_len, NULL, 0, true, true);
-        LOGD("Need %d tokens for prompt", n_prompt);
-        
-        if (n_prompt <= 0) {
-            LOGE("Failed to calculate token count");
-            env->ReleaseStringUTFChars(prompt, prompt_str);
+
+    JNIEXPORT void JNICALL
+    Java_com_dramebaz_app_ai_llm_LlamaNative_release(JNIEnv *env, jclass clazz, jlong handle)
+    {
+        (void)env;
+        (void)clazz;
+        LlamaHandle *h = reinterpret_cast<LlamaHandle *>(handle);
+        if (!h)
+            return;
+        if (h->sampler)
+        {
+            llama_sampler_free(h->sampler);
+            h->sampler = nullptr;
+        }
+        if (h->ctx)
+        {
+            llama_free(h->ctx);
+            h->ctx = nullptr;
+        }
+        if (h->model)
+        {
+            llama_model_free(h->model);
+            h->model = nullptr;
+        }
+        delete h;
+    }
+
+    // Stop strings: stop generation when output contains these
+    static const char *STOP_STRINGS[] = {"<|im_end|>", "<|endoftext|>"};
+    static const int N_STOP = 2;
+
+    static bool endsWithStop(const std::string &s)
+    {
+        for (int i = 0; i < N_STOP; i++)
+        {
+            size_t len = strlen(STOP_STRINGS[i]);
+            if (s.length() >= len && s.compare(s.length() - len, len, STOP_STRINGS[i]) == 0)
+                return true;
+        }
+        return false;
+    }
+
+    JNIEXPORT jstring JNICALL
+    Java_com_dramebaz_app_ai_llm_LlamaNative_generate(JNIEnv *env, jclass clazz, jlong handle,
+                                                      jstring prompt_jstr, jint max_tokens, jfloat temperature)
+    {
+        (void)clazz;
+        LlamaHandle *h = reinterpret_cast<LlamaHandle *>(handle);
+        if (!h || !h->ctx || !h->model || !h->sampler)
             return env->NewStringUTF("");
-        }
-        
-        // Allocate and tokenize
-        std::vector<llama_token> prompt_tokens(n_prompt);
-        if (llama_tokenize(vocab, prompt_str, prompt_len, prompt_tokens.data(), prompt_tokens.size(), true, true) < 0) {
-            LOGE("Failed to tokenize prompt");
-            env->ReleaseStringUTFChars(prompt, prompt_str);
+        if (!prompt_jstr)
             return env->NewStringUTF("");
+
+        // Lock to prevent concurrent access - llama.cpp context is NOT thread-safe
+        std::lock_guard<std::mutex> lock(h->mtx);
+
+        const char *prompt_c = env->GetStringUTFChars(prompt_jstr, nullptr);
+        if (!prompt_c)
+            return env->NewStringUTF("");
+        int prompt_len = (int)strlen(prompt_c);
+
+        const llama_vocab *vocab = llama_model_get_vocab(h->model);
+        uint32_t n_batch = llama_n_batch(h->ctx);
+        const int max_prompt_tokens = (int)n_batch;
+        std::vector<llama_token> prompt_tokens(std::min(8192, max_prompt_tokens * 4));
+        int n_tokens = llama_tokenize(vocab, prompt_c, prompt_len, prompt_tokens.data(),
+                                      (int)prompt_tokens.size(), true, false);
+        env->ReleaseStringUTFChars(prompt_jstr, prompt_c);
+        if (n_tokens <= 0)
+            return env->NewStringUTF("");
+
+        prompt_tokens.resize(n_tokens);
+
+        // CRITICAL: Clear KV cache before each generation to prevent context overflow
+        // Without this, tokens accumulate until n_ctx (4096) is exceeded, causing SIGSEGV
+        llama_memory_t mem = llama_get_memory(h->ctx);
+        if (mem)
+        {
+            llama_memory_clear(mem, true);
         }
-        LOGI("Tokenized prompt: %d tokens", n_prompt);
-        
-        // Check context and batch sizes
-        int n_ctx = llama_n_ctx(ctx);
-        int n_batch = llama_n_batch(ctx);
-        int n_predict = std::min(std::max((int)max_tokens, 64), 2048); // Allow up to 2048 tokens for full JSON
-        
-        LOGD("Context size: %d, Batch size: %d, Prompt tokens: %d", n_ctx, n_batch, n_prompt);
-        
-        if (n_prompt > n_batch) {
-            LOGE("Prompt (%d tokens) exceeds batch size (%d)", n_prompt, n_batch);
-            // Truncate prompt to fit batch
-            n_prompt = n_batch - 1;
-            prompt_tokens.resize(n_prompt);
-            LOGI("Truncated prompt to %d tokens", n_prompt);
-        }
-        
-        if (n_prompt + n_predict > n_ctx) {
-            LOGE("Prompt + prediction (%d + %d) exceeds context size (%d)", n_prompt, n_predict, n_ctx);
-            n_predict = n_ctx - n_prompt - 1;
-            if (n_predict <= 0) {
-                env->ReleaseStringUTFChars(prompt, prompt_str);
+
+        // Apply temperature to sampler (recreate chain with given temp)
+        llama_sampler_free(h->sampler);
+        llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
+        h->sampler = llama_sampler_chain_init(sparams);
+        // Reduced top_k from 50 to 40 for faster sampling with minimal quality loss
+        llama_sampler_chain_add(h->sampler, llama_sampler_init_top_k(40));
+        llama_sampler_chain_add(h->sampler, llama_sampler_init_top_p(0.9f, 1));
+        float t = temperature <= 0.f ? 0.8f : temperature;
+        llama_sampler_chain_add(h->sampler, llama_sampler_init_temp(t));
+        llama_sampler_chain_add(h->sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+        // Decode prompt in chunks. llama_batch_get_one() returns batch with logits=NULL;
+        // llama_decode() internally requests logits only for the last token when logits is NULL.
+        int pos = 0;
+        while (pos < n_tokens)
+        {
+            int chunk = std::min((int)n_batch, n_tokens - pos);
+            llama_batch batch = llama_batch_get_one(&prompt_tokens[pos], chunk);
+            int ret = llama_decode(h->ctx, batch);
+            // Do not llama_batch_free: get_one does not allocate; token is our pointer.
+            if (ret != 0)
+            {
                 return env->NewStringUTF("");
             }
+            pos += chunk;
         }
-        
-        // Create batch for prompt
-        llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
-        
-        // Decode the prompt
-        LOGD("Decoding prompt (%d tokens)...", n_prompt);
-        if (llama_decode(ctx, batch)) {
-            LOGE("Failed to decode prompt");
-            env->ReleaseStringUTFChars(prompt, prompt_str);
-            return env->NewStringUTF("");
-        }
-        LOGD("Prompt decoded successfully");
-        
-        // Generate tokens
-        int n_pos = n_prompt;
-        int n_decode = 0;
-        
-        for (int i = 0; i < n_predict; i++) {
-            // Sample the next token using the sampler
-            llama_token new_token_id = llama_sampler_sample(smpl, ctx, -1);
-            
-            // Check for end of generation
-            if (llama_vocab_is_eog(vocab, new_token_id)) {
-                LOGD("End of generation token at iteration %d", i);
-                break;
-            }
-            
-            // Convert token to text
-            char buf[128];
-            int n = llama_token_to_piece(vocab, new_token_id, buf, sizeof(buf) - 1, 0, true);
-            if (n > 0) {
-                buf[n] = '\0';
-                result.append(buf, n);
-            } else if (n < 0) {
-                LOGD("Token %d needs more space (%d)", new_token_id, -n);
-            }
-            
-            // Prepare next batch with the sampled token
-            batch = llama_batch_get_one(&new_token_id, 1);
-            
-            // Decode the new token
-            if (llama_decode(ctx, batch)) {
-                LOGE("Failed to decode token at iteration %d", i);
-                break;
-            }
-            
-            n_decode++;
-            n_pos++;
-            
-            // Log progress every 100 tokens (reduced for less overhead in hot path)
-            if ((i + 1) % 100 == 0) {
-                LOGD("Generated %d tokens...", i + 1);
-            }
-        }
-        
-        env->ReleaseStringUTFChars(prompt, prompt_str);
-        
-        LOGI("Generation complete: %d tokens, %zu characters", n_decode, result.length());
-        return env->NewStringUTF(result.c_str());
-        
-    } catch (const std::exception& e) {
-        LOGE("Exception in llamaGenerate: %s", e.what());
-        env->ReleaseStringUTFChars(prompt, prompt_str);
-        return env->NewStringUTF("");
-    } catch (...) {
-        LOGE("Unknown exception in llamaGenerate");
-        env->ReleaseStringUTFChars(prompt, prompt_str);
-        return env->NewStringUTF("");
-    }
-}
 
-JNIEXPORT void JNICALL
-Java_com_dramebaz_app_ai_llm_QwenModel_llamaFree(JNIEnv *env, jobject thiz, jlong context) {
-    if (context == 0) {
-        LOGD("llamaFree: context already null");
-        return;
-    }
-    
-    LOGI("llamaFree called");
-    
-    try {
-        LlamaContextWrapper *wrapper = reinterpret_cast<LlamaContextWrapper*>(context);
-        if (wrapper != nullptr) {
-            if (wrapper->sampler != nullptr) {
-                llama_sampler_free(wrapper->sampler);
-                wrapper->sampler = nullptr;
+        std::string output;
+        char buf[256];
+        int n_gen = 0;
+        while (n_gen < max_tokens)
+        {
+            llama_token tok = llama_sampler_sample(h->sampler, h->ctx, -1);
+            if (llama_vocab_is_eog(vocab, tok))
+                break;
+            int n = llama_token_to_piece(vocab, tok, buf, sizeof(buf), 0, true);
+            if (n > 0)
+            {
+                output.append(buf, n);
+                if (endsWithStop(output))
+                    break;
             }
-            if (wrapper->ctx != nullptr) {
-                llama_free(wrapper->ctx);
-                wrapper->ctx = nullptr;
-            }
-            if (wrapper->model != nullptr) {
-                llama_model_free(wrapper->model);
-                wrapper->model = nullptr;
-            }
-            wrapper->vocab = nullptr; // vocab is owned by model
-            delete wrapper;
+            llama_sampler_accept(h->sampler, tok);
+            n_gen++;
+
+            llama_batch batch = llama_batch_get_one(&tok, 1);
+            int ret = llama_decode(h->ctx, batch);
+            // Do not llama_batch_free: get_one does not allocate.
+            if (ret != 0)
+                break;
         }
-        llama_backend_free();
-        LOGI("llamaFree complete");
-    } catch (const std::exception& e) {
-        LOGE("Exception in llamaFree: %s", e.what());
-    } catch (...) {
-        LOGE("Unknown exception in llamaFree");
+
+        return env->NewStringUTF(output.c_str());
     }
-}
 
 } // extern "C"

@@ -14,4 +14,8 @@ interface CharacterDao {
     @Query("SELECT * FROM characters WHERE bookId = :bookId ORDER BY name") fun getByBookId(bookId: Long): Flow<List<Character>>
     @Query("SELECT * FROM characters WHERE id = :id") suspend fun getById(id: Long): Character?
     @Query("DELETE FROM characters WHERE bookId = :bookId") suspend fun deleteByBookId(bookId: Long): Int
+
+    /** AUG-043: Get character by book ID and name for speaker ID lookup during audio generation. */
+    @Query("SELECT * FROM characters WHERE bookId = :bookId AND name = :name LIMIT 1")
+    suspend fun getByBookIdAndName(bookId: Long, name: String): Character?
 }

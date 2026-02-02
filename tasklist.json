@@ -829,9 +829,9 @@
   ],
   "pending_implementations": [],
   "notes": {
-    "llm_integration": "Qwen3-4B-Q4_K_M model integrated with llama.cpp JNI. Model path: Downloads folder (Qwen3-4B-Q4_K_M.gguf)",
-    "tts_integration": "SherpaTTS VITS-VCTK model integrated with ONNX Runtime. Model files in app/src/main/assets/models/tts/sherpa/",
-    "prompt_format": "Qwen prompts use chat format: <|im_start|>system<|im_sep|>...<|im_end|>",
+    "llm_integration": "Qwen3-1.7B-Q4-ONNX model integrated with ONNX Runtime GenAI. Model path: Downloads folder (Qwen3-1.7B-Q4-ONNX/)",
+    "tts_integration": "vits-piper-en_GB-vctk-medium model integrated with Sherpa-ONNX. Model files in app/src/main/assets/models/tts/sherpa/",
+    "prompt_format": "Qwen prompts use chat format: <|im_start|>system<|im_end|><|im_start|>user<|im_end|><|im_start|>assistant",
     "json_schemas": "All JSON schemas match FullFeatured app Instructions.md specifications",
     "testing": "Comprehensive instrumented tests added in app/src/androidTest/ for model loading, text analysis, TTS generation, and audio playback. Run with: ./gradlew connectedAndroidTest"
   }

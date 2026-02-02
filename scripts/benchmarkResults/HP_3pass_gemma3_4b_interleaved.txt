@@ -1,0 +1,546 @@
+======================================================================
+3-PASS WORKFLOW WITH CONTEXT PRESERVATION - BENCHMARK RESULTS
+Model: gemma-3-4b-it-q4_0
+PDF: C:\Users\Pratik\Downloads\HP First3Chapters.pdf
+Date: 2026-02-01 16:01:24
+======================================================================
+
+SUMMARY
+----------------------------------------
+Model: gemma-3-4b-it-q4_0
+Total Processing Time: 1931.7s (32.2 min)
+Pages Processed: 5
+Total Characters Found: 37
+Total Dialogs Extracted: 0
+Total Prompt Tokens: 24795
+Total Generated Tokens: 1364
+
+PASS TIMING BREAKDOWN
+----------------------------------------
+  pass1          :    290.5s ( 15.0%)
+  pass2          :    910.3s ( 47.1%)
+  pass3          :    730.8s ( 37.8%)
+
+JSON VALIDITY STATISTICS
+----------------------------------------
+  pass1          : 5/5 (100% valid)
+  pass2          : 0/5 (0% valid)
+  pass3          : 8/37 (22% valid)
+
+======================================================================
+CHARACTER DETAILS
+======================================================================
+
+
+MR DURSLEY
+----------------------------------------
+Dialogs: 0
+Traits: ['gravelly', 'stern', 'anxious', 'irritated', 'formal']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 1.0
+  - Energy: 0.6
+  - Gender: male
+  - Age: middle-aged
+  - Tone: rigid and disapproving
+  - Speaker ID: 75
+
+MRS DURSLEY
+----------------------------------------
+Dialogs: 0
+Traits: ['stern', 'anxious', 'critical', 'gossipy', 'fretful']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 1.0
+  - Energy: 0.6
+  - Gender: female
+  - Age: middle-aged
+  - Tone: slightly strained, disapproving
+  - Speaker ID: 55
+
+DUDLEY
+----------------------------------------
+Dialogs: 0
+Traits: ['stern', 'irritated', 'concerned', 'rigid', 'practical']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 0.9
+  - Energy: 0.6
+  - Gender: male
+  - Age: middle-aged
+  - Tone: formal, slightly clipped, with underlying anxiety
+  - Speaker ID: 75
+
+POTTERS
+----------------------------------------
+Dialogs: 0
+Traits: ['nervous', 'anxious', 'secretive', 'discreet', 'concerned']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 1.2
+  - Energy: 0.6
+  - Gender: male|female
+  - Age: middle-aged|adult
+  - Tone: uneasy, guarded
+  - Speaker ID: 75
+
+HARRY POTTER
+----------------------------------------
+Dialogs: 0
+Traits: ['determined', 'resourceful', 'slightly wary', 'brave', 'intelligent']
+Voice Profile:
+  - Pitch: 0.85
+  - Speed: 0.95
+  - Energy: 0.75
+  - Gender: male
+  - Age: young adult
+  - Tone: slightly guarded but with underlying resilience and intelligence
+  - Speaker ID: 65
+
+CAT
+----------------------------------------
+Dialogs: 0
+Traits: ['observant', 'curious', 'slightly unsettling']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 0.9
+  - Energy: 0.6
+  - Gender: male
+  - Age: adult
+  - Tone: neutral with a hint of mystery
+  - Speaker ID: 75
+
+OLD MAN
+----------------------------------------
+Dialogs: 0
+Traits: ['gravelly', 'deep', 'commanding', 'nervous', 'anxious', 'frantic', 'calm', 'measured', 'authoritative', 'energetic', 'excited', 'enthusiastic']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 1.1
+  - Energy: 0.7
+  - Gender: male
+  - Age: elderly
+  - Tone: stern, wary, slightly agitated
+  - Speaker ID: 95
+
+WEATHERMAN
+----------------------------------------
+Dialogs: 0
+Traits: ['gravelly', 'deep', 'commanding', 'nervous', 'anxious', 'frantic', 'calm', 'measured', 'authoritative', 'energetic', 'excited']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 1.2
+  - Energy: 0.8
+  - Gender: male
+  - Age: middle-aged
+  - Tone: slightly agitated, authoritative with underlying anxiety
+  - Speaker ID: 75
+
+HARRY
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+HOWARD
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+ALBUS DUMBLEDORE
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+PETUNIA
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+PROFESSOR MCGONAGALL
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+DEDALUS DIGGLE
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+VOLDEMORT
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+DUMBLEDORE
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+MCGONAGALL
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+HAGRID
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+SIRIUS BLACK
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+LILY
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+JAMES
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+MR. DURSLEY
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+MRS. DURSLEY
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+AUNT PETUNIA
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+UNCLE VERNON
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+PIERS POLKISS
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+MRS FIGG
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+YVONNE
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+MARGE
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+TIBBLES
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+SNOWY
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+MR PAWS
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+TUFTY
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+PIERS
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+DENNIS
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+MALCOLM
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+GORDON
+----------------------------------------
+Dialogs: 0
+Traits: []
+Voice Profile:
+  - Pitch: N/A
+  - Speed: N/A
+  - Energy: N/A
+  - Gender: N/A
+  - Age: N/A
+  - Tone: N/A
+  - Speaker ID: N/A
+
+
+======================================================================
+ALL EXTRACTED DIALOGS
+======================================================================
+
+
+
+======================================================================
+CONTEXT PRESERVATION NOTES
+======================================================================
+
+3-PASS WORKFLOW STRUCTURE (Interleaved Pass-1 + Pass-2):
+
+FOR EACH PAGE:
+  PASS 1 - Character Name Extraction:
+    - ONE LLM call to extract character names from this page
+    - Track which pages each character appears on
+    - Accumulate unique names across all pages
+
+  PASS 2 - Dialog Extraction (ONLY if characters found on this page):
+    - SKIPPED if Pass-1 found no characters (optimization!)
+    - ONE LLM call to extract dialogs from this page
+    - Uses ONLY characters found on THIS page for speaker attribution
+    - This implements "start from the page where the character appears first"
+
+AFTER ALL PAGES:
+  PASS 3 - Traits & Voice Profile:
+    - Process EACH CHARACTER discovered across all pages
+    - ONE LLM call per character with aggregated context from ALL pages
+    - Extracts traits and voice profile in a single call
+    - Output: Traits and voice profile for each character

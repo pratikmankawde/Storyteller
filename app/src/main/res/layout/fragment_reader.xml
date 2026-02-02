@@ -9,6 +9,43 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize" />
+
+    <!-- AUG-041: Degraded mode banner (shown when LLM or TTS is in fallback mode) -->
+    <LinearLayout
+        android:id="@+id/degraded_mode_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/warning_background"
+        android:padding="8dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_dialog_alert"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Warning" />
+
+        <TextView
+            android:id="@+id/degraded_mode_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/warning_text"
+            android:textSize="12sp"
+            android:text="Running in limited mode" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/degraded_mode_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="Retry"
+            android:textSize="12sp"
+            style="@style/Widget.Material3.Button.TextButton" />
+    </LinearLayout>
+
     <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
         android:fillViewport="true"
         android:padding="16dp">
@@ -92,7 +129,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
-            
+
             <!-- Progress Indicator -->
             <ProgressBar
                 android:id="@+id/reading_progress"
@@ -102,13 +139,13 @@
                 android:layout_marginBottom="12dp"
                 android:progressTint="@color/primary"
                 android:visibility="gone" />
-            
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
-                
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_play"
                     android:layout_width="0dp"
@@ -118,7 +155,7 @@
                     android:drawableStart="@android:drawable/ic_media_play"
                     android:drawablePadding="8dp"
                     style="@style/Widget.Material3.Button" />
-                
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_mode"
                     android:layout_width="0dp"
@@ -130,14 +167,14 @@
                     android:drawablePadding="8dp"
                     style="@style/Widget.Material3.Button.TonalButton" />
             </LinearLayout>
-            
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginTop="8dp"
                 android:gravity="center_vertical">
-                
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_player_controls"
                     android:layout_width="0dp"
@@ -147,7 +184,7 @@
                     android:drawableStart="@android:drawable/ic_menu_preferences"
                     android:drawablePadding="8dp"
                     style="@style/Widget.Material3.Button.OutlinedButton" />
-                
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_bookmark"
                     android:layout_width="0dp"

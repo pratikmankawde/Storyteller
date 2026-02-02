@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioGroup
+import com.google.android.material.switchmaterial.SwitchMaterial
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 class SettingsFragment : Fragment() {
     private val app get() = requireContext().applicationContext as DramebazApplication
     private val settingsKey = "playback_theme"
+    private val skipExtractionKey = "skip_character_extraction"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_settings, container, false)

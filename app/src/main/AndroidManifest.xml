@@ -7,7 +7,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Required to access Downloads folder on Android 11+ -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
@@ -21,6 +23,9 @@
         android:supportsRtl="true"
         android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.Dramebaz">
+        <!-- Native libraries required for LiteRT-LM GPU backend (OpenCL acceleration) -->
+        <uses-native-library android:name="libvndksupport.so" android:required="false"/>
+        <uses-native-library android:name="libOpenCL.so" android:required="false"/>
         <activity
             android:name=".ui.splash.SplashActivity"
             android:exported="true"
@@ -39,10 +44,24 @@
             android:exported="true"
             android:theme="@style/Theme.Dramebaz"
             android:label="Test Activities" />
-        
+
         <service
             android:name=".playback.service.AudioPlaybackService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+        <!-- ChapterAnalysisService for chapter analysis
+             Note: Previously ran in :onnx process but caused broadcast issues.
+             ONNX failures are now handled with try-catch in QwenStub. -->
+        <service
+            android:name=".ai.llm.ChapterAnalysisService"
+            android:exported="false" />
+
+        <!-- CharacterAnalysisForegroundService for 5-pass character analysis
+             Uses foreground service with wake lock to prevent OS from freezing
+             the app during long-running LLM inference when screen is off. -->
+        <service
+            android:name=".ai.llm.CharacterAnalysisForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

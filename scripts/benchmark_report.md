@@ -1,0 +1,118 @@
+﻿# LLM Benchmark Report
+
+**Generated:** 2026-01-31 21:23:31
+**System:** ROG-RIG
+**Models Directory:** D:\Learning\Ai\Models\LLM
+
+## Summary
+
+| Model | Size (GB) | PP (t/s) | TG (t/s) | PP Time | TG Time |
+|-------|-----------|----------|----------|---------|---------|
+| qwen3-1.7b-q4_k_m.gguf | 1.19 | 99.15 | 21.94 | 5.16s | 5.83s |
+| Qwen3-4B-Q4_K_M.gguf | 2.33 | 37.57 | 9.70 | 13.63s | 13.2s |
+| qwen2.5-3b-instruct-q4_k_m.gguf | 1.96 | 47.71 | 12.66 | 10.73s | 10.11s |
+| Qwen3-1.7B-Q8_0.gguf | 1.71 | 55.06 | 14.41 | 9.3s | 8.88s |
+
+## Detailed Results
+
+### qwen3-1.7b-q4_k_m.gguf
+
+- **Path:** D:\Learning\Ai\Models\LLM\qwen3-1.7b-q4_k_m.gguf
+- **Size:** 1.19 GB
+- **Prompt Processing (pp512):** 99.15 tokens/sec
+- **Token Generation (tg128):** 21.94 tokens/sec
+
+<details>
+<summary>Raw Benchmark Output</summary>
+
+```
+load_backend: loaded RPC backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-cpu-haswell.dll
+| model                          |       size |     params | backend    | threads |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --------------: | -------------------: |
+| qwen3 1.7B Q4_K - Medium       |   1.19 GiB |     2.03 B | CPU        |       6 |           pp512 |        99.15 ┬▒ 10.02 |
+| qwen3 1.7B Q4_K - Medium       |   1.19 GiB |     2.03 B | CPU        |       6 |           tg128 |         21.94 ┬▒ 0.52 |
+
+build: 89f10baad (7898)
+```
+
+</details>
+
+### Qwen3-4B-Q4_K_M.gguf
+
+- **Path:** D:\Learning\Ai\Models\LLM\Qwen3-4B-Q4_K_M.gguf
+- **Size:** 2.33 GB
+- **Prompt Processing (pp512):** 37.57 tokens/sec
+- **Token Generation (tg128):** 9.70 tokens/sec
+
+<details>
+<summary>Raw Benchmark Output</summary>
+
+```
+load_backend: loaded RPC backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-cpu-haswell.dll
+| model                          |       size |     params | backend    | threads |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --------------: | -------------------: |
+| qwen3 4B Q4_K - Medium         |   2.32 GiB |     4.02 B | CPU        |       6 |           pp512 |         37.57 ┬▒ 1.79 |
+| qwen3 4B Q4_K - Medium         |   2.32 GiB |     4.02 B | CPU        |       6 |           tg128 |          9.70 ┬▒ 0.17 |
+
+build: 89f10baad (7898)
+```
+
+</details>
+
+### qwen2.5-3b-instruct-q4_k_m.gguf
+
+- **Path:** D:\Learning\Ai\Models\LLM\Gwen 4B Q4 KM\qwen2.5-3b-instruct-q4_k_m.gguf
+- **Size:** 1.96 GB
+- **Prompt Processing (pp512):** 47.71 tokens/sec
+- **Token Generation (tg128):** 12.66 tokens/sec
+
+<details>
+<summary>Raw Benchmark Output</summary>
+
+```
+load_backend: loaded RPC backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-cpu-haswell.dll
+| model                          |       size |     params | backend    | threads |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --------------: | -------------------: |
+| qwen2 3B Q4_K - Medium         |   1.95 GiB |     3.40 B | CPU        |       6 |           pp512 |         47.71 ┬▒ 1.97 |
+| qwen2 3B Q4_K - Medium         |   1.95 GiB |     3.40 B | CPU        |       6 |           tg128 |         12.66 ┬▒ 0.21 |
+
+build: 89f10baad (7898)
+```
+
+</details>
+
+### Qwen3-1.7B-Q8_0.gguf
+
+- **Path:** D:\Learning\Ai\Models\LLM\Qwen3-1.7B-Q8_0 gguf\Qwen3-1.7B-Q8_0.gguf
+- **Size:** 1.71 GB
+- **Prompt Processing (pp512):** 55.06 tokens/sec
+- **Token Generation (tg128):** 14.41 tokens/sec
+
+<details>
+<summary>Raw Benchmark Output</summary>
+
+```
+load_backend: loaded RPC backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\Users\Pratik\source\Storyteller\scripts\llama-cpp\ggml-cpu-haswell.dll
+| model                          |       size |     params | backend    | threads |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --------------: | -------------------: |
+| qwen3 1.7B Q8_0                |   1.70 GiB |     1.72 B | CPU        |       6 |           pp512 |         55.06 ┬▒ 2.95 |
+| qwen3 1.7B Q8_0                |   1.70 GiB |     1.72 B | CPU        |       6 |           tg128 |         14.41 ┬▒ 0.08 |
+
+build: 89f10baad (7898)
+```
+
+</details>
+
+## Recommendations
+
+Based on the benchmark results:
+- **Fastest for generation:** Model with highest TG (tokens/sec)
+- **Fastest for prompt processing:** Model with highest PP (tokens/sec)
+- **Best for mobile/embedded:** Smaller models with acceptable speed
+
+---
+*Report generated by benchmark_models.ps1*

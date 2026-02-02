@@ -1,0 +1,62 @@
+======================================================================
+3-PASS WORKFLOW WITH CONTEXT PRESERVATION - BENCHMARK RESULTS
+Model: gemma-3-1b-it-q4_0
+PDF: C:\Users\Pratik\Downloads\HP First3Chapters.pdf
+Date: 2026-02-01 14:50:06
+======================================================================
+
+SUMMARY
+----------------------------------------
+Model: gemma-3-1b-it-q4_0
+Total Processing Time: 395.1s (6.6 min)
+Pages Processed: 5
+Total Characters Found: 0
+Total Dialogs Extracted: 0
+Total Prompt Tokens: 28395
+Total Generated Tokens: 3927
+
+PASS TIMING BREAKDOWN
+----------------------------------------
+  pass1          :    141.9s ( 35.9%)
+  pass2          :    253.1s ( 64.1%)
+  pass3          :      0.0s (  0.0%)
+
+JSON VALIDITY STATISTICS
+----------------------------------------
+  pass1          : 0/5 (0% valid)
+  pass2          : 0/5 (0% valid)
+  pass3          : 0/0 (0% valid)
+
+======================================================================
+CHARACTER DETAILS
+======================================================================
+
+
+
+======================================================================
+ALL EXTRACTED DIALOGS
+======================================================================
+
+
+
+======================================================================
+CONTEXT PRESERVATION NOTES
+======================================================================
+
+This benchmark differs from the original test_three_pass_workflow.py by:
+
+1. CONTEXT ACCUMULATION: Dialog extraction (Pass-2.5) receives context from
+   previously extracted dialogs to help with speaker attribution.
+
+2. FULL PAGE PROCESSING: All pages in the PDF are processed, not just the first page.
+
+3. AGGREGATED CHARACTER CONTEXT: Pass-3 receives aggregated text from ALL
+   pages where a character appears for traits and voice profile extraction.
+
+4. CACHE_PROMPT ENABLED: The llama-server API call includes cache_prompt=True
+   to enable prompt caching between similar requests.
+
+Note: True conversation history (multi-turn chat) is NOT being used because
+the llama-server /completion endpoint is stateless. Each request is independent.
+However, we simulate context preservation by including relevant prior results
+in subsequent prompts.

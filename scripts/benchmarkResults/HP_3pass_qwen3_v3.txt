@@ -1,0 +1,395 @@
+======================================================================
+3-PASS WORKFLOW WITH CONTEXT PRESERVATION - BENCHMARK RESULTS
+Model: qwen3-1.7b-q4_k_m
+PDF: C:\Users\Pratik\Downloads\HP First3Chapters.pdf
+Date: 2026-02-01 14:24:01
+======================================================================
+
+SUMMARY
+----------------------------------------
+Model: qwen3-1.7b-q4_k_m
+Total Processing Time: 1926.5s (32.1 min)
+Pages Processed: 5
+Total Characters Found: 24
+Total Dialogs Extracted: 13
+Total Prompt Tokens: 66510
+Total Generated Tokens: 3538
+
+PASS TIMING BREAKDOWN
+----------------------------------------
+  pass1          :    311.6s ( 16.2%)
+  pass2          :    719.0s ( 37.3%)
+  pass3          :    895.8s ( 46.5%)
+
+JSON VALIDITY STATISTICS
+----------------------------------------
+  pass1          : 5/5 (100% valid)
+  pass2          : 2/5 (40% valid)
+  pass3          : 24/24 (100% valid)
+
+======================================================================
+CHARACTER DETAILS
+======================================================================
+
+
+MR DURSLEY
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'dry humor']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: balanced and measured
+  - Speaker ID: 65
+
+MRS DURSLEY
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: moderate, professional
+  - Speaker ID: 65
+
+DUDLEY
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'reserved']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: balanced and controlled
+  - Speaker ID: 65
+
+HARRY POTTER
+----------------------------------------
+Dialogs: 3
+Traits: ['calm', 'anxious', 'fearful']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: child
+  - Tone: timid and fearful
+  - Speaker ID: 45
+
+Sample Dialogs:
+  [Page 4] (curious) "I had a dream about a motorbike, said Harry, remembering suddenly. It was flying..."
+  [Page 4] (defiant) "I know they don't, said Harry. It was only a dream...."
+  [Page 4] (sad) "Harry felt, afterwards, that he should have known it was all too good to last...."
+
+POTTER
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'mysterious']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: reserved, slightly enigmatic
+  - Speaker ID: 65
+
+JIM MCGUFFIN
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: reserved and focused
+  - Speaker ID: 65
+
+PETUNIA
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'measured']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: female
+  - Age: young
+  - Tone: composed and thoughtful
+  - Speaker ID: 45
+
+ALBUS DUMBLEDORE
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 0.9
+  - Energy: 0.7
+  - Gender: male
+  - Age: elderly
+  - Tone: reserved, thoughtful, deliberate
+  - Speaker ID: 85
+
+PROFESSOR MCGONAGALL
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'reserved']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 0.9
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: moderate, formal, measured
+  - Speaker ID: 65
+
+DUMBLEDORE
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'empathetic']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: reserved, thoughtful, slightly weary
+  - Speaker ID: 65
+
+HAGRID
+----------------------------------------
+Dialogs: 0
+Traits: ['gravelly', 'energetic', 'wild']
+Voice Profile:
+  - Pitch: 0.9
+  - Speed: 1.1
+  - Energy: 0.8
+  - Gender: male
+  - Age: young
+  - Tone: bold, enthusiastic, wild
+  - Speaker ID: 51
+
+SIRIUS BLACK
+----------------------------------------
+Dialogs: 0
+Traits: ['gravelly/deep', 'calm/measured']
+Voice Profile:
+  - Pitch: 0.9
+  - Speed: 0.8
+  - Energy: 0.7
+  - Gender: male
+  - Age: young
+  - Tone: gravelly, measured, somber
+  - Speaker ID: 51
+
+LILY POTTER
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'emotional', 'reserved']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: female
+  - Age: young
+  - Tone: soft, expressive, with subtle emotional cues
+  - Speaker ID: 45
+
+JAMES POTTER
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'emotional']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: young
+  - Tone: reserved, thoughtful, with a touch of melancholy
+  - Speaker ID: 51
+
+PIERS
+----------------------------------------
+Dialogs: 0
+Traits: ['scrawny', 'rat-like face']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: child
+  - Tone: brief description
+  - Speaker ID: 45
+
+AUNT PETUNIA
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'dry humor']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: calm and authoritative with dry humor
+  - Speaker ID: 65
+
+UNCLE VERNON
+----------------------------------------
+Dialogs: 1
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: reserved, formal, with a hint of menace
+  - Speaker ID: 65
+
+Sample Dialogs:
+  [Page 4] (angry) "MOTORBIKES DONT FLY!..."
+
+MRS FIGG
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: elderly
+  - Tone: reserved, measured, with a hint of desperation
+  - Speaker ID: 91
+
+MARGE
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: female
+  - Age: middle-aged
+  - Tone: calm and authoritative
+  - Speaker ID: 65
+
+MR. DURSLEY
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'male']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: calm and authoritative
+  - Speaker ID: 71
+
+PIERS POLKISS
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative', 'dry humor']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: calm and authoritative with dry humor
+  - Speaker ID: 65
+
+MALCOLM
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 0.9
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: calm and measured
+  - Speaker ID: 65
+
+GORDON
+----------------------------------------
+Dialogs: 0
+Traits: ['calm', 'authoritative']
+Voice Profile:
+  - Pitch: 1.0
+  - Speed: 1.0
+  - Energy: 0.7
+  - Gender: male
+  - Age: middle-aged
+  - Tone: composed and deliberate
+  - Speaker ID: 65
+
+DENNIS
+----------------------------------------
+Dialogs: 0
+Traits: ['gravelly', 'nervous']
+Voice Profile:
+  - Pitch: 0.8
+  - Speed: 1.1
+  - Energy: 0.7
+  - Gender: male
+  - Age: child
+  - Tone: gravelly and nervous
+  - Speaker ID: 45
+
+
+======================================================================
+ALL EXTRACTED DIALOGS
+======================================================================
+
+1. [Page 4] Narrator (neutral, 0.3): "The Vanishing Glass"
+2. [Page 4] Harry Potter (curious, 0.5): "I had a dream about a motorbike, said Harry, remembering suddenly. It was flying."
+3. [Page 4] Uncle Vernon (angry, 0.7): "MOTORBIKES DONT FLY!"
+4. [Page 4] Dudley and Piers (sad, 0.4): "Sniggered."
+5. [Page 4] Harry Potter (defiant, 0.6): "I know they don't, said Harry. It was only a dream."
+6. [Page 4] Narrator (neutral, 0.4): "The zoo was crowded with families. The Dursleys bought Dudley and Piers large chocolate ice-creams at the entrance and then, because the smiling lady in the van had asked Harry what he wanted before they could hurry him away, they bought him a cheap lemon ice lolly. It wasnt bad either, Harry thought, licking it as they watched a gorilla scratch-ing its head and looking remarkably like Dudley, except that it wasn't blond."
+7. [Page 4] Harry Potter (sad, 0.3): "Harry felt, afterwards, that he should have known it was all too good to last."
+8. [Page 4] Narrator (neutral, 0.4): "After lunch they went to the reptile house. It was cool and dark in here, with lit windows all along the walls. Behind the glass, all sort of lizards and snakes were crawling and slithering over bits of wood and stone. Dudley and Piers wanted to see huge, poisonous cobras and thick, man-crushing pythons. Dudley quickly found the largest snake in the place. It could have wrapped its body twice around Uncle Vernons car and crushed it into a dust-bin but at the moment it didn't look in the mood. In fact, it was fast asleep."
+9. [Page 5] I know, Harry murmured through the glass (sad, 0.5): "I know, Harry murmured through the glass"
+10. [Page 5] Narrator (neutral, 0.3): "Harry lay in his dark cupboard much later, wishing he had a watch. He didnt know what time it was and he couldnt be sure the Dursleys were asleep yet."
+11. [Page 5] I know, Harry murmured through the glass (sad, 0.5): "I know, Harry murmured through the glass"
+12. [Page 5] Narrator (neutral, 0.3): "The escape of the Brazilian boa constrictor earned Harry his longest-ever punishment. By the time he was allowed out of his cupboard again, the summer holidays had started and Dudley had already broken his new cine-camera, crashed his remote-control aeroplane and, first time on his racing bike, knocked down old Mrs Figg as she crossed Privet Drive on her crutches."
+13. [Page 5] I know, Harry murmured through the glass (sad, 0.5): "I know, Harry murmured through the glass"
+
+
+======================================================================
+CONTEXT PRESERVATION NOTES
+======================================================================
+
+This benchmark differs from the original test_three_pass_workflow.py by:
+
+1. CONTEXT ACCUMULATION: Dialog extraction (Pass-2.5) receives context from
+   previously extracted dialogs to help with speaker attribution.
+
+2. FULL PAGE PROCESSING: All pages in the PDF are processed, not just the first page.
+
+3. AGGREGATED CHARACTER CONTEXT: Pass-3 receives aggregated text from ALL
+   pages where a character appears for traits and voice profile extraction.
+
+4. CACHE_PROMPT ENABLED: The llama-server API call includes cache_prompt=True
+   to enable prompt caching between similar requests.
+
+Note: True conversation history (multi-turn chat) is NOT being used because
+the llama-server /completion endpoint is stateless. Each request is independent.
+However, we simulate context preservation by including relevant prior results
+in subsequent prompts.

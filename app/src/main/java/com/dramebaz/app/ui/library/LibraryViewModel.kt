@@ -9,7 +9,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.data.repositories.BookRepository
+import com.dramebaz.app.domain.usecases.AnalysisQueueManager
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
+import com.dramebaz.app.domain.exceptions.ImportException
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +31,12 @@ class LibraryViewModel(
     val books: StateFlow<List<Book>> = bookRepository.allBooks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val _importError = MutableSharedFlow<String>()
+    val importError: SharedFlow<String> = _importError.asSharedFlow()
+
+    private val _isImporting = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isImporting: kotlinx.coroutines.flow.StateFlow<Boolean> = _isImporting.asStateFlow()
+
     /**
      * Delete a book and all its chapters from the library.
      */
@@ -36,7 +48,12 @@ class LibraryViewModel(
 
     fun importFromUri(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
-            val stream = context.contentResolver.openInputStream(uri) ?: return@launch
+            _isImporting.value = true
+            try {
+                val stream = context.contentResolver.openInputStream(uri) ?: run {
+                    _isImporting.value = false
+                    return@launch
+                }
             // Use display name from URI so the loaded book shows the correct title (e.g. "Space story" not "import_123")
             val displayName = getDisplayName(context, uri)
             val ext = when {
@@ -53,11 +70,21 @@ class LibraryViewModel(
             }
             val file = File(context.filesDir, name)
             file.outputStream().use { stream.copyTo(it) }
-            importUseCase.importFromFile(context, file.absolutePath, when {
+            val bookId = importUseCase.importFromFile(context, file.absolutePath, when {
                 name.endsWith(".pdf", true) -> "pdf"
                 name.endsWith(".epub", true) -> "epub"
                 else -> "txt"
             })
+                // DEACTIVATED: Auto-trigger analysis moved to ReaderFragment (AUG-037: pre-analyze at 80% progress)
+                // AnalysisQueueManager.enqueueBook(bookId)
+                _isImporting.value = false
+            } catch (e: ImportException) {
+                _isImporting.value = false
+                _importError.emit(e.message ?: "Import failed")
+            } catch (e: Exception) {
+                _isImporting.value = false
+                _importError.emit("Import failed: ${e.message}")
+            }
         }
     }
 

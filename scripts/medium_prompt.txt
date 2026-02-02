@@ -1,0 +1,10 @@
+﻿<|im_start|>system
+You are a character name extraction engine. Extract ONLY character names. /no_think<|im_end|>
+<|im_start|>user
+Extract character names from this text. Output valid JSON only.
+Format: {"characters": ["Name1", "Name2"]}
+
+TEXT:
+Welcome to Aurelia-Prime, a world where the laws of physics are more like polite suggestions and the local wildlife belongs on the side of a 1970s rock van. Here is the tale of the crew of the Stardust Rambler. The Cast of Characters: 1. Jax: The Cocky Captain - Role: Pilot and self-appointed Leader. Vibe: Overconfident, adventurous, and slightly rugged. 2. Lyra: The Wide-Eyed Xenobiologist - Role: Scientist and Creature Whisperer. Vibe: Infectious curiosity and boundless empathy.
+<|im_end|>
+<|im_start|>assistant

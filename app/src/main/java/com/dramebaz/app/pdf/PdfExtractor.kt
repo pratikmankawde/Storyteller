@@ -1,6 +1,7 @@
 package com.dramebaz.app.pdf
 
 import android.content.Context
+import com.dramebaz.app.utils.AppLogger
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
@@ -43,19 +44,19 @@ class PdfExtractor(private val context: Context) {
         ensureInitialized()
         val pages = mutableListOf<String>()
         if (!pdfFile.exists()) {
-            android.util.Log.e("PdfExtractor", "PDF file does not exist: ${pdfFile.absolutePath}")
+            AppLogger.e("PdfExtractor", "PDF file does not exist: ${pdfFile.absolutePath}")
             throw IllegalArgumentException("PDF file does not exist: ${pdfFile.absolutePath}")
         }
         if (pdfFile.length() == 0L) {
-            android.util.Log.e("PdfExtractor", "PDF file is empty: ${pdfFile.absolutePath}")
+            AppLogger.e("PdfExtractor", "PDF file is empty: ${pdfFile.absolutePath}")
             throw IllegalArgumentException("PDF file is empty: ${pdfFile.absolutePath}")
         }
-        android.util.Log.i("PdfExtractor", "Starting PDF extraction from: ${pdfFile.absolutePath}, size=${pdfFile.length()}")
+        AppLogger.i("PdfExtractor", "Starting PDF extraction from: ${pdfFile.absolutePath}, size=${pdfFile.length()}")
         var document: PDDocument? = null
         try {
             document = PDDocument.load(FileInputStream(pdfFile))
             val numPages = document.numberOfPages
-            android.util.Log.i("PdfExtractor", "PDF loaded successfully: $numPages pages")
+            AppLogger.i("PdfExtractor", "PDF loaded successfully: $numPages pages")
             if (numPages == 0) {
                 throw IllegalArgumentException("PDF has no pages")
             }
@@ -65,12 +66,12 @@ class PdfExtractor(private val context: Context) {
                 stripper.endPage = pageNum
                 val pageText = stripper.getText(document)
                 val preview = pageText.take(200).replace("\n", " ").trim()
-                android.util.Log.d("PdfExtractor", "Page $pageNum: ${pageText.length} chars, preview=\"$preview...\"")
+                AppLogger.d("PdfExtractor", "Page $pageNum: ${pageText.length} chars, preview=\"$preview...\"")
                 pages.add(pageText)
             }
-            android.util.Log.i("PdfExtractor", "PDF extraction complete: ${pages.size} pages extracted")
+            AppLogger.i("PdfExtractor", "PDF extraction complete: ${pages.size} pages extracted")
         } catch (e: Exception) {
-            android.util.Log.e("PdfExtractor", "Failed to extract text from PDF", e)
+            AppLogger.e("PdfExtractor", "Failed to extract text from PDF", e)
             throw RuntimeException("Failed to extract text from PDF: ${e.message}", e)
         } finally {
             document?.close()

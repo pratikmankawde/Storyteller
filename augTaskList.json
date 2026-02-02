@@ -1,0 +1,1500 @@
+{
+  "project": "Dramebaz - Feature Completion & Optimization",
+  "version": "2.0",
+  "created": "2026-01-30",
+  "description": "Comprehensive task list to implement all missing, incomplete, and partially implemented features (excluding SFX audio generation)",
+  "model_compatibility": {
+    "llm": {
+      "model": "Qwen3-1.7B-Q4_K_M GGUF (via llama.cpp JNI)",
+      "context_length": "32K tokens (Qwen3 supports up to 128K, but using 10K chars for mobile performance)",
+      "capabilities": [
+        "JSON extraction with structured output",
+        "Character and dialog analysis",
+        "Emotion and trait inference",
+        "Story generation",
+        "Multi-turn conversation"
+      ],
+      "limitations": [
+        "Smaller model (1.7B) may have lower accuracy than larger variants",
+        "4-bit quantization trades quality for speed",
+        "Mobile RAM constraints limit context window usage"
+      ],
+      "optimizations": [
+        "Temperature 0.1-0.2 for JSON extraction (deterministic)",
+        "Max tokens 256-2048 based on task complexity",
+        "Parallel segment processing (max 2 concurrent)",
+        "Input truncation at 10K chars per request",
+        "V7_Combined: Single LLM call for traits + voice profile (~22% faster than separate calls)"
+      ],
+      "workflow": {
+        "name": "4-Pass Character Analysis",
+        "description": "Optimized from 5-pass by merging Pass-3 (personality) + Pass-4 (voice profile) into V7_Combined",
+        "passes": [
+          "Pass-1: Character Name Extraction (per page ~10K chars)",
+          "Pass-2: Explicit Trait Extraction (per character, parallel)",
+          "Pass-2.5: Dialog Extraction (per page)",
+          "V7_Combined: Traits + Voice Profile (replaces Pass-3 + Pass-4)"
+        ],
+        "deprecated": [
+          "Pass-3: Personality Inference (no longer needed)",
+          "Pass-4: Voice Profile Suggestion (merged into V7_Combined)"
+        ]
+      }
+    },
+    "tts": {
+      "model": "VITS-Piper en_US-libritts-high (Sherpa-ONNX)",
+      "speakers": 904,
+      "sample_rate": 22050,
+      "capabilities": [
+        "Multi-speaker synthesis (904 voices)",
+        "Speed control (0.5x - 2.0x)",
+        "High-quality neural TTS"
+      ],
+      "limitations": [
+        "NO runtime pitch control (VITS architecture limitation)",
+        "NO runtime energy/volume control (must post-process)",
+        "NO emotion presets (must use speed/speaker variation)",
+        "Speed is the ONLY runtime parameter"
+      ],
+      "workarounds": [
+        "Use different speaker IDs for pitch variation",
+        "Post-process audio samples for volume (energy)",
+        "Combine speed + speaker selection for emotion",
+        "Pre-select speakers by gender/age/accent traits"
+      ]
+    }
+  },
+  "phases": [
+    {
+      "id": "PHASE_1",
+      "name": "Critical Bug Fixes & Safety",
+      "priority": "CRITICAL",
+      "estimated_hours": 4,
+      "tasks": [
+        "AUG-001",
+        "AUG-002",
+        "AUG-003",
+        "AUG-004",
+        "AUG-005"
+      ]
+    },
+    {
+      "id": "PHASE_2",
+      "name": "Character & Dialog Integration",
+      "priority": "HIGH",
+      "estimated_hours": 12,
+      "tasks": [
+        "AUG-006",
+        "AUG-007",
+        "AUG-008",
+        "AUG-009",
+        "AUG-010",
+        "AUG-011"
+      ]
+    },
+    {
+      "id": "PHASE_3",
+      "name": "TTS Enhancement & Voice Control",
+      "priority": "HIGH",
+      "estimated_hours": 10,
+      "tasks": [
+        "AUG-012",
+        "AUG-013",
+        "AUG-014",
+        "AUG-015",
+        "AUG-016"
+      ]
+    },
+    {
+      "id": "PHASE_4",
+      "name": "Playback & Sync Improvements",
+      "priority": "HIGH",
+      "estimated_hours": 14,
+      "tasks": [
+        "AUG-017",
+        "AUG-018",
+        "AUG-019",
+        "AUG-020",
+        "AUG-021"
+      ]
+    },
+    {
+      "id": "PHASE_5",
+      "name": "UI/UX Enhancements",
+      "priority": "MEDIUM",
+      "estimated_hours": 16,
+      "tasks": [
+        "AUG-022",
+        "AUG-023",
+        "AUG-024",
+        "AUG-025",
+        "AUG-026",
+        "AUG-027"
+      ]
+    },
+    {
+      "id": "PHASE_6",
+      "name": "Data Quality & Intelligence",
+      "priority": "MEDIUM",
+      "estimated_hours": 18,
+      "tasks": [
+        "AUG-028",
+        "AUG-029",
+        "AUG-030",
+        "AUG-031",
+        "AUG-032"
+      ]
+    },
+    {
+      "id": "PHASE_7",
+      "name": "Performance & Optimization",
+      "priority": "MEDIUM",
+      "estimated_hours": 12,
+      "tasks": [
+        "AUG-033",
+        "AUG-034",
+        "AUG-035",
+        "AUG-036",
+        "AUG-037"
+      ]
+    },
+    {
+      "id": "PHASE_8",
+      "name": "Error Handling & Logging",
+      "priority": "LOW",
+      "estimated_hours": 8,
+      "tasks": [
+        "AUG-038",
+        "AUG-039",
+        "AUG-040",
+        "AUG-041"
+      ]
+    },
+    {
+      "id": "PHASE_9",
+      "name": "Testing & Validation",
+      "priority": "LOW",
+      "estimated_hours": 10,
+      "tasks": [
+        "AUG-042",
+        "AUG-043",
+        "AUG-044",
+        "AUG-045"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "AUG-001",
+      "phase": "PHASE_1",
+      "title": "Fix Service Connection Memory Leak",
+      "priority": "CRITICAL",
+      "estimated_hours": 0.1,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt"
+      ],
+      "description": "Replace requireContext() with context? in onDestroy() to prevent crash when fragment is detached",
+      "implementation": {
+        "location": "ReaderFragment.kt:996-1003",
+        "change": "Replace `requireContext().unbindService(serviceConnection)` with `context?.unbindService(serviceConnection)`",
+        "testing": "Test fragment destruction during playback"
+      },
+      "acceptance_criteria": [
+        "No crash when fragment destroyed during service binding",
+        "Service properly unbound in all scenarios"
+      ]
+    },
+    {
+      "id": "AUG-002",
+      "phase": "PHASE_1",
+      "title": "Fix PDF Import Silent Failure",
+      "priority": "CRITICAL",
+      "estimated_hours": 0.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/domain/usecases/ImportBookUseCase.kt"
+      ],
+      "description": "Throw exception instead of creating empty book when PDF extraction fails",
+      "implementation": {
+        "location": "ImportBookUseCase.kt:57-60",
+        "change": "Replace fallback `listOf(title to \" \")` with `throw ImportException(\"Failed to extract text from PDF: ${e.message}\", e)`",
+        "add_exception_class": "Create ImportException class in domain/exceptions/",
+        "ui_handling": "Update LibraryFragment to catch and display error to user"
+      },
+      "acceptance_criteria": [
+        "PDF import failure shows error dialog to user",
+        "No empty books created in database",
+        "Error message includes helpful information"
+      ]
+    },
+    {
+      "id": "AUG-003",
+      "phase": "PHASE_1",
+      "title": "Add LLM Timeout Protection",
+      "priority": "CRITICAL",
+      "estimated_hours": 1.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/llm/QwenStub.kt",
+        "app/src/main/java/com/dramebaz/app/ai/llm/OnnxQwenModel.kt"
+      ],
+      "description": "Wrap all LLM calls with withTimeout() to prevent app hanging",
+      "implementation": {
+        "timeout_value": "60000L (60 seconds)",
+        "methods_to_wrap": [
+          "analyzeChapter",
+          "extendedAnalysisJson",
+          "extractCharactersAndTraitsInSegment",
+          "detectCharactersOnPage",
+          "inferTraitsForCharacter",
+          "generateStory",
+          "mergeCharacters"
+        ],
+        "error_handling": "Catch TimeoutCancellationException and fall back to stub",
+        "logging": "Log timeout events with AppLogger.w()"
+      },
+      "acceptance_criteria": [
+        "All LLM calls timeout after 60 seconds",
+        "Timeout falls back to stub gracefully",
+        "User sees progress indicator during long operations",
+        "Timeout events logged for debugging"
+      ]
+    },
+    {
+      "id": "AUG-004",
+      "phase": "PHASE_1",
+      "title": "Fix PlaybackEngine Coroutine Scope Lifecycle",
+      "priority": "CRITICAL",
+      "estimated_hours": 1.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/playback/engine/PlaybackEngine.kt"
+      ],
+      "description": "Accept lifecycle-aware scope from caller instead of creating internal scope",
+      "implementation": {
+        "constructor_change": "Add `scope: CoroutineScope` parameter to constructor",
+        "remove_internal_scope": "Remove `private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)`",
+        "update_callers": "Pass viewLifecycleOwner.lifecycleScope from ReaderFragment",
+        "cleanup_method": "Remove cleanup() method or make it cancel jobs only"
+      },
+      "acceptance_criteria": [
+        "PlaybackEngine uses fragment's lifecycle scope",
+        "No scope leaks when fragment destroyed",
+        "Background jobs cancelled automatically"
+      ]
+    },
+    {
+      "id": "AUG-005",
+      "phase": "PHASE_1",
+      "title": "Fix Dialog Speaker Detection in Stub Mode",
+      "priority": "CRITICAL",
+      "estimated_hours": 2,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/llm/QwenStub.kt"
+      ],
+      "description": "Implement proximity-based speaker detection instead of assigning all dialogs to first character",
+      "implementation": {
+        "location": "QwenStub.kt:210-220 (stubAnalyzeChapter)",
+        "algorithm": [
+          "Find all character names in chapter",
+          "For each dialog quote, search backwards for nearest character name",
+          "Use patterns like 'said', 'asked', 'replied' to confirm speaker",
+          "Fall back to first character only if no name found within 200 chars"
+        ],
+        "patterns": [
+          "\"dialog\" said CharacterName",
+          "CharacterName said, \"dialog\"",
+          "CharacterName: \"dialog\"",
+          "\"dialog,\" CharacterName replied"
+        ]
+      },
+      "acceptance_criteria": [
+        "Dialogs correctly assigned to nearest character",
+        "Works with common dialog attribution patterns",
+        "Falls back gracefully when speaker unclear",
+        "Test with sample chapter containing multiple speakers"
+      ]
+    },
+    {
+      "id": "AUG-006",
+      "phase": "PHASE_2",
+      "title": "Trigger Character Extraction on First Read",
+      "priority": "HIGH",
+      "estimated_hours": 2,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt"
+      ],
+      "description": "Automatically trigger character extraction when user opens a chapter for the first time",
+      "implementation": {
+        "location": "ReaderFragment.kt:254-280 (after chapter analysis)",
+        "trigger_condition": "If chapter.fullAnalysisJson exists but no characters in DB for this chapter",
+        "background_task": "Launch ChapterCharacterExtractionUseCase in background",
+        "notification": "Show subtle toast: 'Analyzing characters in background...'",
+        "no_blocking": "Don't block reading, run in parallel"
+      },
+      "acceptance_criteria": [
+        "Character extraction runs automatically on first read",
+        "User can read while extraction happens",
+        "Characters appear in DB after extraction completes",
+        "No duplicate extraction if already done"
+      ]
+    },
+    {
+      "id": "AUG-007",
+      "phase": "PHASE_2",
+      "title": "Navigate to Characters After Extraction",
+      "priority": "HIGH",
+      "estimated_hours": 1.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/library/BookDetailFragment.kt"
+      ],
+      "description": "Automatically navigate to CharactersFragment after character extraction completes",
+      "implementation": {
+        "location": "BookDetailFragment.kt:analyzeCharacters() completion handler",
+        "navigation": "findNavController().navigate(R.id.action_bookDetailFragment_to_charactersFragment)",
+        "toast": "Show 'Found X characters' message",
+        "animation": "Use slide-in transition for better UX"
+      },
+      "acceptance_criteria": [
+        "User automatically sees extracted characters",
+        "Character count displayed in toast",
+        "Smooth navigation transition",
+        "Back button returns to book detail"
+      ]
+    },
+    {
+      "id": "AUG-008",
+      "phase": "PHASE_2",
+      "title": "Implement Automatic Global Character Merging",
+      "priority": "HIGH",
+      "estimated_hours": 2.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/library/BookDetailFragment.kt",
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt"
+      ],
+      "description": "Trigger MergeCharactersUseCase automatically after multi-chapter analysis and after finishing each chapter",
+      "implementation": {
+        "trigger_points": [
+          "After analyzing all chapters in BookDetailFragment",
+          "After finishing reading a chapter in ReaderFragment",
+          "After importing a new book with pre-analyzed chapters"
+        ],
+        "merge_logic": "Collect all per-chapter character JSONs and call MergeCharactersUseCase",
+        "background": "Run in background with progress indicator",
+        "notification": "Show 'Merging character data...' during process"
+      },
+      "acceptance_criteria": [
+        "Characters merged after multi-chapter analysis",
+        "No duplicate characters across chapters",
+        "Traits combined correctly",
+        "Voice profiles averaged appropriately"
+      ]
+    },
+    {
+      "id": "AUG-009",
+      "phase": "PHASE_2",
+      "title": "Improve Character Trait Inference",
+      "priority": "HIGH",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/domain/usecases/ChapterCharacterExtractionUseCase.kt"
+      ],
+      "description": "Replace generic 'story_character' fallback with context-based trait inference",
+      "implementation": {
+        "location": "ChapterCharacterExtractionUseCase.kt:106-110",
+        "fallback_strategy": [
+          "If LLM returns empty traits, retry with focused prompt",
+          "Extract traits from character's dialog (formal/informal, emotional)",
+          "Infer from name (cultural origin, gender hints)",
+          "Use surrounding context (actions, descriptions)"
+        ],
+        "llm_retry": "Use OnnxQwenModel.inferTraitsForCharacter with larger context window",
+        "heuristics": "Add rule-based trait detection for common patterns"
+      },
+      "acceptance_criteria": [
+        "Less than 5% of characters have generic traits",
+        "Retry mechanism works for empty trait responses",
+        "Context-based inference provides reasonable defaults",
+        "Performance impact minimal (< 500ms per character)"
+      ]
+    },
+    {
+      "id": "AUG-010",
+      "phase": "PHASE_2",
+      "title": "Implement Character Key Moments Tracking",
+      "priority": "HIGH",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/llm/OnnxQwenModel.kt",
+        "app/src/main/java/com/dramebaz/app/domain/usecases/MergeCharactersUseCase.kt"
+      ],
+      "description": "Extract and store key moments for each character from chapter analysis",
+      "implementation": {
+        "llm_prompt_extension": "Add key_moments field to character extraction prompt",
+        "json_schema": "Array of {chapter: string, moment: string, significance: string}",
+        "extraction": "Extract 2-3 key moments per character per chapter",
+        "merging": "Combine key moments from all chapters during merge",
+        "storage": "Store as JSON in Character.keyMoments field",
+        "max_moments": "Keep top 10 most significant moments per character"
+      },
+      "acceptance_criteria": [
+        "Key moments extracted for main characters",
+        "Moments include chapter reference",
+        "Merged correctly across chapters",
+        "Displayed in CharacterDetailFragment"
+      ]
+    },
+    {
+      "id": "AUG-011",
+      "phase": "PHASE_2",
+      "title": "Implement Character Relationships Tracking",
+      "priority": "HIGH",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/llm/OnnxQwenModel.kt",
+        "app/src/main/java/com/dramebaz/app/domain/usecases/MergeCharactersUseCase.kt"
+      ],
+      "description": "Extract and track relationships between characters",
+      "implementation": {
+        "llm_prompt_extension": "Add relationships field to character extraction",
+        "json_schema": "Array of {character: string, relationship: string, nature: string}",
+        "relationship_types": [
+          "family",
+          "friend",
+          "enemy",
+          "romantic",
+          "professional",
+          "other"
+        ],
+        "extraction": "Identify relationships from dialogs and interactions",
+        "merging": "Update relationship strength/nature across chapters",
+        "storage": "Store as JSON in Character.relationships field"
+      },
+      "acceptance_criteria": [
+        "Relationships extracted between main characters",
+        "Relationship types categorized correctly",
+        "Bidirectional relationships handled",
+        "Displayed in CharacterDetailFragment with visual graph"
+      ]
+    },
+    {
+      "id": "AUG-012",
+      "phase": "PHASE_3",
+      "title": "Implement Energy as Post-Processing Volume Control",
+      "priority": "HIGH",
+      "estimated_hours": 1.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/tts/SherpaTtsEngine.kt"
+      ],
+      "description": "Apply VoiceProfile.energy as volume scaling since VITS doesn't support runtime energy control",
+      "implementation": {
+        "location": "SherpaTtsEngine.kt:143-175 (after audio generation)",
+        "algorithm": "Scale audio samples by energy value (0.5-1.5)",
+        "formula": "scaledSample = originalSample * energyScale",
+        "normalization": "Ensure samples stay within [-1.0, 1.0] range",
+        "performance": "Use vectorized operations if possible"
+      },
+      "model_compatibility": {
+        "limitation": "VITS-Piper has NO runtime energy/volume parameter",
+        "workaround": "Post-process generated audio samples",
+        "impact": "Minimal performance cost (< 50ms for typical audio)"
+      },
+      "acceptance_criteria": [
+        "Energy parameter affects output volume",
+        "No audio clipping or distortion",
+        "Performance impact < 50ms",
+        "Works with all speaker IDs"
+      ]
+    },
+    {
+      "id": "AUG-013",
+      "phase": "PHASE_3",
+      "title": "Implement Prosody Hints in TTS Generation",
+      "priority": "HIGH",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/playback/engine/ProsodyController.kt"
+      ],
+      "description": "Use Dialog.prosody hints (speed, pitchVariation, stressPattern) to enhance TTS parameters",
+      "implementation": {
+        "location": "ProsodyController.kt:15-34 (forDialog method)",
+        "prosody_mapping": {
+          "speed": {
+            "fast": "1.2x base speed",
+            "normal": "1.0x base speed",
+            "slow": "0.8x base speed"
+          },
+          "pitchVariation": {
+            "high": "Select higher-pitched speaker from same gender",
+            "normal": "Use assigned speaker",
+            "low": "Select lower-pitched speaker from same gender"
+          },
+          "stressPattern": {
+            "emphasized": "Increase speed variation, use energy boost",
+            "normal": "Standard parameters",
+            "subdued": "Reduce speed variation, lower energy"
+          }
+        },
+        "speaker_selection": "Create speaker pitch mapping (high/medium/low per gender)",
+        "combination": "Combine prosody hints with emotion-based adjustments"
+      },
+      "model_compatibility": {
+        "limitation": "VITS has NO pitch control, only speed",
+        "workaround": "Use speaker ID selection for pitch variation (904 speakers available)",
+        "strategy": "Pre-categorize speakers by pitch level within gender groups"
+      },
+      "acceptance_criteria": [
+        "Prosody hints affect TTS output",
+        "Speed variations work correctly",
+        "Speaker selection provides pitch variation",
+        "Combination with emotion works smoothly"
+      ]
+    },
+    {
+      "id": "AUG-014",
+      "phase": "PHASE_3",
+      "title": "Implement Smart Speaker Filtering by Traits",
+      "priority": "HIGH",
+      "estimated_hours": 3.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/tts/SpeakerMatcher.kt",
+        "app/src/main/java/com/dramebaz/app/ui/characters/SpeakerSelectionFragment.kt"
+      ],
+      "description": "Filter speaker list by character traits instead of showing all 904 speakers",
+      "implementation": {
+        "new_method": "SpeakerMatcher.getSimilarSpeakers(traits, personalitySummary, name, topN)",
+        "scoring_algorithm": [
+          "Gender match: +10 points",
+          "Age match: +5 points",
+          "Accent/region match: +3 points",
+          "Personality keywords: +2 points each",
+          "Voice quality match: +2 points"
+        ],
+        "speaker_metadata": "Use LibrittsSpeakerCatalog with gender, region data",
+        "filtering": "Return top 20-30 matches sorted by score",
+        "ui_update": "SpeakerSelectionFragment uses filtered list"
+      },
+      "acceptance_criteria": [
+        "Speaker list filtered to relevant matches",
+        "Top matches appear first",
+        "Gender filtering works correctly",
+        "User can still see all speakers if needed (toggle)"
+      ]
+    },
+    {
+      "id": "AUG-015",
+      "phase": "PHASE_3",
+      "title": "Add Voice Preview to Speaker Selection",
+      "priority": "HIGH",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/characters/SpeakerSelectionFragment.kt",
+        "app/src/main/res/layout/item_speaker.xml"
+      ],
+      "description": "Add play button to each speaker row for voice preview",
+      "implementation": {
+        "layout_update": "Add ImageButton with play icon to item_speaker.xml",
+        "sample_text": "Use character-specific sample or generic: 'Hello, this is speaker {id}. How do I sound?'",
+        "playback": "Generate TTS on button click, play with MediaPlayer",
+        "loading_state": "Show loading indicator during synthesis",
+        "stop_previous": "Stop previous preview when new one starts",
+        "cleanup": "Release MediaPlayer resources properly"
+      },
+      "acceptance_criteria": [
+        "Play button visible on each speaker row",
+        "Voice preview plays correctly",
+        "Only one preview plays at a time",
+        "Loading state shown during synthesis",
+        "No resource leaks"
+      ]
+    },
+    {
+      "id": "AUG-016",
+      "phase": "PHASE_3",
+      "title": "Create Speaker Pitch Categorization System",
+      "priority": "MEDIUM",
+      "estimated_hours": 2,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/tts/LibrittsSpeakerCatalog.kt"
+      ],
+      "description": "Categorize all 904 LibriTTS speakers by pitch level (high/medium/low) within gender groups",
+      "implementation": {
+        "data_structure": "Add pitchLevel: PitchLevel enum to LibrittsSpeakerTraits",
+        "pitch_levels": [
+          "HIGH",
+          "MEDIUM",
+          "LOW"
+        ],
+        "categorization": "Automatic categorization based on gender and speaker ID pattern",
+        "gender_groups": "Separate categorization for male/female speakers",
+        "usage": "Used by ProsodyController for pitch variation via speaker selection"
+      },
+      "model_compatibility": {
+        "reason": "VITS cannot adjust pitch at runtime",
+        "solution": "Use different speakers as pitch variants",
+        "example": "Female character with high pitch → use speaker ID 0-300 (high), medium → ID 301-600, low → ID 601-903"
+      },
+      "acceptance_criteria": [
+        "All 904 speakers categorized by pitch",
+        "Gender groups maintained",
+        "Data accessible via LibrittsSpeakerCatalog",
+        "Used in prosody control"
+      ]
+    },
+    {
+      "id": "AUG-017",
+      "phase": "PHASE_4",
+      "title": "Improve Text-Audio Sync with Actual Durations",
+      "priority": "HIGH",
+      "estimated_hours": 5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/playback/engine/TextAudioSync.kt",
+        "app/src/main/java/com/dramebaz/app/playback/engine/PlaybackEngine.kt"
+      ],
+      "description": "Replace WPM-based timing estimates with actual TTS audio durations for accurate highlighting",
+      "implementation": {
+        "current_issue": "TextAudioSync uses WPM estimates (150 narration, 180 dialog) which drift from actual audio",
+        "solution": "After TTS generation, get actual audio duration and update segment timing",
+        "algorithm": [
+          "Generate TTS audio for each segment",
+          "Get actual duration from audio file (samples / sampleRate)",
+          "Update TextSegment.audioEndMs with actual duration",
+          "Accumulate durations for subsequent segments"
+        ],
+        "performance": "Minimal impact since TTS already generated",
+        "fallback": "Use WPM estimates if audio not yet generated"
+      },
+      "acceptance_criteria": [
+        "Text highlighting syncs accurately with audio",
+        "No drift over long chapters",
+        "Works for both narration and dialog",
+        "Fallback to estimates when needed"
+      ]
+    },
+    {
+      "id": "AUG-018",
+      "phase": "PHASE_4",
+      "title": "Implement Playback Progress Persistence",
+      "priority": "HIGH",
+      "estimated_hours": 2.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/playback/engine/PlaybackEngine.kt",
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt"
+      ],
+      "description": "Save and restore playback position when user pauses or leaves chapter",
+      "implementation": {
+        "save_triggers": [
+          "On pause",
+          "On fragment pause/stop",
+          "Every 10 seconds during playback",
+          "On chapter change"
+        ],
+        "storage": "Update ReadingSession.playbackPosition in database",
+        "restore": "Resume from saved position when returning to chapter",
+        "ui_feedback": "Show 'Resume from X:XX' option"
+      },
+      "acceptance_criteria": [
+        "Playback position saved automatically",
+        "Position restored on return",
+        "Works across app restarts",
+        "UI shows resume option"
+      ]
+    },
+    {
+      "id": "AUG-019",
+      "phase": "PHASE_4",
+      "title": "Implement Audio Pre-Generation Queue",
+      "priority": "HIGH",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/playback/engine/PlaybackEngine.kt"
+      ],
+      "description": "Improve pre-synthesis to generate audio ahead of playback position",
+      "implementation": {
+        "current_issue": "Pre-synthesis generates all segments upfront, causing delay",
+        "solution": "Generate audio in chunks, staying 30-60 seconds ahead of playback",
+        "algorithm": [
+          "Generate first 3-5 segments immediately",
+          "Start playback",
+          "Continue generating next segments in background",
+          "Maintain buffer of 30-60 seconds ahead",
+          "Pause generation if buffer full"
+        ],
+        "queue_management": "Use priority queue for segment generation",
+        "cancellation": "Cancel generation if user seeks or changes chapter"
+      },
+      "acceptance_criteria": [
+        "Playback starts within 2-3 seconds",
+        "No gaps during playback",
+        "Background generation doesn't block UI",
+        "Seeking works smoothly"
+      ]
+    },
+    {
+      "id": "AUG-020",
+      "phase": "PHASE_4",
+      "title": "Implement Smart Bookmark Context Capture",
+      "priority": "MEDIUM",
+      "estimated_hours": 2.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt"
+      ],
+      "description": "Populate bookmark charactersInvolved and emotionSnapshot fields from chapter analysis",
+      "implementation": {
+        "location": "ReaderFragment.kt:551-554 (bookmark creation)",
+        "characters_involved": "Extract from current paragraph's dialogs",
+        "emotion_snapshot": "Get emotion from emotional_arc at current position",
+        "context_summary": "Generate from paragraph text + characters + emotion",
+        "example": "'You stopped when Alice confronted Bob (high tension)'",
+        "storage": "Store in Bookmark entity fields"
+      },
+      "acceptance_criteria": [
+        "Bookmarks include character names",
+        "Emotion captured correctly",
+        "Context summary is meaningful",
+        "Displayed in BookmarksFragment"
+      ]
+    },
+    {
+      "id": "AUG-021",
+      "phase": "PHASE_4",
+      "title": "Add Playback Speed Control UI",
+      "priority": "MEDIUM",
+      "estimated_hours": 2,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/player/PlayerBottomSheet.kt",
+        "app/src/main/res/layout/player_bottom_sheet.xml"
+      ],
+      "description": "Add playback speed control (0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x) to player controls",
+      "implementation": {
+        "ui_element": "Add speed button with dropdown menu",
+        "speed_options": [
+          0.5,
+          0.75,
+          1.0,
+          1.25,
+          1.5,
+          2.0
+        ],
+        "persistence": "Save selected speed in SharedPreferences",
+        "application": "Apply to all TTS generation via global speed multiplier",
+        "display": "Show current speed on button (e.g., '1.0x')"
+      },
+      "acceptance_criteria": [
+        "Speed control accessible in player",
+        "Speed changes apply immediately",
+        "Selected speed persists",
+        "Works with all voices"
+      ]
+    },
+    {
+      "id": "AUG-022",
+      "phase": "PHASE_5",
+      "title": "Implement Emotional Graph Visualization",
+      "priority": "MEDIUM",
+      "estimated_hours": 6,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/insights/InsightsFragment.kt",
+        "app/src/main/res/layout/fragment_insights.xml",
+        "app/build.gradle"
+      ],
+      "description": "Add interactive emotional arc graph using MPAndroidChart library",
+      "implementation": {
+        "library": "implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'",
+        "data_source": "Extract emotional_arc from all chapters",
+        "chart_type": "LineChart with multiple series (tension, joy, sadness, etc.)",
+        "x_axis": "Chapter number or reading progress",
+        "y_axis": "Emotion intensity (0-1)",
+        "interactions": "Tap to see chapter details, zoom/pan enabled",
+        "styling": "Match app theme colors"
+      },
+      "acceptance_criteria": [
+        "Graph displays emotional arc across chapters",
+        "Interactive with tap/zoom/pan",
+        "Matches app visual design",
+        "Loads quickly even for long books"
+      ]
+    },
+    {
+      "id": "AUG-023",
+      "phase": "PHASE_5",
+      "title": "Enhance Character Detail UI with Relationships Graph",
+      "priority": "MEDIUM",
+      "estimated_hours": 5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/characters/CharacterDetailFragment.kt",
+        "app/src/main/res/layout/fragment_character_detail.xml"
+      ],
+      "description": "Add visual relationship graph showing character connections",
+      "implementation": {
+        "visualization": "Simple node-link diagram or list with icons",
+        "data_source": "Character.relationships JSON field",
+        "display": [
+          "Character name",
+          "Relationship type (icon + label)",
+          "Relationship nature/description",
+          "Tap to navigate to related character"
+        ],
+        "fallback": "Show 'No relationships tracked' if empty",
+        "styling": "Use Material Design cards"
+      },
+      "acceptance_criteria": [
+        "Relationships displayed clearly",
+        "Navigation to related characters works",
+        "Visual design matches app theme",
+        "Handles empty state gracefully"
+      ]
+    },
+    {
+      "id": "AUG-024",
+      "phase": "PHASE_5",
+      "title": "Add Character Key Moments Timeline",
+      "priority": "MEDIUM",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/characters/CharacterDetailFragment.kt",
+        "app/src/main/res/layout/fragment_character_detail.xml"
+      ],
+      "description": "Display character key moments as interactive timeline",
+      "implementation": {
+        "data_source": "Character.keyMoments JSON field",
+        "layout": "Vertical timeline with chapter markers",
+        "display": [
+          "Chapter reference",
+          "Moment description",
+          "Significance indicator (color/icon)",
+          "Tap to jump to chapter"
+        ],
+        "sorting": "Chronological by chapter order",
+        "empty_state": "Show 'No key moments yet'"
+      },
+      "acceptance_criteria": [
+        "Timeline displays chronologically",
+        "Tap navigates to chapter",
+        "Visual hierarchy clear",
+        "Empty state handled"
+      ]
+    },
+    {
+      "id": "AUG-025",
+      "phase": "PHASE_5",
+      "title": "Implement Progress Indicators for Long Operations",
+      "priority": "MEDIUM",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/library/BookDetailFragment.kt",
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt"
+      ],
+      "description": "Add detailed progress indicators for chapter analysis and character extraction",
+      "implementation": {
+        "analysis_progress": "Show 'Analyzing chapter X of Y...'",
+        "extraction_progress": "Show 'Extracting characters: segment X of Y...'",
+        "merging_progress": "Show 'Merging character data...'",
+        "ui_component": "Use Material ProgressDialog or BottomSheet",
+        "cancellation": "Add cancel button for long operations",
+        "estimation": "Show estimated time remaining"
+      },
+      "acceptance_criteria": [
+        "Progress updates in real-time",
+        "User can cancel long operations",
+        "Time estimation reasonably accurate",
+        "UI doesn't block interaction"
+      ]
+    },
+    {
+      "id": "AUG-026",
+      "phase": "PHASE_5",
+      "title": "Add Character Search and Filtering",
+      "priority": "MEDIUM",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/characters/CharactersFragment.kt",
+        "app/src/main/res/layout/fragment_characters.xml"
+      ],
+      "description": "Add search bar and filters to characters list",
+      "implementation": {
+        "search": "Filter by character name (real-time)",
+        "filters": [
+          "By gender (from traits)",
+          "By importance (dialog count)",
+          "By chapter appearance",
+          "Alphabetical sort"
+        ],
+        "ui": "SearchView in toolbar + filter chips",
+        "persistence": "Remember last filter selection"
+      },
+      "acceptance_criteria": [
+        "Search works in real-time",
+        "Filters apply correctly",
+        "Multiple filters can combine",
+        "Clear filters button available"
+      ]
+    },
+    {
+      "id": "AUG-027",
+      "phase": "PHASE_5",
+      "title": "Implement Reading Statistics Dashboard",
+      "priority": "LOW",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/insights/InsightsFragment.kt",
+        "app/src/main/res/layout/fragment_insights.xml"
+      ],
+      "description": "Add reading statistics section to Insights tab",
+      "implementation": {
+        "metrics": [
+          "Total reading time",
+          "Chapters completed",
+          "Average reading speed (WPM)",
+          "Listening time vs reading time",
+          "Favorite reading mode",
+          "Most active reading times"
+        ],
+        "storage": "Track in ReadingSession table",
+        "visualization": "Cards with icons and numbers",
+        "time_range": "Show stats for last 7 days, 30 days, all time"
+      },
+      "acceptance_criteria": [
+        "Statistics calculated correctly",
+        "Visual design appealing",
+        "Time range selector works",
+        "Data persists across sessions"
+      ]
+    },
+    {
+      "id": "AUG-028",
+      "phase": "PHASE_6",
+      "title": "Implement Vocabulary Builder with Definitions",
+      "priority": "MEDIUM",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/insights/InsightsFragment.kt",
+        "app/src/main/res/layout/fragment_insights.xml"
+      ],
+      "description": "Enhance vocabulary display with interactive word cards and definitions",
+      "implementation": {
+        "data_source": "Extended analysis vocabulary field",
+        "ui_component": "RecyclerView with word cards",
+        "card_content": [
+          "Word",
+          "Definition (from LLM)",
+          "Context sentence from book",
+          "Mark as learned button",
+          "Pronunciation (optional)"
+        ],
+        "interactions": "Tap to expand, swipe to mark learned",
+        "filtering": "Show only unlearned words option",
+        "export": "Export vocabulary list to text file"
+      },
+      "acceptance_criteria": [
+        "Vocabulary displayed as interactive cards",
+        "Definitions shown clearly",
+        "Mark as learned persists",
+        "Export functionality works"
+      ]
+    },
+    {
+      "id": "AUG-029",
+      "phase": "PHASE_6",
+      "title": "Implement Themes and Symbols Analysis",
+      "priority": "MEDIUM",
+      "estimated_hours": 3.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/insights/InsightsFragment.kt",
+        "app/src/main/java/com/dramebaz/app/ai/llm/OnnxQwenModel.kt"
+      ],
+      "description": "Enhance themes display with descriptions and chapter references",
+      "implementation": {
+        "llm_enhancement": "Extract theme descriptions and examples from chapters",
+        "json_schema": "{theme: string, description: string, chapters: [int], examples: [string]}",
+        "ui_display": "Expandable cards for each theme",
+        "card_content": [
+          "Theme name",
+          "Description",
+          "Chapters where theme appears",
+          "Example quotes",
+          "Tap to see related chapters"
+        ],
+        "symbols": "Similar treatment for symbols and foreshadowing"
+      },
+      "acceptance_criteria": [
+        "Themes displayed with context",
+        "Chapter references clickable",
+        "Examples shown",
+        "Symbols and foreshadowing included"
+      ]
+    },
+    {
+      "id": "AUG-030",
+      "phase": "PHASE_6",
+      "title": "Implement Smart Chapter Summaries",
+      "priority": "MEDIUM",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/library/BookDetailFragment.kt",
+        "app/src/main/java/com/dramebaz/app/domain/usecases/GetRecapUseCase.kt"
+      ],
+      "description": "Generate and display chapter summaries with key points",
+      "implementation": {
+        "data_source": "ChapterSummary from analysis",
+        "enhancement": "Extract key points, characters involved, plot developments",
+        "ui_location": "Chapter list in BookDetailFragment",
+        "display": [
+          "Chapter title",
+          "Brief summary (2-3 sentences)",
+          "Key characters",
+          "Plot points",
+          "Expand for full summary"
+        ],
+        "generation": "Use LLM if summary missing"
+      },
+      "acceptance_criteria": [
+        "Summaries displayed for all chapters",
+        "Key information highlighted",
+        "Expandable for details",
+        "Generated on-demand if missing"
+      ]
+    },
+    {
+      "id": "AUG-031",
+      "phase": "PHASE_6",
+      "title": "Implement Character Voice Consistency Checker",
+      "priority": "MEDIUM",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/domain/usecases/MergeCharactersUseCase.kt",
+        "app/src/main/java/com/dramebaz/app/ui/characters/CharactersFragment.kt"
+      ],
+      "description": "Detect and warn about character voice inconsistencies across chapters",
+      "implementation": {
+        "detection": [
+          "Check if same character has different speaker IDs in different chapters",
+          "Check if voice profile parameters vary significantly",
+          "Detect gender mismatches in traits vs speaker"
+        ],
+        "ui_warning": "Show warning icon on character card if inconsistency detected",
+        "resolution": "Offer to standardize voice across all chapters",
+        "logging": "Log inconsistencies for debugging"
+      },
+      "acceptance_criteria": [
+        "Inconsistencies detected correctly",
+        "Warnings shown to user",
+        "Standardization option works",
+        "No false positives"
+      ]
+    },
+    {
+      "id": "AUG-032",
+      "phase": "PHASE_6",
+      "title": "Implement Dialog Attribution Confidence Scoring",
+      "priority": "LOW",
+      "estimated_hours": 3.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/llm/OnnxQwenModel.kt",
+        "app/src/main/java/com/dramebaz/app/data/models/Dialog.kt"
+      ],
+      "description": "Add confidence score to dialog speaker attribution for quality assessment",
+      "implementation": {
+        "llm_output": "Add confidence field to dialog JSON (0.0-1.0)",
+        "calculation": "LLM estimates confidence based on context clarity",
+        "storage": "Add confidence field to Dialog data class",
+        "ui_indicator": "Show low-confidence dialogs with warning icon",
+        "correction_ui": "Allow user to correct low-confidence attributions",
+        "threshold": "Flag dialogs with confidence < 0.6"
+      },
+      "acceptance_criteria": [
+        "Confidence scores extracted from LLM",
+        "Low-confidence dialogs flagged",
+        "User can review and correct",
+        "Corrections saved to database"
+      ]
+    },
+    {
+      "id": "AUG-033",
+      "phase": "PHASE_7",
+      "title": "Optimize LLM Batch Processing",
+      "priority": "MEDIUM",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/domain/usecases/ChapterCharacterExtractionUseCase.kt",
+        "app/src/main/java/com/dramebaz/app/ai/llm/OnnxQwenModel.kt"
+      ],
+      "description": "Optimize parallel LLM processing to reduce total analysis time",
+      "implementation": {
+        "current_state": "maxConcurrentSegments = 2",
+        "optimization": [
+          "Dynamically adjust concurrency based on available RAM",
+          "Use coroutine semaphore for better control",
+          "Implement request queuing with priority",
+          "Save LLM results to avoid re-processing"
+        ],
+        "memory_monitoring": "Check available heap before launching new LLM call",
+        "cancellation": "Properly cancel pending requests on user navigation",
+        "metrics": "Log processing time per segment for optimization",
+        "caching_results": "Save LLM results to avoid re-processing"
+      },
+      "acceptance_criteria": [
+        "Analysis time reduced by 20-30%",
+        "No out-of-memory errors",
+        "Cancellation works immediately",
+        "Performance metrics logged"
+      ]
+    },
+    {
+      "id": "AUG-034",
+      "phase": "PHASE_7",
+      "title": "Implement TTS Audio Caching Strategy",
+      "priority": "MEDIUM",
+      "estimated_hours": 3.5,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/tts/SherpaTtsEngine.kt",
+        "app/src/main/java/com/dramebaz/app/playback/engine/PlaybackEngine.kt"
+      ],
+      "description": "Implement smart caching for generated TTS audio to reduce re-generation",
+      "implementation": {
+        "cache_key": "Hash of (text + speakerId + speed + energy)",
+        "storage": "Store in app cache directory with size limit (100MB)",
+        "eviction": "LRU eviction when cache full",
+        "reuse": "Check cache before generating new audio",
+        "cleanup": "Clear old cache files on app start",
+        "settings": "User option to clear cache manually"
+      },
+      "acceptance_criteria": [
+        "Repeated text uses cached audio",
+        "Cache size stays under limit",
+        "Cache cleared properly",
+        "Playback faster for repeated content"
+      ]
+    },
+    {
+      "id": "AUG-035",
+      "phase": "PHASE_7",
+      "title": "Optimize Database Queries with Indexes",
+      "priority": "MEDIUM",
+      "estimated_hours": 2,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/data/db/Character.kt",
+        "app/src/main/java/com/dramebaz/app/data/db/Chapter.kt",
+        "app/src/main/java/com/dramebaz/app/data/db/Bookmark.kt"
+      ],
+      "description": "Add database indexes for frequently queried fields",
+      "implementation": {
+        "indexes_to_add": [
+          "Character: (bookId, name) composite index",
+          "Chapter: (bookId, orderIndex) composite index",
+          "Bookmark: (bookId, timestamp) composite index",
+          "ReadingSession: (bookId, lastAccessTime) composite index"
+        ],
+        "migration": "Create database migration for index addition",
+        "testing": "Verify query performance improvement",
+        "profiling": "Use Room query profiling to identify slow queries"
+      },
+      "acceptance_criteria": [
+        "Indexes added successfully",
+        "Query performance improved",
+        "Migration works without data loss",
+        "No performance regression"
+      ]
+    },
+    {
+      "id": "AUG-036",
+      "phase": "PHASE_7",
+      "title": "Implement Lazy Loading for Large Chapters",
+      "priority": "MEDIUM",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt",
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderViewModel.kt"
+      ],
+      "description": "Load chapter text in chunks for very long chapters to reduce memory usage",
+      "implementation": {
+        "threshold": "Chapters > 50,000 characters",
+        "chunk_size": "10,000 characters per chunk",
+        "loading": "Load current chunk + next chunk in background",
+        "ui": "Seamless pagination, user doesn't notice chunks",
+        "analysis": "Run analysis on full chapter but display in chunks",
+        "playback": "Works across chunk boundaries"
+      },
+      "acceptance_criteria": [
+        "Large chapters load quickly",
+        "Memory usage reduced",
+        "No visible seams between chunks",
+        "Playback works smoothly"
+      ]
+    },
+    {
+      "id": "AUG-037",
+      "phase": "PHASE_7",
+      "title": "Implement Background Pre-Analysis for Next Chapter",
+      "priority": "LOW",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt",
+        "app/src/main/java/com/dramebaz/app/domain/usecases/AnalyzeChapterUseCase.kt"
+      ],
+      "description": "Pre-analyze next chapter in background while user reads current chapter",
+      "implementation": {
+        "trigger": "When user reaches 80% of current chapter",
+        "background_task": "Analyze next chapter if not already analyzed",
+        "cancellation": "Cancel if user navigates away",
+        "priority": "Low priority to not interfere with current playback",
+        "notification": "Silent, no user notification unless error"
+      },
+      "acceptance_criteria": [
+        "Next chapter pre-analyzed automatically",
+        "No impact on current chapter performance",
+        "Cancels properly on navigation",
+        "Works for sequential reading"
+      ]
+    },
+    {
+      "id": "AUG-038",
+      "phase": "PHASE_8",
+      "title": "Standardize Logging Throughout Codebase",
+      "priority": "LOW",
+      "estimated_hours": 3,
+      "files": [
+        "Multiple files across codebase"
+      ],
+      "description": "Replace all android.util.Log calls with AppLogger for consistent logging",
+      "implementation": {
+        "find_replace": "Search for 'android.util.Log' and replace with 'AppLogger'",
+        "files_to_update": [
+          "QwenStub.kt",
+          "OnnxQwenModel.kt",
+          "QwenModel.kt",
+          "All other files using android.util.Log"
+        ],
+        "log_levels": "Ensure correct log levels (d/i/w/e)",
+        "performance_logs": "Use AppLogger.logPerformance for timing",
+        "method_logs": "Use AppLogger.logMethodEntry/Exit for debugging"
+      },
+      "acceptance_criteria": [
+        "No android.util.Log calls remain",
+        "All logging uses AppLogger",
+        "Log levels appropriate",
+        "Performance logging consistent"
+      ]
+    },
+    {
+      "id": "AUG-039",
+      "phase": "PHASE_8",
+      "title": "Implement Comprehensive Error Handling",
+      "priority": "LOW",
+      "estimated_hours": 4,
+      "files": [
+        "Multiple files across codebase"
+      ],
+      "description": "Add proper error handling and user-friendly error messages throughout app",
+      "implementation": {
+        "error_types": [
+          "Network errors (though app is offline)",
+          "File I/O errors",
+          "Database errors",
+          "LLM errors",
+          "TTS errors",
+          "Out of memory errors"
+        ],
+        "user_messages": "Create user-friendly error messages for each type",
+        "error_dialog": "Create reusable ErrorDialog component",
+        "retry_logic": "Add retry with exponential backoff for transient errors",
+        "crash_reporting": "Log errors for debugging (local only, no telemetry)"
+      },
+      "acceptance_criteria": [
+        "All error paths handled",
+        "User sees helpful error messages",
+        "Retry logic works correctly",
+        "No silent failures"
+      ]
+    },
+    {
+      "id": "AUG-040",
+      "phase": "PHASE_8",
+      "title": "Add Input Validation and Sanitization",
+      "priority": "LOW",
+      "estimated_hours": 2,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ui/story/StoryGenerationFragment.kt",
+        "app/src/main/java/com/dramebaz/app/domain/usecases/ImportBookUseCase.kt"
+      ],
+      "description": "Add validation for user inputs and sanitization for LLM prompts",
+      "implementation": {
+        "story_prompt": "Validate length (min 10, max 1000 chars), no special chars",
+        "file_import": "Validate file size, format, encoding",
+        "character_names": "Sanitize special characters",
+        "llm_prompts": "Escape special characters, limit length",
+        "sql_injection": "Room handles this, but verify"
+      },
+      "acceptance_criteria": [
+        "Invalid inputs rejected with clear message",
+        "No crashes from malformed input",
+        "LLM prompts sanitized",
+        "File imports validated"
+      ]
+    },
+    {
+      "id": "AUG-041",
+      "phase": "PHASE_8",
+      "title": "Implement Graceful Degradation for Model Failures",
+      "priority": "LOW",
+      "estimated_hours": 2,
+      "files": [
+        "app/src/main/java/com/dramebaz/app/ai/llm/QwenStub.kt",
+        "app/src/main/java/com/dramebaz/app/ai/tts/SherpaTtsEngine.kt"
+      ],
+      "description": "Ensure app remains functional even when models fail to load",
+      "implementation": {
+        "llm_fallback": "Use stub analysis if ONNX model fails",
+        "tts_fallback": "Show error but allow reading mode",
+        "user_notification": "Inform user of degraded functionality",
+        "feature_flags": "Disable features that require failed models",
+        "recovery": "Offer to retry model loading",
+        "offline_mode": "Clearly indicate when in fallback mode"
+      },
+      "acceptance_criteria": [
+        "App works without models",
+        "User informed of limitations",
+        "Retry mechanism available",
+        "No crashes from model failures"
+      ]
+    },
+    {
+      "id": "AUG-042",
+      "phase": "PHASE_9",
+      "title": "Create Unit Tests for Critical Business Logic",
+      "priority": "LOW",
+      "estimated_hours": 5,
+      "files": [
+        "app/src/test/java/com/dramebaz/app/"
+      ],
+      "description": "Add unit tests for use cases, mappers, and utilities",
+      "implementation": {
+        "test_targets": [
+          "ChapterCharacterExtractionUseCase",
+          "MergeCharactersUseCase",
+          "VoiceProfileMapper",
+          "ProsodyController",
+          "SpeakerMatcher",
+          "TextAudioSync"
+        ],
+        "framework": "JUnit 4 + MockK for mocking",
+        "coverage_goal": "70% code coverage for business logic",
+        "test_types": "Unit tests, not integration tests"
+      },
+      "acceptance_criteria": [
+        "Tests written for all critical use cases",
+        "Tests pass consistently",
+        "Code coverage > 70%",
+        "Tests run in < 30 seconds"
+      ]
+    },
+    {
+      "id": "AUG-043",
+      "phase": "PHASE_9",
+      "title": "Add Integration Tests for Playback Pipeline",
+      "priority": "LOW",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/androidTest/java/com/dramebaz/app/playback/"
+      ],
+      "description": "Test end-to-end playback flow with real TTS and audio",
+      "implementation": {
+        "test_scenarios": [
+          "Generate TTS for sample text",
+          "Play audio with MediaPlayer",
+          "Pause and resume playback",
+          "Seek to position",
+          "Switch between narration and dialog",
+          "Apply prosody adjustments"
+        ],
+        "test_data": "Use small sample chapter",
+        "assertions": "Verify audio generated, playback works, timing correct",
+        "cleanup": "Delete test audio files after tests"
+      },
+      "acceptance_criteria": [
+        "Playback pipeline tested end-to-end",
+        "Tests pass on real device",
+        "No resource leaks",
+        "Tests complete in < 2 minutes"
+      ]
+    },
+    {
+      "id": "AUG-044",
+      "phase": "PHASE_9",
+      "title": "Add UI Tests for Critical User Flows",
+      "priority": "LOW",
+      "estimated_hours": 4,
+      "files": [
+        "app/src/androidTest/java/com/dramebaz/app/ui/"
+      ],
+      "description": "Test critical user journeys with Espresso",
+      "implementation": {
+        "test_flows": [
+          "Import book → Analyze → View characters",
+          "Open chapter → Start playback → Pause → Resume",
+          "Select character → Change voice → Preview",
+          "Create bookmark → Navigate away → Return to bookmark",
+          "Generate story → Import → Read"
+        ],
+        "framework": "Espresso for UI testing",
+        "test_data": "Use small sample book",
+        "assertions": "Verify UI state, navigation, data persistence"
+      },
+      "acceptance_criteria": [
+        "Critical flows tested",
+        "Tests pass on real device",
+        "UI state verified",
+        "Tests complete in < 5 minutes"
+      ]
+    },
+    {
+      "id": "AUG-045",
+      "phase": "PHASE_9",
+      "title": "Create Performance Benchmarks",
+      "priority": "LOW",
+      "estimated_hours": 3,
+      "files": [
+        "app/src/androidTest/java/com/dramebaz/app/benchmarks/"
+      ],
+      "description": "Establish performance benchmarks for key operations",
+      "implementation": {
+        "benchmarks": [
+          "LLM analysis time per 10K chars",
+          "TTS generation time per 100 words",
+          "Character extraction time per chapter",
+          "Database query time for common operations",
+          "UI render time for large lists"
+        ],
+        "framework": "Android Benchmark library",
+        "baseline": "Establish baseline on reference device",
+        "monitoring": "Track performance over time",
+        "alerts": "Fail if performance degrades > 20%"
+      },
+      "acceptance_criteria": [
+        "Benchmarks established",
+        "Baseline recorded",
+        "Performance tracked",
+        "Regression detection works"
+      ]
+    }
+  ],
+  "summary": {
+    "total_tasks": 45,
+    "total_estimated_hours": 104,
+    "phases": 9,
+    "priority_breakdown": {
+      "critical": 5,
+      "high": 16,
+      "medium": 16,
+      "low": 8
+    },
+    "estimated_timeline": "8-10 weeks (1-2 developers, part-time)",
+    "key_improvements": [
+      "All critical bugs fixed",
+      "Character and dialog features complete",
+      "TTS enhanced with prosody and energy control",
+      "Playback sync improved with actual durations",
+      "Rich UI with graphs, timelines, and statistics",
+      "Performance optimized with caching and lazy loading",
+      "Comprehensive error handling and logging",
+      "Test coverage for critical paths"
+    ]
+  }
+}

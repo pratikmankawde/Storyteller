@@ -48,3 +48,11 @@ test_results.log
 # Optional: uncomment to ignore editor/IDE config (if not shared)
 # .vscode/
 # .cursor/
+
+# Ignore extensions
+*.zip
+*.dll
+*.exe
+
+#llama-cpp server
+scripts/llama-cpp/

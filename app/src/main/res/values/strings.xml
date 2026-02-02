@@ -12,4 +12,7 @@
     <string name="empty_bookmarks">No bookmarks yet</string>
     <string name="empty_bookmarks_subtitle">Bookmarks you create will appear here</string>
     <string name="splash_loading">Loading TTS &amp; Qwen models…</string>
+    <string name="pdf_page_content_description">PDF page content</string>
+    <string name="error_icon_description">Error icon</string>
+    <string name="pdf_render_error">Unable to render PDF page</string>
 </resources>

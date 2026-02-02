@@ -17,6 +17,51 @@
             app:titleTextColor="@color/text_primary" />
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- AUG-026: Search View -->
+    <androidx.appcompat.widget.SearchView
+        android:id="@+id/search_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginTop="8dp"
+        android:queryHint="Search characters..."
+        app:iconifiedByDefault="false"
+        app:queryBackground="@android:color/transparent" />
+
+    <!-- AUG-026: Filter Chips -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:layout_marginBottom="8dp">
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/filter_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="8dp"
+            app:singleSelection="true">
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_sort_name_asc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="A-Z"
+                android:checked="true"
+                style="@style/Widget.MaterialComponents.Chip.Filter" />
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_sort_name_desc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Z-A"
+                style="@style/Widget.MaterialComponents.Chip.Filter" />
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_sort_dialogs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Most Dialogs"
+                style="@style/Widget.MaterialComponents.Chip.Filter" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler"
         android:layout_width="match_parent"
@@ -24,7 +69,7 @@
         android:padding="8dp"
         android:clipToPadding="false"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-    
+
     <LinearLayout
         android:id="@+id/empty_state"
         android:layout_width="match_parent"
@@ -33,14 +78,14 @@
         android:gravity="center"
         android:padding="32dp"
         android:visibility="gone">
-        
+
         <ImageView
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:src="@android:drawable/ic_menu_myplaces"
             app:tint="@color/text_secondary"
             android:layout_marginBottom="16dp" />
-        
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -49,7 +94,7 @@
             android:textStyle="bold"
             android:textColor="@color/text_primary"
             android:layout_marginBottom="8dp" />
-        
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

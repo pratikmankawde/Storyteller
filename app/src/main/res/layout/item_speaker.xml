@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AUG-015: Speaker item layout with voice preview button -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <!-- Speaker Info -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/speaker_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="Speaker #0" />
+
+            <TextView
+                android:id="@+id/speaker_traits"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorSecondary"
+                tools:text="Female, 23, English, Southern England" />
+
+            <TextView
+                android:id="@+id/speaker_pitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorTertiary"
+                android:layout_marginTop="2dp"
+                tools:text="Pitch: Medium" />
+
+        </LinearLayout>
+
+        <!-- Match Score Badge (shown when filtering) -->
+        <TextView
+            android:id="@+id/match_score"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:padding="4dp"
+            android:textSize="12sp"
+            android:textColor="@android:color/white"
+            android:background="@drawable/badge_background"
+            android:visibility="gone"
+            tools:text="95%"
+            tools:visibility="visible" />
+
+        <!-- Current Selection Indicator -->
+        <ImageView
+            android:id="@+id/selected_indicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_check_circle"
+            android:visibility="gone"
+            android:contentDescription="Selected"
+            tools:visibility="visible" />
+
+        <!-- Voice Preview Button (AUG-015) -->
+        <ImageButton
+            android:id="@+id/preview_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_play_circle"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Preview voice"
+            android:scaleType="fitCenter"
+            android:padding="4dp" />
+
+        <!-- Loading Indicator (shown during TTS generation) -->
+        <ProgressBar
+            android:id="@+id/preview_loading"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:visibility="gone"
+            android:padding="8dp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
+

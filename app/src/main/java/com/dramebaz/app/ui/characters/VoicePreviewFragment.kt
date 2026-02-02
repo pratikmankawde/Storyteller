@@ -12,7 +12,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
+import com.dramebaz.app.ai.tts.LibrittsSpeakerCatalog
 import com.dramebaz.app.data.models.VoiceProfile
+import com.dramebaz.app.utils.AppLogger
 import com.google.android.material.button.MaterialButton
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -29,25 +31,26 @@ class VoicePreviewFragment : Fragment() {
     private var characterTraits: String = ""
     private var speakerId: Int? = null
     private var baseVoiceProfile: VoiceProfile? = null
-    
+
     private var currentPitch = 1.0f
     private var currentSpeed = 1.0f
     private var mediaPlayer: MediaPlayer? = null
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         characterId = arguments?.getLong("characterId", 0L) ?: 0L
         characterName = arguments?.getString("characterName", "Character") ?: "Character"
     }
-    
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_voice_preview, container, false)
     }
-    
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         val characterNameView = view.findViewById<TextView>(R.id.character_name)
+        val speakerTraitsView = view.findViewById<TextView>(R.id.speaker_traits)
         val sampleTextView = view.findViewById<TextView>(R.id.sample_text)
         val pitchSlider = view.findViewById<SeekBar>(R.id.pitch_slider)
         val speedSlider = view.findViewById<SeekBar>(R.id.speed_slider)
@@ -55,36 +58,36 @@ class VoicePreviewFragment : Fragment() {
         val speedValue = view.findViewById<TextView>(R.id.speed_value)
         val btnPlayPreview = view.findViewById<MaterialButton>(R.id.btn_play_preview)
         val btnSave = view.findViewById<MaterialButton>(R.id.btn_save)
-        
+
         characterNameView.text = characterName
         sampleTextView.text = "" // Set after character load with "Hello, I am <name>. <traits>."
-        
+
         // Load character (voice profile, traits, speaker) and set preview text
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val appInstance = context?.applicationContext as? DramebazApplication ?: return@launch
                 if (characterId == 0L) {
-                    android.util.Log.w("VoicePreview", "Invalid characterId: 0")
+                    AppLogger.w("VoicePreview", "Invalid characterId: 0")
                     withContext(Dispatchers.Main) {
                         if (isAdded) Toast.makeText(context, "Invalid character", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
-                
+
                 val character = withContext(Dispatchers.IO) { appInstance.db.characterDao().getById(characterId) }
                 if (character == null) {
-                    android.util.Log.w("VoicePreview", "Character not found for id: $characterId")
+                    AppLogger.w("VoicePreview", "Character not found for id: $characterId")
                     withContext(Dispatchers.Main) {
                         if (isAdded) Toast.makeText(context, "Character not found", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
-                
+
                 characterName = character.name
                 characterTraits = character.traits.trim()
                 speakerId = character.speakerId
-                android.util.Log.d("VoicePreview", "Loaded character: ${character.name}, speakerId=$speakerId, voiceProfileJson=${character.voiceProfileJson?.take(100)}")
-                
+                AppLogger.d("VoicePreview", "Loaded character: ${character.name}, speakerId=$speakerId, voiceProfileJson=${character.voiceProfileJson?.take(100)}")
+
                 if (!character.voiceProfileJson.isNullOrBlank()) {
                     try {
                         val gson = Gson()
@@ -92,13 +95,17 @@ class VoicePreviewFragment : Fragment() {
                         currentPitch = baseVoiceProfile?.pitch ?: 1.0f
                         currentSpeed = baseVoiceProfile?.speed ?: 1.0f
                     } catch (e: Exception) {
-                        android.util.Log.e("VoicePreview", "Error parsing voice profile", e)
+                        AppLogger.e("VoicePreview", "Error parsing voice profile", e)
                     }
                 }
-                
+
                 withContext(Dispatchers.Main) {
                     if (!isAdded) return@withContext
                     characterNameView.text = characterName
+                    val traitsLabel = speakerId?.let { sid ->
+                        LibrittsSpeakerCatalog.getTraits(sid)?.displayLabel() ?: "Speaker $sid"
+                    } ?: "No speaker selected"
+                    speakerTraitsView.text = "Voice: $traitsLabel"
                     val previewText = if (characterTraits.isBlank()) {
                         "Hello, I am $characterName."
                     } else {
@@ -110,13 +117,13 @@ class VoicePreviewFragment : Fragment() {
                     updateSliderValues(pitchValue, speedValue)
                 }
             } catch (e: Exception) {
-                android.util.Log.e("VoicePreview", "Error loading character", e)
+                AppLogger.e("VoicePreview", "Error loading character", e)
                 withContext(Dispatchers.Main) {
                     if (isAdded) Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
-        
+
         // Pitch slider
         pitchSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -128,7 +135,7 @@ class VoicePreviewFragment : Fragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-        
+
         // Speed slider
         speedSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -140,23 +147,23 @@ class VoicePreviewFragment : Fragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-        
+
         // Play preview button
         btnPlayPreview.setOnClickListener {
             playPreview()
         }
-        
+
         // Save button
         btnSave.setOnClickListener {
             saveOverrides()
         }
     }
-    
+
     private fun updateSliderValues(pitchValue: TextView, speedValue: TextView) {
         pitchValue.text = String.format("%.2f", currentPitch)
         speedValue.text = String.format("%.2f", currentSpeed)
     }
-    
+
     private fun buildPreviewText(): String {
         return if (characterTraits.isBlank()) {
             "Hello, I am $characterName."
@@ -164,7 +171,7 @@ class VoicePreviewFragment : Fragment() {
             "Hello, I am $characterName. $characterTraits"
         }
     }
-    
+
     private fun playPreview() {
         viewLifecycleOwner.lifecycleScope.launch {
             val appInstance = context?.applicationContext as? DramebazApplication ?: return@launch
@@ -174,18 +181,18 @@ class VoicePreviewFragment : Fragment() {
                 if (isAdded) Toast.makeText(context, "No preview text", Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            
+
             val updatedProfile = VoiceProfile(
                 pitch = currentPitch,
                 speed = currentSpeed,
                 energy = baseVoiceProfile?.energy ?: 1.0f,
                 emotionBias = baseVoiceProfile?.emotionBias ?: emptyMap()
             )
-            
+
             val result = withContext(Dispatchers.IO) {
                 appInstance.ttsEngine.speak(sampleText, updatedProfile, null, speakerId)
             }
-            
+
             result.onSuccess { audioFile ->
                 audioFile?.let {
                     withContext(Dispatchers.Main) {
@@ -195,16 +202,16 @@ class VoicePreviewFragment : Fragment() {
                     if (isAdded) Toast.makeText(context, "Failed to generate audio", Toast.LENGTH_SHORT).show()
                 }
             }.onFailure { error ->
-                android.util.Log.e("VoicePreview", "TTS synthesis failed", error)
+                AppLogger.e("VoicePreview", "TTS synthesis failed", error)
                 if (isAdded) Toast.makeText(context, "TTS failed: ${error.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
-    
+
     private fun playAudioFile(filePath: String) {
         try {
             mediaPlayer?.release()
-            
+
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(filePath)
                 setOnCompletionListener {
@@ -212,7 +219,7 @@ class VoicePreviewFragment : Fragment() {
                     mediaPlayer = null
                 }
                 setOnErrorListener { _, what, extra ->
-                    android.util.Log.e("VoicePreview", "MediaPlayer error: what=$what, extra=$extra")
+                    AppLogger.e("VoicePreview", "MediaPlayer error: what=$what, extra=$extra")
                     release()
                     mediaPlayer = null
                     true
@@ -223,13 +230,13 @@ class VoicePreviewFragment : Fragment() {
                 prepareAsync()
             }
         } catch (e: Exception) {
-            android.util.Log.e("VoicePreview", "Error playing audio", e)
+            AppLogger.e("VoicePreview", "Error playing audio", e)
             if (isAdded) Toast.makeText(context, "Error playing audio: ${e.message}", Toast.LENGTH_SHORT).show()
             mediaPlayer?.release()
             mediaPlayer = null
         }
     }
-    
+
     private fun saveOverrides() {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val appInstance = context?.applicationContext as? DramebazApplication ?: return@launch
@@ -242,26 +249,26 @@ class VoicePreviewFragment : Fragment() {
                         energy = baseVoiceProfile?.energy ?: 1.0f,
                         emotionBias = baseVoiceProfile?.emotionBias ?: emptyMap()
                     )
-                    
+
                     val gson = Gson()
                     val profileJson = gson.toJson(updatedProfile)
-                    
+
                     val updatedCharacter = character.copy(voiceProfileJson = profileJson)
                     appInstance.db.characterDao().update(updatedCharacter)
-                    
+
                     withContext(Dispatchers.Main) {
                         if (isAdded) Toast.makeText(context, "Voice settings saved", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("VoicePreview", "Error saving overrides", e)
+                AppLogger.e("VoicePreview", "Error saving overrides", e)
                 withContext(Dispatchers.Main) {
                     if (isAdded) Toast.makeText(context, "Error saving: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
-    
+
     override fun onDestroyView() {
         super.onDestroyView()
         mediaPlayer?.release()

@@ -25,6 +25,12 @@
         tools:layout="@layout/fragment_book_detail">
         <argument android:name="bookId" app:argType="long" />
         <action android:id="@+id/action_bookDetail_to_reader" app:destination="@id/readerFragment" />
+        <!-- AUG-007: Navigate to characters after extraction -->
+        <action android:id="@+id/action_bookDetail_to_characters" app:destination="@id/charactersFragment"
+            app:enterAnim="@android:anim/slide_in_left"
+            app:exitAnim="@android:anim/slide_out_right"
+            app:popEnterAnim="@android:anim/slide_in_left"
+            app:popExitAnim="@android:anim/slide_out_right" />
     </fragment>
     <fragment
         android:id="@+id/readerFragment"

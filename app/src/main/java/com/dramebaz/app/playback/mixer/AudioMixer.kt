@@ -2,7 +2,6 @@ package com.dramebaz.app.playback.mixer
 
 import android.media.AudioFormat
 import android.media.AudioTrack
-import android.util.Log
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.async
@@ -19,7 +18,7 @@ import kotlin.math.min
  * - Dialog
  * - SFX
  * - Ambience
- * 
+ *
  * Provides per-channel volume controls and mixes down to output.
  */
 class AudioMixer(
@@ -28,28 +27,28 @@ class AudioMixer(
     private val bitDepth: Int = 16
 ) {
     private val tag = "AudioMixer"
-    
+
     init {
         AppLogger.d(tag, "AudioMixer initialized: sampleRate=$sampleRate, channels=$numChannels, bitDepth=$bitDepth")
     }
-    
+
     data class AudioChannel(
         val id: String,
         var volume: Float = 1.0f,
         var isActive: Boolean = false
     )
-    
+
     private val audioChannels = mapOf(
         "narration" to AudioChannel("narration", 1.0f),
         "dialog" to AudioChannel("dialog", 1.0f),
         "sfx" to AudioChannel("sfx", 1.0f),
         "ambience" to AudioChannel("ambience", 0.8f)
     )
-    
+
     private var audioTrack: AudioTrack? = null
     private var isMixing = false
     private val mixingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    
+
     /**
      * Set volume for a specific channel (0.0 to 1.0).
      */
@@ -58,14 +57,14 @@ class AudioMixer(
         audioChannels[channelId]?.volume = clampedVolume
         AppLogger.d(tag, "Set channel volume: channel=$channelId, volume=$clampedVolume")
     }
-    
+
     /**
      * Get volume for a specific channel.
      */
     fun getChannelVolume(channelId: String): Float {
         return audioChannels[channelId]?.volume ?: 0f
     }
-    
+
     /**
      * Apply theme to channel volumes.
      */
@@ -75,7 +74,7 @@ class AudioMixer(
         setChannelVolume("ambience", theme.ambienceVolumeMultiplier)
         // Prosody intensity scaling is applied at TTS level, not mixer level
     }
-    
+
     /**
      * Mix multiple audio files with their respective channels and volumes.
      * Returns mixed audio as FloatArray (normalized -1.0 to 1.0).
@@ -96,14 +95,14 @@ class AudioMixer(
             val dialogJob = async(Dispatchers.IO) { dialogFile?.let { loadAudioFile(it) } ?: FloatArray(0) }
             val sfxJobs = sfxFiles.map { async(Dispatchers.IO) { loadAudioFile(it) } }
             val ambienceJob = async(Dispatchers.IO) { ambienceFile?.let { loadAudioFile(it) } ?: FloatArray(0) }
-            
+
             val narrationSamples = narrationJob.await()
             val dialogSamples = dialogJob.await()
             val sfxSamples = sfxJobs.awaitAll().filterNotNull()
             val ambienceSamples = ambienceJob.await()
-            
+
             AppLogger.logPerformance(tag, "Parallel audio file loading", System.currentTimeMillis() - loadStartTime)
-            
+
             // Find maximum length
             val maxLength = max(
                 max(narrationSamples.size, dialogSamples.size),
@@ -112,14 +111,14 @@ class AudioMixer(
                     ambienceSamples.size
                 )
             )
-            
+
             if (maxLength == 0) {
                 return@withContext FloatArray(0)
             }
-            
+
             // Mix samples
             val mixed = FloatArray(maxLength) { 0f }
-            
+
             // Mix narration
             if (narrationFile != null && audioChannels["narration"]!!.isActive) {
                 val volume = audioChannels["narration"]!!.volume
@@ -127,7 +126,7 @@ class AudioMixer(
                     mixed[i] += narrationSamples[i] * volume
                 }
             }
-            
+
             // Mix dialog
             if (dialogFile != null && audioChannels["dialog"]!!.isActive) {
                 val volume = audioChannels["dialog"]!!.volume
@@ -135,7 +134,7 @@ class AudioMixer(
                     mixed[i] += dialogSamples[i] * volume
                 }
             }
-            
+
             // Mix SFX
             if (sfxFiles.isNotEmpty() && audioChannels["sfx"]!!.isActive) {
                 val volume = audioChannels["sfx"]!!.volume
@@ -147,7 +146,7 @@ class AudioMixer(
                     }
                 }
             }
-            
+
             // Mix ambience (loop if shorter than mixed)
             if (ambienceFile != null && audioChannels["ambience"]!!.isActive) {
                 val volume = audioChannels["ambience"]!!.volume
@@ -156,7 +155,7 @@ class AudioMixer(
                     mixed[i] += ambienceSamples[ambienceIndex] * volume
                 }
             }
-            
+
             // Normalize to prevent clipping
             val maxAmplitude = mixed.maxOfOrNull { kotlin.math.abs(it) } ?: 1f
             if (maxAmplitude > 1.0f) {
@@ -165,7 +164,7 @@ class AudioMixer(
                     mixed[i] *= scale
                 }
             }
-            
+
             AppLogger.logPerformance(tag, "Audio mixing", System.currentTimeMillis() - startTime)
             AppLogger.d(tag, "Audio mixing complete: ${mixed.size} samples, maxAmplitude=${mixed.maxOfOrNull { kotlin.math.abs(it) }}")
             mixed
@@ -174,7 +173,7 @@ class AudioMixer(
             FloatArray(0)
         }
     }
-    
+
     /**
      * Play mixed audio using AudioTrack.
      */
@@ -186,7 +185,7 @@ class AudioMixer(
                 channelConfig,
                 AudioFormat.ENCODING_PCM_16BIT
             )
-            
+
             audioTrack = AudioTrack(
                 android.media.AudioManager.STREAM_MUSIC,
                 sampleRate,
@@ -195,24 +194,24 @@ class AudioMixer(
                 bufferSize,
                 AudioTrack.MODE_STREAM
             )
-            
+
             audioTrack?.play()
-            
+
             // Convert float samples to PCM16 and write
             val pcmBuffer = ByteBuffer.allocate(mixedSamples.size * 2)
                 .order(ByteOrder.LITTLE_ENDIAN)
-            
+
             for (sample in mixedSamples) {
                 val intSample = (sample.coerceIn(-1f, 1f) * 32767).toInt()
                 pcmBuffer.putShort(intSample.toShort())
             }
-            
+
             audioTrack?.write(pcmBuffer.array(), 0, pcmBuffer.position())
         } catch (e: Exception) {
-            Log.e(tag, "Error playing mixed audio", e)
+            AppLogger.e(tag, "Error playing mixed audio", e)
         }
     }
-    
+
     /**
      * Save mixed audio to WAV file.
      */
@@ -224,7 +223,7 @@ class AudioMixer(
             val blockAlign = numChannels * bitsPerSample / 8
             val dataSize = numSamples * numChannels * bitsPerSample / 8
             val fileSize = 36 + dataSize
-            
+
             Files.newOutputStream(outputFile.toPath()).use { out ->
                 // WAV header
                 out.write("RIFF".toByteArray())
@@ -240,45 +239,45 @@ class AudioMixer(
                 out.write(shortToBytes(bitsPerSample.toShort()), 0, 2)
                 out.write("data".toByteArray())
                 out.write(intToBytes(dataSize), 0, 4)
-                
+
                 // PCM data
                 for (sample in mixedSamples) {
                     val intSample = (sample.coerceIn(-1f, 1f) * 32767).toInt()
                     out.write(shortToBytes(intSample.toShort()), 0, 2)
                 }
             }
-            
-            Log.d(tag, "Saved mixed audio to: ${outputFile.absolutePath}")
+
+            AppLogger.d(tag, "Saved mixed audio to: ${outputFile.absolutePath}")
         } catch (e: Exception) {
-            Log.e(tag, "Error saving mixed audio", e)
+            AppLogger.e(tag, "Error saving mixed audio", e)
         }
     }
-    
+
     private fun loadAudioFile(file: File): FloatArray {
         return try {
             // Simple WAV loader - assumes 16-bit PCM mono
             val bytes = Files.readAllBytes(file.toPath())
             if (bytes.size < 44) return FloatArray(0) // WAV header is 44 bytes
-            
+
             val dataStart = 44 // Skip WAV header
             val samples = ByteArray(bytes.size - dataStart)
             System.arraycopy(bytes, dataStart, samples, 0, samples.size)
-            
+
             val floatSamples = FloatArray(samples.size / 2)
             val buffer = ByteBuffer.wrap(samples).order(ByteOrder.LITTLE_ENDIAN)
-            
+
             for (i in floatSamples.indices) {
                 val shortSample = buffer.short
                 floatSamples[i] = shortSample.toInt().toFloat() / 32768f
             }
-            
+
             floatSamples
         } catch (e: Exception) {
-            Log.e(tag, "Error loading audio file: ${file.absolutePath}", e)
+            AppLogger.e(tag, "Error loading audio file: ${file.absolutePath}", e)
             FloatArray(0)
         }
     }
-    
+
     private fun intToBytes(value: Int): ByteArray {
         return byteArrayOf(
             (value and 0xFF).toByte(),
@@ -287,14 +286,14 @@ class AudioMixer(
             ((value shr 24) and 0xFF).toByte()
         )
     }
-    
+
     private fun shortToBytes(value: Short): ByteArray {
         return byteArrayOf(
             (value.toInt() and 0xFF).toByte(),
             ((value.toInt() shr 8) and 0xFF).toByte()
         )
     }
-    
+
     fun stop() {
         AppLogger.d(tag, "Stopping audio mixer")
         audioTrack?.stop()
@@ -302,7 +301,7 @@ class AudioMixer(
         audioTrack = null
         isMixing = false
     }
-    
+
     fun cleanup() {
         AppLogger.d(tag, "Cleaning up AudioMixer")
         stop()
