@@ -14,11 +14,12 @@
       },
       "pass1": {
         "temperature": 0.1,
-        "maxTokens": 1024
+        "maxTokens": 100
       },
       "pass2": {
-        "temperature": 0.15,
-        "maxTokens": 1024
+        "temperature": 0.35,
+        "topP": 0.85,
+        "maxTokens": 2100
       }
     }
   ],

@@ -96,8 +96,8 @@ class LiteRtLmEngine(private val context: Context) {
                 displayName = "Gemma 3n E2B (int4)",
                 estimatedPeakMemoryInBytes = 4294967296L, // 4GB - more realistic for int4 model
                 defaultConfig = LlmDefaultConfig(topK = 48, topP = 0.9, temperature = 0.6, maxTokens = 2048, accelerators = "gpu,cpu"),
-                pass1 = LlmPassOverride(temperature = 0.1, maxTokens = 1024),
-                pass2 = LlmPassOverride(temperature = 0.15, maxTokens = 1024),
+                pass1 = LlmPassOverride(temperature = 0.1, maxTokens = 100),
+                pass2 = LlmPassOverride(temperature = 0.35, topP = 0.85, maxTokens = 2100),
                 skipMemoryCheck = true // Enable by default in fallback
             )
             modelConfig
