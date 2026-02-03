@@ -1,0 +1,108 @@
+{
+  "project": "Dramebaz",
+  "category": "Reading Modes & Experience",
+  "description": "Multiple reading modes and experience enhancements from NovelReaderWeb",
+  "version": "1.0",
+  "last_updated": "2026-02-03",
+  "instructions_source": "NovelReaderWeb source code analysis",
+  "reference_project": "C:\\Users\\Pratik\\source\\NovelReaderWeb",
+  "reference_files": [
+    "src/components/book-reader/book-reader.component.ts - readingMode, activeSentence"
+  ],
+  "total_estimated_hours": 12,
+  "milestones": [
+    {
+      "id": "READ-M1",
+      "name": "Reading Mode Toggle",
+      "description": "Switch between text, audio, and mixed reading modes",
+      "done": false,
+      "task_ids": ["READ-001"]
+    },
+    {
+      "id": "READ-M2",
+      "name": "Audio Buffer & Lookahead",
+      "description": "Pre-load audio and analyze ahead for seamless experience",
+      "done": false,
+      "task_ids": ["READ-002", "READ-003"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "READ-001",
+      "feature": "Reading Mode Toggle (TEXT/AUDIO/MIXED)",
+      "description": "Toggle between text-only, audio-only, and mixed reading modes",
+      "done": false,
+      "status": "not_started",
+      "priority": "HIGH",
+      "estimated_hours": 4,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/book-reader/book-reader.component.ts - readingMode signal"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt",
+        "app/src/main/java/com/dramebaz/app/data/models/ReadingMode.kt (new)"
+      ],
+      "implementation_notes": "TEXT mode: Standard reading, no audio. AUDIO mode: Auto-play audio, minimal text. MIXED mode: Text + synchronized audio highlight. Add mode toggle button to reader toolbar.",
+      "work_items": [
+        "Create ReadingMode enum (TEXT, AUDIO, MIXED)",
+        "Add mode toggle button to reader toolbar",
+        "Adjust UI layout based on mode",
+        "In AUDIO mode: Auto-start playback, show minimal UI",
+        "In MIXED mode: Show text with karaoke highlighting",
+        "Persist last used mode preference"
+      ],
+      "source_code_reference": "// From NovelReaderWeb book-reader.component.ts\nreadingMode = signal<'TEXT' | 'AUDIO' | 'MIXED'>('TEXT');\n\n// Mode toggle in template\n<button (click)=\"cycleReadingMode()\">{{ readingMode() }}</button>"
+    },
+    {
+      "id": "READ-002",
+      "feature": "Audio Buffer Pre-loading",
+      "description": "Pre-load next page audio while current page plays",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 4,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/book-reader/book-reader.component.ts - manageAudioBuffer()"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/playback/engine/PlaybackEngine.kt",
+        "app/src/main/java/com/dramebaz/app/director/DirectorPipeline.kt"
+      ],
+      "implementation_notes": "While current page audio plays, analyze and prepare next page audio in background. Use coroutines for async pre-loading. Maintain buffer of next 1-2 pages.",
+      "work_items": [
+        "Add audio buffer management to PlaybackEngine",
+        "Trigger next page analysis when current reaches 50%",
+        "Cache prepared audio segments in memory",
+        "Clear old buffers to manage memory",
+        "Handle page jumps (clear buffer, re-prepare)"
+      ],
+      "source_code_reference": "// From NovelReaderWeb book-reader.component.ts\nmanageAudioBuffer() {\n  const nextPage = this.currentPageIndex() + 1;\n  if (!this.audioBuffer.has(nextPage)) {\n    this.preparePageAudio(nextPage).then(segments => {\n      this.audioBuffer.set(nextPage, segments);\n    });\n  }\n}"
+    },
+    {
+      "id": "READ-003",
+      "feature": "Chapter Lookahead Analysis",
+      "description": "Pre-analyze next chapter when approaching current chapter end",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 4,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/book-reader/book-reader.component.ts - checkChapterLookahead()"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/DirectorPipeline.kt",
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderViewModel.kt"
+      ],
+      "implementation_notes": "When user reaches 80% of current chapter, start analyzing next chapter in background. Pre-generate summary, character updates, emotional arc.",
+      "work_items": [
+        "Add chapter progress tracking to ReaderViewModel",
+        "Trigger lookahead at 80% chapter progress",
+        "Run LLM analysis for next chapter in background coroutine",
+        "Cache analysis results for instant access",
+        "Show subtle loading indicator during lookahead"
+      ],
+      "source_code_reference": "// From NovelReaderWeb book-reader.component.ts\ncheckChapterLookahead() {\n  const progress = this.chapterProgress();\n  if (progress > 0.8 && this.nextChapter && !this.nextChapter.analysis) {\n    this.gemini.generateChapterAnalysis(this.nextChapterText);\n  }\n}"
+    }
+  ]
+}
+

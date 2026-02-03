@@ -1,0 +1,121 @@
+{
+  "project": "Dramebaz",
+  "category": "Architecture Enhancements",
+  "description": "Architectural improvements from NovelReaderWeb - LLM Strategy Pattern and Play Asset Delivery",
+  "version": "1.0",
+  "last_updated": "2026-02-03",
+  "instructions_source": "NovelReaderWeb/docs/ARCHITECTURE.md, NovelReaderWeb/docs/INSTRUCTIONS.md",
+  "reference_project": "C:\\Users\\Pratik\\source\\NovelReaderWeb",
+  "total_estimated_hours": 13,
+  "milestones": [
+    {
+      "id": "ARCH-M1",
+      "name": "LLM Strategy Pattern",
+      "description": "Implement strategy pattern for multiple LLM backends (Gemma, Qwen, future models)",
+      "done": false,
+      "task_ids": ["ARCH-001"]
+    },
+    {
+      "id": "ARCH-M2",
+      "name": "Play Asset Delivery",
+      "description": "Implement on-demand model delivery using Google Play Asset Delivery",
+      "done": false,
+      "task_ids": ["ARCH-002"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "ARCH-001",
+      "feature": "LLM Strategy Pattern",
+      "description": "Implement strategy pattern to support multiple LLM backends with unified interface.",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 5,
+      "reference_docs": [
+        "NovelReaderWeb/docs/ARCHITECTURE.md - Section 'LLM Abstraction Layer'",
+        "NovelReaderWeb/docs/INSTRUCTIONS.md - Section 'Model Configuration'"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/ai/llm/LlmInferenceStrategy.kt (new)",
+        "app/src/main/java/com/dramebaz/app/ai/llm/GemmaStrategy.kt (new)",
+        "app/src/main/java/com/dramebaz/app/ai/llm/QwenStrategy.kt (new)",
+        "app/src/main/java/com/dramebaz/app/ai/QwenModel.kt"
+      ],
+      "implementation_notes": "Create LlmInferenceStrategy interface with generate() method. Implement GemmaStrategy and QwenStrategy. Factory to select strategy based on available model. Allows hot-swapping models.",
+      "work_items": [
+        "Create LlmInferenceStrategy interface",
+        "Create QwenStrategy implementing interface (refactor from QwenModel)",
+        "Create GemmaStrategy implementing interface",
+        "Create LlmStrategyFactory for model selection",
+        "Update all LLM usage to use strategy pattern",
+        "Add model availability detection"
+      ],
+      "sub_tasks": [
+        {"id": "ARCH-001.1", "description": "Create LlmInferenceStrategy.kt interface", "done": false},
+        {"id": "ARCH-001.2", "description": "Create QwenStrategy.kt (refactor from QwenModel)", "done": false},
+        {"id": "ARCH-001.3", "description": "Create GemmaStrategy.kt", "done": false},
+        {"id": "ARCH-001.4", "description": "Create LlmStrategyFactory.kt", "done": false},
+        {"id": "ARCH-001.5", "description": "Update all usages to use strategy pattern", "done": false}
+      ],
+      "code_pattern": "// From NovelReaderWeb docs/ARCHITECTURE.md\ninterface LlmInferenceStrategy {\n    suspend fun generate(prompt: String, maxTokens: Int = 512): String\n    fun isAvailable(): Boolean\n    fun getModelName(): String\n}\n\nclass QwenStrategy(private val modelPath: String) : LlmInferenceStrategy {\n    private var session: OrtGenAISession? = null\n    \n    override suspend fun generate(prompt: String, maxTokens: Int): String {\n        // Existing Qwen generation logic\n    }\n    \n    override fun isAvailable(): Boolean = File(modelPath).exists()\n    override fun getModelName(): String = \"Qwen3-1.7B\"\n}\n\nclass LlmStrategyFactory(private val context: Context) {\n    fun getStrategy(): LlmInferenceStrategy {\n        return when {\n            QwenStrategy.isAvailable() -> QwenStrategy(qwenPath)\n            GemmaStrategy.isAvailable() -> GemmaStrategy(gemmaPath)\n            else -> throw IllegalStateException(\"No LLM model available\")\n        }\n    }\n}"
+    },
+    {
+      "id": "ARCH-002",
+      "feature": "Play Asset Delivery",
+      "description": "Implement on-demand model delivery using Google Play Asset Delivery for TTS and LLM models.",
+      "done": false,
+      "status": "not_started",
+      "priority": "LOW",
+      "estimated_hours": 8,
+      "reference_docs": [
+        "NovelReaderWeb/docs/ARCHITECTURE.md - Section 'Asset Delivery'",
+        "NovelReaderWeb/docs/INSTRUCTIONS.md - Section 'Model Distribution'"
+      ],
+      "files_to_modify": [
+        "app/build.gradle.kts",
+        "app/src/main/java/com/dramebaz/app/assets/AssetPackManager.kt (new)",
+        "app/src/main/java/com/dramebaz/app/ui/onboarding/ModelDownloadFragment.kt (new)"
+      ],
+      "implementation_notes": "Use Google Play Asset Delivery API. Create asset packs for TTS model (~50MB) and LLM model (~1GB). Show download progress during first launch. Support install-time for TTS, on-demand for LLM.",
+      "work_items": [
+        "Add Play Asset Delivery dependency",
+        "Create asset pack configuration for TTS model (install-time)",
+        "Create asset pack configuration for LLM model (on-demand)",
+        "Create AssetPackManager for download management",
+        "Create ModelDownloadFragment UI with progress",
+        "Update model loading to use asset pack paths",
+        "Handle download failures and retries",
+        "Add Wi-Fi only download option"
+      ],
+      "sub_tasks": [
+        {"id": "ARCH-002.1", "description": "Add Play Asset Delivery dependency", "done": false},
+        {"id": "ARCH-002.2", "description": "Configure TTS asset pack (install-time)", "done": false},
+        {"id": "ARCH-002.3", "description": "Configure LLM asset pack (on-demand)", "done": false},
+        {"id": "ARCH-002.4", "description": "Create AssetPackManager.kt", "done": false},
+        {"id": "ARCH-002.5", "description": "Create ModelDownloadFragment.kt UI", "done": false},
+        {"id": "ARCH-002.6", "description": "Update model paths to use asset pack locations", "done": false},
+        {"id": "ARCH-002.7", "description": "Add error handling and retry logic", "done": false}
+      ],
+      "asset_pack_config": {
+        "tts_model": {
+          "name": "tts_vits_vctk",
+          "delivery_type": "install-time",
+          "size_mb": 50
+        },
+        "llm_model": {
+          "name": "llm_qwen_1_7b",
+          "delivery_type": "on-demand",
+          "size_mb": 1000
+        }
+      },
+      "code_pattern": "// From NovelReaderWeb docs/ARCHITECTURE.md\nclass AssetPackManager(private val context: Context) {\n    private val assetPackManager = AssetPackManagerFactory.getInstance(context)\n    \n    fun requestLlmModel(onProgress: (Float) -> Unit, onComplete: (String) -> Unit) {\n        val packName = \"llm_qwen_1_7b\"\n        assetPackManager.fetch(listOf(packName))\n        \n        assetPackManager.registerListener { state ->\n            when (state.status()) {\n                AssetPackStatus.DOWNLOADING -> {\n                    val progress = state.bytesDownloaded().toFloat() / state.totalBytesToDownload()\n                    onProgress(progress)\n                }\n                AssetPackStatus.COMPLETED -> {\n                    val location = assetPackManager.getPackLocation(packName)\n                    onComplete(location.assetsPath())\n                }\n            }\n        }\n    }\n}"
+    }
+  ],
+  "notes": {
+    "strategy_benefits": "Allows testing with smaller models, easy upgrade to better models, supports A/B testing",
+    "asset_delivery_benefits": "Reduces initial APK size significantly, allows separate model updates",
+    "google_play_requirement": "Play Asset Delivery only works for apps distributed via Google Play Store"
+  }
+}
+

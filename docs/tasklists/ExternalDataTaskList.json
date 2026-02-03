@@ -1,0 +1,78 @@
+{
+  "project": "Dramebaz",
+  "category": "External Book Data & Metadata",
+  "description": "External book metadata fetching features from NovelReaderWeb using Google Search grounding",
+  "version": "1.0",
+  "last_updated": "2026-02-03",
+  "instructions_source": "NovelReaderWeb source code analysis",
+  "reference_project": "C:\\Users\\Pratik\\source\\NovelReaderWeb",
+  "reference_files": [
+    "src/services/gemini.service.ts - fetchBookExternalMetadata()",
+    "src/models/book.model.ts - ExternalBookData interface"
+  ],
+  "total_estimated_hours": 8,
+  "milestones": [
+    {
+      "id": "EXT-M1",
+      "name": "External Metadata Integration",
+      "description": "Fetch and display external book data",
+      "done": false,
+      "task_ids": ["EXT-001", "EXT-002"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "EXT-001",
+      "feature": "External Metadata Fetching (Google Search Grounding)",
+      "description": "Fetch book ratings, reviews, and similar books using Google Search grounding",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 5,
+      "reference_docs": [
+        "NovelReaderWeb/src/services/gemini.service.ts - fetchBookExternalMetadata()",
+        "NovelReaderWeb/src/models/book.model.ts - ExternalBookData"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/ExternalMetadataFetcher.kt (new)",
+        "app/src/main/java/com/dramebaz/app/data/models/ExternalBookData.kt (new)"
+      ],
+      "implementation_notes": "Use Gemini API with Google Search grounding to fetch: Goodreads rating, review snippets, similar books, publication info. Cache in database.",
+      "work_items": [
+        "Create ExternalBookData data class",
+        "Create ExternalMetadataFetcher service",
+        "Implement Gemini call with Google Search grounding tool",
+        "Parse structured response for ratings, reviews",
+        "Cache external data in Room database",
+        "Handle rate limits and errors gracefully"
+      ],
+      "source_code_reference": "// From NovelReaderWeb gemini.service.ts\nasync fetchBookExternalMetadata(title: string, author: string): Promise<ExternalBookData> {\n  // Uses Google Search grounding to find:\n  // - Goodreads/Amazon ratings\n  // - Review snippets\n  // - Similar book recommendations\n  // - Publication year, genre\n}",
+      "data_model": "// From NovelReaderWeb book.model.ts\nexport interface ExternalBookData {\n  rating?: number;           // 0-5 scale\n  ratingSource?: string;     // 'Goodreads', 'Amazon'\n  reviewSnippets?: string[]; // Top review excerpts\n  similarBooks?: string[];   // Recommended similar titles\n  publicationYear?: number;\n  genres?: string[];\n}"
+    },
+    {
+      "id": "EXT-002",
+      "feature": "External Metadata UI Display",
+      "description": "Display external book data in book details and insights",
+      "done": false,
+      "status": "not_started",
+      "priority": "LOW",
+      "estimated_hours": 3,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/book-reader/book-reader.component.ts"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/ui/insights/InsightsFragment.kt",
+        "app/src/main/res/layout/layout_external_metadata.xml (new)"
+      ],
+      "implementation_notes": "Display rating stars, review snippets, similar book recommendations. Add 'Discover More' section to Insights tab.",
+      "work_items": [
+        "Create external metadata card layout",
+        "Display star rating with source label",
+        "Show expandable review snippets",
+        "Display similar books as clickable chips",
+        "Add to Insights fragment"
+      ]
+    }
+  ]
+}
+

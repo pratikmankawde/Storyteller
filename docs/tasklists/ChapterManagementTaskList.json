@@ -1,0 +1,78 @@
+{
+  "project": "Dramebaz",
+  "category": "Chapter Management",
+  "description": "Chapter editing and management features from NovelReaderWeb for content organization",
+  "version": "1.0",
+  "last_updated": "2026-02-03",
+  "instructions_source": "NovelReaderWeb source code analysis",
+  "reference_project": "C:\\Users\\Pratik\\source\\NovelReaderWeb",
+  "reference_files": [
+    "src/components/chapter-manager/chapter-manager.component.ts"
+  ],
+  "total_estimated_hours": 10,
+  "milestones": [
+    {
+      "id": "CHAP-M1",
+      "name": "Chapter Manager UI",
+      "description": "Full chapter editing and management interface",
+      "done": false,
+      "task_ids": ["CHAP-001", "CHAP-002"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "CHAP-001",
+      "feature": "Chapter Manager Dialog",
+      "description": "Dialog to reorder, merge, split, and rename chapters",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 6,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/chapter-manager/chapter-manager.component.ts"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ChapterManagerDialog.kt (new)",
+        "app/src/main/res/layout/dialog_chapter_manager.xml (new)",
+        "app/src/main/res/layout/item_chapter_manager.xml (new)"
+      ],
+      "implementation_notes": "Full-screen dialog with RecyclerView. Each chapter row has: checkbox, up/down arrows, editable title, merge/split/delete buttons. Toolbar with batch actions.",
+      "work_items": [
+        "Create ChapterManagerDialog extending DialogFragment",
+        "Implement chapter RecyclerView with drag-drop or arrow buttons",
+        "Add inline title editing",
+        "Implement move up/down chapter functions",
+        "Add merge with previous chapter function",
+        "Add split chapter in half function",
+        "Add delete chapter with confirmation"
+      ],
+      "source_code_reference": "// From NovelReaderWeb chapter-manager.component.ts\nmoveUp(index: number) {\n  if (index <= 0) return;\n  this.moveChapter(index, index - 1);\n}\n\nsplit(index: number) {\n  const splitPoint = Math.floor(totalPages / 2);\n  const midPage = curr.startPage + splitPoint;\n  const newChapter = { title: `${curr.title} (Part 2)`, startPage: midPage, ... };\n}"
+    },
+    {
+      "id": "CHAP-002",
+      "feature": "Batch Chapter Re-Analysis",
+      "description": "Re-analyze selected chapters with LLM for updated summaries",
+      "done": false,
+      "status": "not_started",
+      "priority": "LOW",
+      "estimated_hours": 4,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/chapter-manager/chapter-manager.component.ts - batchReanalyze()"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/ui/reader/ChapterManagerDialog.kt",
+        "app/src/main/java/com/dramebaz/app/director/LlmDirector.kt"
+      ],
+      "implementation_notes": "Select multiple chapters via checkboxes. Click 'Re-Analyze Selected'. Run LLM analysis on each selected chapter. Update summaries in database.",
+      "work_items": [
+        "Add multi-select checkboxes to chapter list",
+        "Add 'Re-Analyze Selected' toolbar button",
+        "Implement batch analysis with progress indicator",
+        "Update chapter summaries after analysis",
+        "Add 'Delete Selected' batch action"
+      ],
+      "source_code_reference": "// From NovelReaderWeb chapter-manager.component.ts\nasync batchReanalyze() {\n  const indices = Array.from(this.selectedChapters());\n  for (const i of indices) {\n    const ch = allChapters[i];\n    const text = chPages.map(p => p.text).join(' ');\n    const analysis = await this.gemini.generateChapterAnalysis(text);\n    ch.summary = analysis.summary;\n  }\n}"
+    }
+  ]
+}
+

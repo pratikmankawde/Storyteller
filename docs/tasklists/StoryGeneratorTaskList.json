@@ -1,0 +1,110 @@
+{
+  "project": "Dramebaz",
+  "category": "AI Story Generation & Remix",
+  "description": "AI-powered story creation and remix features from NovelReaderWeb for creative storytelling",
+  "version": "1.0",
+  "last_updated": "2026-02-03",
+  "instructions_source": "NovelReaderWeb source code analysis",
+  "reference_project": "C:\\Users\\Pratik\\source\\NovelReaderWeb",
+  "reference_files": [
+    "src/components/story-generator/story-generator.component.ts",
+    "src/services/gemini.service.ts - generateStory()"
+  ],
+  "total_estimated_hours": 16,
+  "milestones": [
+    {
+      "id": "STORY-M1",
+      "name": "Story Generation Engine",
+      "description": "Core AI story generation from prompts and images",
+      "done": false,
+      "task_ids": ["STORY-001", "STORY-002"]
+    },
+    {
+      "id": "STORY-M2",
+      "name": "Story Remix & Variation",
+      "description": "Remix existing stories with AI modifications",
+      "done": false,
+      "task_ids": ["STORY-003"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "STORY-001",
+      "feature": "Text-to-Story Generation",
+      "description": "Generate complete stories from text prompts using LLM",
+      "done": false,
+      "status": "not_started",
+      "priority": "HIGH",
+      "estimated_hours": 6,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/story-generator/story-generator.component.ts"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/StoryGenerator.kt (new)",
+        "app/src/main/java/com/dramebaz/app/ui/library/StoryGeneratorFragment.kt (new)",
+        "app/src/main/res/layout/fragment_story_generator.xml (new)"
+      ],
+      "implementation_notes": "Create story from user prompt. Generate title, chapters, character profiles. Save to library as new book.",
+      "work_items": [
+        "Create StoryGenerator service class with generateFromPrompt() method",
+        "Design story generation prompt template",
+        "Create StoryGeneratorFragment UI with prompt input",
+        "Handle streaming response for long-form content",
+        "Convert generated story to AnalyzedBook format"
+      ],
+      "source_code_reference": "// From NovelReaderWeb story-generator.component.ts\nasync generate(prompt: string) {\n  if (this.mode() === 'NEW') {\n    result = await this.gemini.generateStory(prompt, 'text', undefined);\n  }\n  this.generatedStory.set(result);\n}"
+    },
+    {
+      "id": "STORY-002",
+      "feature": "Image-to-Story Generation",
+      "description": "Generate stories from inspiration images using vision LLM",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 5,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/story-generator/story-generator.component.ts - handleImage()",
+        "NovelReaderWeb/src/services/gemini.service.ts - generateStory('image')"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/StoryGenerator.kt",
+        "app/src/main/java/com/dramebaz/app/ui/library/StoryGeneratorFragment.kt"
+      ],
+      "implementation_notes": "Allow user to upload/capture image. Use Gemini vision to analyze image and generate story. Extract characters, setting, mood from image.",
+      "work_items": [
+        "Add image upload/capture to StoryGeneratorFragment",
+        "Implement generateFromImage() in StoryGenerator",
+        "Use Gemini multimodal API for image analysis",
+        "Display image preview in UI",
+        "Combine image analysis with user prompt"
+      ],
+      "source_code_reference": "// From NovelReaderWeb story-generator.component.ts\nhandleImage(event: Event) {\n  const reader = new FileReader();\n  reader.onload = (e) => this.selectedImage.set(e.target?.result as string);\n  reader.readAsDataURL(input.files[0]);\n}"
+    },
+    {
+      "id": "STORY-003",
+      "feature": "Story Remix Mode",
+      "description": "Remix existing stories with AI modifications (rewrite, change perspective, alternate ending)",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 5,
+      "reference_docs": [
+        "NovelReaderWeb/src/components/story-generator/story-generator.component.ts - mode='REMIX'"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/StoryGenerator.kt",
+        "app/src/main/java/com/dramebaz/app/ui/library/StoryGeneratorFragment.kt"
+      ],
+      "implementation_notes": "Select existing book from library or upload file. Apply remix instructions (make scary, villain POV, etc). Generate new version preserving story elements.",
+      "work_items": [
+        "Add remix mode toggle to StoryGeneratorFragment",
+        "Add source book selection (library picker or file upload)",
+        "Implement remixStory() in StoryGenerator",
+        "Design remix prompt template with context",
+        "Save remixed story as new book"
+      ],
+      "source_code_reference": "// From NovelReaderWeb story-generator.component.ts\nif (this.mode() === 'REMIX') {\n  result = await this.gemini.generateStory(prompt, 'remix', this.remixContextText());\n}"
+    }
+  ]
+}
+

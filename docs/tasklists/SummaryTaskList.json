@@ -1,0 +1,100 @@
+{
+  "project": "Dramebaz",
+  "category": "Summary & Recap Enhancements",
+  "description": "Enhanced summary and recap features from NovelReaderWeb documentation",
+  "version": "1.0",
+  "last_updated": "2026-02-03",
+  "instructions_source": "NovelReaderWeb/docs/SUMMARIES.md, NovelReaderWeb/docs/FEATURES.md",
+  "reference_project": "C:\\Users\\Pratik\\source\\NovelReaderWeb",
+  "total_estimated_hours": 8,
+  "milestones": [
+    {
+      "id": "SUMMARY-M1",
+      "name": "Smart Recap Enhancements",
+      "description": "Enhanced recap system with time-aware and context-aware features",
+      "done": false,
+      "task_ids": ["SUMMARY-001", "SUMMARY-002"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "SUMMARY-001",
+      "feature": "Time-Aware Smart Recaps",
+      "description": "Generate different recap lengths based on time since last read. Longer absence = more detailed recap.",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 4,
+      "reference_docs": [
+        "NovelReaderWeb/docs/SUMMARIES.md - Section 'Time-Aware Recaps'",
+        "NovelReaderWeb/docs/FEATURES.md - Section 'Smart Recaps'"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/domain/usecase/GetRecapUseCase.kt",
+        "app/src/main/java/com/dramebaz/app/data/models/ReadingSession.kt"
+      ],
+      "implementation_notes": "Track last read timestamp. Calculate days since last read. Adjust recap depth: <1 day = brief (1 chapter), 1-7 days = medium (3 chapters), >7 days = detailed (5+ chapters with character reminders).",
+      "work_items": [
+        "Add lastReadTimestamp to ReadingSession entity",
+        "Calculate time delta in GetRecapUseCase",
+        "Define recap depth levels based on time delta",
+        "Adjust number of chapters included in recap",
+        "Add character reminders for long absences",
+        "Update recap UI to show time-based context"
+      ],
+      "sub_tasks": [
+        {"id": "SUMMARY-001.1", "description": "Add lastReadTimestamp to ReadingSession", "done": false},
+        {"id": "SUMMARY-001.2", "description": "Implement time delta calculation", "done": false},
+        {"id": "SUMMARY-001.3", "description": "Define recap depth levels", "done": false},
+        {"id": "SUMMARY-001.4", "description": "Add character reminders for long absence", "done": false},
+        {"id": "SUMMARY-001.5", "description": "Update recap UI with time context", "done": false}
+      ],
+      "recap_levels": {
+        "brief": {"days": "<1", "chapters": 1, "include_characters": false},
+        "medium": {"days": "1-7", "chapters": 3, "include_characters": false},
+        "detailed": {"days": ">7", "chapters": 5, "include_characters": true}
+      },
+      "code_pattern": "// From NovelReaderWeb docs/SUMMARIES.md\nclass GetRecapUseCase(\n    private val chapterRepository: ChapterRepository,\n    private val sessionRepository: SessionRepository\n) {\n    suspend fun getRecap(bookId: Long): RecapResult {\n        val session = sessionRepository.getSession(bookId)\n        val daysSinceLastRead = calculateDaysSince(session.lastReadTimestamp)\n        \n        val recapDepth = when {\n            daysSinceLastRead < 1 -> RecapDepth.BRIEF\n            daysSinceLastRead <= 7 -> RecapDepth.MEDIUM\n            else -> RecapDepth.DETAILED\n        }\n        \n        val chapters = chapterRepository.getLastNChapters(\n            bookId, \n            currentChapter = session.currentChapter,\n            count = recapDepth.chapterCount\n        )\n        \n        return RecapResult(\n            summaries = chapters.map { it.summary },\n            includeCharacters = recapDepth.includeCharacters,\n            daysSinceLastRead = daysSinceLastRead\n        )\n    }\n}"
+    },
+    {
+      "id": "SUMMARY-002",
+      "feature": "Multi-Book Cross-Reference",
+      "description": "For book series, reference events from previous books in recaps.",
+      "done": false,
+      "status": "not_started",
+      "priority": "LOW",
+      "estimated_hours": 4,
+      "reference_docs": [
+        "NovelReaderWeb/docs/SUMMARIES.md - Section 'Series Awareness'",
+        "NovelReaderWeb/docs/FEATURES.md - Section 'Book Series'"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/data/models/Book.kt",
+        "app/src/main/java/com/dramebaz/app/data/models/BookSeries.kt (new)",
+        "app/src/main/java/com/dramebaz/app/domain/usecase/GetRecapUseCase.kt"
+      ],
+      "implementation_notes": "Allow users to link books as series. Store series ID and book order. In recap for book N, optionally include key events from book N-1.",
+      "work_items": [
+        "Create BookSeries entity for series grouping",
+        "Add seriesId and seriesOrder to Book entity",
+        "Create UI for linking books to series",
+        "Extend GetRecapUseCase for series-aware recaps",
+        "Add 'Previously in this series' section to recap",
+        "Store key series events separately"
+      ],
+      "sub_tasks": [
+        {"id": "SUMMARY-002.1", "description": "Create BookSeries.kt entity", "done": false},
+        {"id": "SUMMARY-002.2", "description": "Add series fields to Book entity", "done": false},
+        {"id": "SUMMARY-002.3", "description": "Create series linking UI", "done": false},
+        {"id": "SUMMARY-002.4", "description": "Extend GetRecapUseCase for series", "done": false}
+      ],
+      "code_pattern": "// From NovelReaderWeb docs/SUMMARIES.md\n@Entity(tableName = \"book_series\")\ndata class BookSeries(\n    @PrimaryKey(autoGenerate = true)\n    val id: Long = 0,\n    val name: String,\n    val description: String?\n)\n\n@Entity(tableName = \"books\")\ndata class Book(\n    // ... existing fields\n    val seriesId: Long? = null,\n    val seriesOrder: Int? = null\n)"
+    }
+  ],
+  "notes": {
+    "existing_implementation": "Basic recap functionality already exists in GetRecapUseCase.kt",
+    "enhancement_focus": "Add time-awareness and series-awareness to existing recap system",
+    "tts_integration": "Recaps can be read aloud using existing TTS infrastructure"
+  }
+}
+

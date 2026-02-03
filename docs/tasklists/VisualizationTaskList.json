@@ -1,0 +1,110 @@
+{
+  "project": "Dramebaz",
+  "category": "Scene Visualization & Media Generation",
+  "description": "Image and video generation features from NovelReaderWeb for immersive visual storytelling",
+  "version": "1.0",
+  "last_updated": "2026-02-03",
+  "instructions_source": "NovelReaderWeb source code analysis",
+  "reference_project": "C:\\Users\\Pratik\\source\\NovelReaderWeb",
+  "reference_files": [
+    "src/components/book-reader/book-reader.component.ts - visualizeScene(), animateImage()",
+    "src/services/gemini.service.ts - generateScenePrompt(), generateImage(), generateVideo()"
+  ],
+  "total_estimated_hours": 20,
+  "milestones": [
+    {
+      "id": "VIS-M1",
+      "name": "Image Generation Pipeline",
+      "description": "Scene visualization with AI image generation",
+      "done": false,
+      "task_ids": ["VIS-001", "VIS-002"]
+    },
+    {
+      "id": "VIS-M2",
+      "name": "Video Generation",
+      "description": "Animate generated images into short video clips",
+      "done": false,
+      "task_ids": ["VIS-003"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "VIS-001",
+      "feature": "Scene Prompt Generation",
+      "description": "Generate detailed Stable Diffusion / Imagen prompts from scene text using LLM",
+      "done": false,
+      "status": "not_started",
+      "priority": "HIGH",
+      "estimated_hours": 6,
+      "reference_docs": [
+        "NovelReaderWeb/src/services/gemini.service.ts - generateScenePrompt() method"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/LlmDirector.kt",
+        "app/src/main/java/com/dramebaz/app/data/models/ScenePrompt.kt (new)"
+      ],
+      "implementation_notes": "Use LLM to extract visual elements: characters, setting, lighting, mood. Output structured prompt for image generation. Include negative prompt and style hints.",
+      "work_items": [
+        "Create ScenePrompt data class with prompt, negativePrompt, style fields",
+        "Add generateScenePrompt() method to LlmDirector",
+        "Design prompt template focusing on visual elements extraction",
+        "Test with various scene types (action, dialogue, atmospheric)"
+      ],
+      "source_code_reference": "// From NovelReaderWeb gemini.service.ts\nasync generateScenePrompt(sceneText: string, mood: string, characters: string[]): Promise<string> {\n  const prompt = `Based on this scene, create a detailed image generation prompt...\n  Scene: ${sceneText}\n  Mood: ${mood}\n  Characters present: ${characters.join(', ')}`;\n  // Returns: \"A dimly lit Victorian study, candlelight casting shadows...\"\n}"
+    },
+    {
+      "id": "VIS-002",
+      "feature": "Scene Image Generation",
+      "description": "Generate scene images using Imagen or similar API from prompts",
+      "done": false,
+      "status": "not_started",
+      "priority": "HIGH",
+      "estimated_hours": 8,
+      "reference_docs": [
+        "NovelReaderWeb/src/services/gemini.service.ts - generateImage() method",
+        "NovelReaderWeb/src/components/book-reader/book-reader.component.ts - visualizeScene()"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/ImageGenerator.kt (new)",
+        "app/src/main/java/com/dramebaz/app/ui/reader/ReaderFragment.kt",
+        "app/src/main/res/layout/dialog_scene_visualization.xml (new)"
+      ],
+      "implementation_notes": "Use Imagen 4.0 API (via Vertex AI) or Gemini image generation. Cache generated images. Add 'Visualize' button to reader UI. Display in overlay dialog.",
+      "work_items": [
+        "Create ImageGenerator service class",
+        "Integrate with Vertex AI Imagen API",
+        "Add image caching with Room database",
+        "Create visualization overlay dialog UI",
+        "Add 'Visualize Scene' FAB button to reader"
+      ],
+      "source_code_reference": "// From NovelReaderWeb book-reader.component.ts\nasync visualizeScene() {\n  const pageText = this.currentPage().text;\n  const prompt = await this.gemini.generateScenePrompt(pageText, this.mood, this.characters);\n  const imageUrl = await this.gemini.generateImage(prompt);\n  this.sceneImage.set(imageUrl);\n  this.showVisualization.set(true);\n}"
+    },
+    {
+      "id": "VIS-003",
+      "feature": "Scene Animation (Video Generation)",
+      "description": "Animate generated scene images into short video clips using Veo 2.0",
+      "done": false,
+      "status": "not_started",
+      "priority": "MEDIUM",
+      "estimated_hours": 6,
+      "reference_docs": [
+        "NovelReaderWeb/src/services/gemini.service.ts - generateVideo() method",
+        "NovelReaderWeb/src/components/book-reader/book-reader.component.ts - animateImage()"
+      ],
+      "files_to_modify": [
+        "app/src/main/java/com/dramebaz/app/director/VideoGenerator.kt (new)",
+        "app/src/main/java/com/dramebaz/app/ui/reader/SceneVisualizationDialog.kt"
+      ],
+      "implementation_notes": "Use Veo 2.0 API for image-to-video generation. Add 'Animate' button to scene visualization. Handle async video generation with progress indicator.",
+      "work_items": [
+        "Create VideoGenerator service class",
+        "Integrate with Veo 2.0 API",
+        "Add 'Animate' button to scene visualization dialog",
+        "Implement ExoPlayer for video playback",
+        "Handle video caching and cleanup"
+      ],
+      "source_code_reference": "// From NovelReaderWeb book-reader.component.ts\nasync animateImage() {\n  if (!this.sceneImage()) return;\n  this.isAnimating.set(true);\n  const videoUrl = await this.gemini.generateVideo(this.sceneImage());\n  this.sceneVideo.set(videoUrl);\n  this.isAnimating.set(false);\n}"
+    }
+  ]
+}
+
