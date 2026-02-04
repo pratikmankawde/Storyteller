@@ -456,6 +456,14 @@ class InsightsFragment : Fragment() {
                     withContext(Dispatchers.Main) {
                         pd.dismiss()
                         Toast.makeText(ctx, "All chapters already have extended analysis.", Toast.LENGTH_SHORT).show()
+
+                        // Load and display existing extended analysis data
+                        if (isAdded) {
+                            val data = withContext(Dispatchers.IO) { vm.insightsForBook(bookId) }
+                            themesView.text = data.themes.ifEmpty { "No themes yet." }
+                            loadVocabularyAndSymbols(learnedSet, vocabContainer, vocabCount, symbolsLabel, symbolsText, foreshadowingLabel, foreshadowingText)
+                            loadEmotionalArc(emotionalHint, emotionalArcContainer)
+                        }
                     }
                     return@launch
                 }

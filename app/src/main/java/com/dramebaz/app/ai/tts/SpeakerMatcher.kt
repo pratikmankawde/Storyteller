@@ -17,6 +17,7 @@ object SpeakerMatcher {
     /**
      * Picks a suggested LibriTTS speaker ID (0–903) for a character based on traits and optional name.
      * Prefer gender match, then accent/age keywords. Returns null if no preference (caller can use default).
+     * When multiple speakers have the same score, uses character name hash for deterministic selection.
      */
     fun suggestSpeakerId(traits: String?, personalitySummary: String?, name: String?): Int? {
         val traitTokens = parseTraits(traits).toMutableList()
@@ -68,7 +69,10 @@ object SpeakerMatcher {
         val maxScore = scores.maxOrNull() ?: 0
         if (maxScore <= 0) return null
         val best = scores.indices.filter { scores[it] == maxScore }
-        return best.random()
+        // Use deterministic selection based on character name hash instead of random
+        // This ensures the same character always gets the same speaker
+        val nameHash = (name?.hashCode() ?: 0).let { kotlin.math.abs(it) }
+        return best[nameHash % best.size]
     }
 
     /**

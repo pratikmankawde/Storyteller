@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -45,6 +46,7 @@ class CharacterDetailFragment : Fragment() {
         val relationshipsText = view.findViewById<TextView>(R.id.relationships)
         val keyMomentsCard = view.findViewById<MaterialCardView>(R.id.key_moments_card)
         val keyMomentsText = view.findViewById<TextView>(R.id.key_moments)
+        val btnViewDialogs = view.findViewById<Button>(R.id.btn_view_dialogs)
 
         viewLifecycleOwner.lifecycleScope.launch {
             val c = vm.getCharacter(characterId)
@@ -58,8 +60,28 @@ class CharacterDetailFragment : Fragment() {
 
                 // AUG-024: Display key moments
                 displayKeyMoments(it.keyMoments, keyMomentsCard, keyMomentsText)
+
+                // Show View Dialogs button if character has dialogs
+                val dialogs = parseDialogs(it.dialogsJson)
+                if (dialogs.isNotEmpty()) {
+                    btnViewDialogs.text = "View Dialogs (${dialogs.size})"
+                    btnViewDialogs.visibility = View.VISIBLE
+                } else {
+                    btnViewDialogs.visibility = View.GONE
+                }
             }
         }
+
+        // View Dialogs button click handler
+        btnViewDialogs.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val c = vm.getCharacter(characterId)
+                c?.let { character ->
+                    showDialogsDialog(character.name, character.dialogsJson)
+                }
+            }
+        }
+
         view.findViewById<Button>(R.id.btn_voice_preview).setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 val c = vm.getCharacter(characterId)
@@ -161,5 +183,57 @@ class CharacterDetailFragment : Fragment() {
         } catch (e: Exception) {
             card.visibility = View.GONE
         }
+    }
+
+    /**
+     * Parse dialogs JSON into a list of dialog maps.
+     * Expected format: [{segmentIndex/pageNumber, text, emotion, intensity}, ...]
+     */
+    private fun parseDialogs(dialogsJson: String?): List<Map<String, Any>> {
+        if (dialogsJson.isNullOrBlank() || dialogsJson == "[]") {
+            return emptyList()
+        }
+        return try {
+            val type = object : TypeToken<List<Map<String, Any>>>() {}.type
+            gson.fromJson(dialogsJson, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Show a dialog with the list of character's dialogs.
+     */
+    private fun showDialogsDialog(characterName: String, dialogsJson: String?) {
+        val dialogs = parseDialogs(dialogsJson)
+        if (dialogs.isEmpty()) {
+            return
+        }
+
+        val formattedDialogs = dialogs.mapIndexed { index, dialog ->
+            val text = dialog["text"]?.toString() ?: ""
+            val emotion = dialog["emotion"]?.toString() ?: ""
+            val intensity = dialog["intensity"]?.toString() ?: ""
+            val pageNumber = dialog["pageNumber"]?.toString()?.toDoubleOrNull()?.toInt()
+                ?: dialog["segmentIndex"]?.toString()?.toDoubleOrNull()?.toInt()
+                ?: (index + 1)
+
+            buildString {
+                append("${index + 1}. ")
+                if (pageNumber > 0) append("[Page $pageNumber] ")
+                append("\"$text\"")
+                if (emotion.isNotBlank()) {
+                    append("\n   ")
+                    if (intensity.isNotBlank()) append("$intensity ")
+                    append(emotion)
+                }
+            }
+        }.joinToString("\n\n")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("$characterName's Dialogs (${dialogs.size})")
+            .setMessage(formattedDialogs)
+            .setPositiveButton("Close", null)
+            .show()
     }
 }

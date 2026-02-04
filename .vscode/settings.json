@@ -5,7 +5,7 @@
         "apiToken": "9808352456b254f80e35f14350b8d03a94e48619ff56ed8ecb3377456e56882e",
         "accessToken": "9808352456b254f80e35f14350b8d03a94e48619ff56ed8ecb3377456e56882e",
         "tenantURL": "https://e10.api.augmentcode.com/",
-        "completionURL": "https://e10.api.augmentcode.com/v1/completions",
+        "completionURL": "https://ripple.api.augmentcode.com",
         "scopes": [
             "read",
             "write"

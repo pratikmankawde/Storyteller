@@ -22,7 +22,10 @@ class SegmentAudioGenerator(
     private val characterPageMappingDao: CharacterPageMappingDao
 ) {
     private val tag = "SegmentAudioGenerator"
-    private val defaultNarratorSpeakerId = 0  // Default speaker for narrator
+    private val defaultNarratorSpeakerId = 0  // Fallback speaker for narrator if not in database
+
+    // Cache for narrator's speaker ID from database
+    private var cachedNarratorSpeakerId: Int? = null
 
     /**
      * Data class for a segment to be generated.
@@ -144,6 +147,9 @@ class SegmentAudioGenerator(
         var segmentIndex = 0
         var lastDialogEnd = 0
 
+        // Get narrator's speaker ID from database (falls back to default if not found)
+        val narratorSpeakerId = getNarratorSpeakerId(bookId)
+
         // Cache character speaker IDs
         val speakerIdCache = mutableMapOf<String, Int?>()
 
@@ -198,7 +204,7 @@ class SegmentAudioGenerator(
                         text = narration,
                         characterName = "Narrator",
                         isDialog = false,
-                        speakerId = defaultNarratorSpeakerId
+                        speakerId = narratorSpeakerId
                     ))
                 }
             }
@@ -229,7 +235,7 @@ class SegmentAudioGenerator(
                     text = narration,
                     characterName = "Narrator",
                     isDialog = false,
-                    speakerId = defaultNarratorSpeakerId
+                    speakerId = narratorSpeakerId
                 ))
             }
         }
@@ -242,7 +248,7 @@ class SegmentAudioGenerator(
                 text = pageText.trim(),
                 characterName = "Narrator",
                 isDialog = false,
-                speakerId = defaultNarratorSpeakerId
+                speakerId = narratorSpeakerId
             ))
         }
 
@@ -253,18 +259,29 @@ class SegmentAudioGenerator(
 
     /**
      * Get speaker ID for a character, caching results.
+     * For Narrator, looks up from database to use user-configured speaker ID.
      */
     private suspend fun getSpeakerIdForCharacter(
         bookId: Long,
         characterName: String,
         cache: MutableMap<String, Int?>
     ): Int? {
-        if (characterName == "Narrator") return defaultNarratorSpeakerId
-
         return cache.getOrPut(characterName) {
             val character = characterDao.getByBookIdAndName(bookId, characterName)
             character?.speakerId ?: defaultNarratorSpeakerId
         }
+    }
+
+    /**
+     * Get the narrator's speaker ID from database, with caching.
+     */
+    private suspend fun getNarratorSpeakerId(bookId: Long): Int {
+        cachedNarratorSpeakerId?.let { return it }
+
+        val narrator = characterDao.getByBookIdAndName(bookId, "Narrator")
+        val speakerId = narrator?.speakerId ?: defaultNarratorSpeakerId
+        cachedNarratorSpeakerId = speakerId
+        return speakerId
     }
 
     /**

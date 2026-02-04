@@ -18,6 +18,8 @@ import com.dramebaz.app.R
 import com.dramebaz.app.data.db.Character
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -136,6 +138,8 @@ class CharacterAdapter(private val onItemClick: (Character) -> Unit) : RecyclerV
         val traits: TextView = itemView.findViewById(R.id.character_traits)
         // AUG-031: Voice warning icon
         val voiceWarningIcon: View? = itemView.findViewById(R.id.voice_warning_icon)
+        // Dialog count display
+        val dialogCount: TextView? = itemView.findViewById(R.id.dialog_count)
     }
 
     override fun getItemCount() = list.size
@@ -151,6 +155,15 @@ class CharacterAdapter(private val onItemClick: (Character) -> Unit) : RecyclerV
         // AUG-031: Show voice warning icon if inconsistency detected
         val hasVoiceWarning = c.personalitySummary.contains("⚠️") || c.personalitySummary.contains("inconsistenc", ignoreCase = true)
         holder.voiceWarningIcon?.visibility = if (hasVoiceWarning) View.VISIBLE else View.GONE
+
+        // Display dialog count if available
+        val dialogCount = getDialogCount(c.dialogsJson)
+        if (dialogCount > 0) {
+            holder.dialogCount?.text = "$dialogCount dialog${if (dialogCount > 1) "s" else ""}"
+            holder.dialogCount?.visibility = View.VISIBLE
+        } else {
+            holder.dialogCount?.visibility = View.GONE
+        }
 
         // Set up click listener with ripple effect
         holder.itemView.setOnClickListener {
@@ -179,5 +192,18 @@ class CharacterAdapter(private val onItemClick: (Character) -> Unit) : RecyclerV
             .setDuration(300)
             .setStartDelay(position * 30L)
             .start()
+    }
+
+    /**
+     * Parse dialogsJson and return the count of dialogs.
+     */
+    private fun getDialogCount(dialogsJson: String?): Int {
+        if (dialogsJson.isNullOrBlank()) return 0
+        return try {
+            val dialogs = Gson().fromJson(dialogsJson, Array<Any>::class.java)
+            dialogs?.size ?: 0
+        } catch (e: JsonSyntaxException) {
+            0
+        }
     }
 }

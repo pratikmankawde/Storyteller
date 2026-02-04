@@ -62,6 +62,17 @@
                 android:maxLines="2"
                 android:ellipsize="end"
                 tools:text="Brave, Loyal, Intelligent" />
+
+            <!-- Dialog count badge -->
+            <TextView
+                android:id="@+id/dialog_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp"
+                android:textColor="@color/primary"
+                android:visibility="gone"
+                tools:text="12 dialogs" />
         </LinearLayout>
 
         <!-- AUG-031: Voice inconsistency warning icon -->

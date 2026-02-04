@@ -384,7 +384,13 @@ class GemmaCharacterAnalysisUseCase(
             enhancedTraits,
             "",
             result.name
-        ) ?: (LibrittsSpeakerCatalog.MIN_SPEAKER_ID..LibrittsSpeakerCatalog.MAX_SPEAKER_ID).random()
+        ) ?: run {
+            // Deterministic fallback based on character name hash
+            // This ensures the same character always gets the same speaker
+            val nameHash = kotlin.math.abs(result.name.hashCode())
+            val speakerRange = LibrittsSpeakerCatalog.MAX_SPEAKER_ID - LibrittsSpeakerCatalog.MIN_SPEAKER_ID + 1
+            LibrittsSpeakerCatalog.MIN_SPEAKER_ID + (nameHash % speakerRange)
+        }
 
         if (existing != null) {
             // Merge dialogs with existing ones
@@ -407,7 +413,7 @@ class GemmaCharacterAnalysisUseCase(
                 existing.copy(
                     traits = traitsStr,
                     voiceProfileJson = voiceProfileJson,
-                    speakerId = suggestedSpeakerId ?: existing.speakerId,
+                    speakerId = suggestedSpeakerId,
                     dialogsJson = mergedDialogsJson
                 )
             )

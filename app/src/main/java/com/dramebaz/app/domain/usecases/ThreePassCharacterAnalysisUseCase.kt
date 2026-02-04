@@ -2,6 +2,7 @@ package com.dramebaz.app.domain.usecases
 
 import android.content.Context
 import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.tts.LibrittsSpeakerCatalog
 import com.dramebaz.app.ai.tts.SpeakerMatcher
 import com.dramebaz.app.data.db.Character
 import com.dramebaz.app.data.db.CharacterDao
@@ -775,7 +776,13 @@ class ThreePassCharacterAnalysisUseCase(
                 enhancedTraits,
                 personalitySummary,
                 result.name
-            )
+            ) ?: run {
+                // Deterministic fallback based on character name hash
+                // This ensures the same character always gets the same speaker
+                val nameHash = kotlin.math.abs(result.name.hashCode())
+                val speakerRange = LibrittsSpeakerCatalog.MAX_SPEAKER_ID - LibrittsSpeakerCatalog.MIN_SPEAKER_ID + 1
+                LibrittsSpeakerCatalog.MIN_SPEAKER_ID + (nameHash % speakerRange)
+            }
 
             val voiceProfileJson = gson.toJson(result.voiceProfile)
 
@@ -814,7 +821,7 @@ class ThreePassCharacterAnalysisUseCase(
                         traits = traitsStr,
                         personalitySummary = personalitySummary,
                         voiceProfileJson = voiceProfileJson,
-                        speakerId = suggestedSpeakerId ?: existing.speakerId,
+                        speakerId = suggestedSpeakerId,
                         dialogsJson = mergedDialogsJson
                     )
                 )
