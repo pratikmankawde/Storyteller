@@ -1,7 +1,7 @@
 package com.dramebaz.app.domain.usecases
 
 import android.content.Context
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.db.Chapter
 import com.dramebaz.app.data.models.ChapterSummary
 import com.dramebaz.app.data.repositories.BookRepository
@@ -55,7 +55,7 @@ ${summaries.joinToString("\n\n")}
 
 Create a "Previously on..." paragraph that summarizes these events."""
 
-                val llmResult = QwenStub.generateStory(prompt)
+                val llmResult = LlmService.generateStory(prompt)
                 if (llmResult.isNotBlank() && !llmResult.contains("stub") && !llmResult.contains("This is a stub")) {
                     // Extract the recap paragraph (remove any prompt text)
                     val recap = llmResult.lines()

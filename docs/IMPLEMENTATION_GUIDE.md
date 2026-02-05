@@ -114,7 +114,9 @@ try {
 
 #### AUG-003: Add LLM Timeout Protection (1.5 hours)
 ```kotlin
-// File: QwenStub.kt
+// File: QwenStub.kt (or use LlmService.kt facade)
+// Note: LLM code has been refactored into models/, prompts/ subfolders with design patterns
+// See docs/QWEN_MODEL_INTEGRATION.md for the new architecture
 
 suspend fun analyzeChapter(chapterText: String): ChapterAnalysisResponse = withContext(Dispatchers.IO) {
     ensureInitialized()

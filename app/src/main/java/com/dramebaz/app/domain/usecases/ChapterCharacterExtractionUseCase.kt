@@ -1,6 +1,6 @@
 package com.dramebaz.app.domain.usecases
 
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.ai.tts.SpeakerMatcher
 import com.dramebaz.app.data.db.Character
 import com.dramebaz.app.data.db.CharacterDao
@@ -89,10 +89,10 @@ class ChapterCharacterExtractionUseCase(private val characterDao: CharacterDao) 
         var usedSinglePass = false
         var singlePassVoiceProfiles: MutableMap<String, String>? = null
 
-        if (QwenStub.isUsingLlama()) {
+        if (LlmService.isUsingLlama()) {
             try {
                 AppLogger.d(tag, "Chapter ${chapterIndex + 1}: single-pass analyzeChapter (${combinedText.length} chars)")
-                val resp = QwenStub.analyzeChapter(combinedText)
+                val resp = LlmService.analyzeChapter(combinedText)
                 val chars = resp.characters
                 if (!chars.isNullOrEmpty()) {
                     for (c in chars) {
@@ -118,7 +118,7 @@ class ChapterCharacterExtractionUseCase(private val characterDao: CharacterDao) 
         if (!usedSinglePass) {
             try {
                 AppLogger.d(tag, "Chapter ${chapterIndex + 1}: calling batched LLM for whole chapter (${combinedText.length} chars)")
-                val extracted = QwenStub.extractCharactersAndTraitsInSegment(combinedText, emptyList(), emptyList())
+                val extracted = LlmService.extractCharactersAndTraitsInSegment(combinedText, emptyList(), emptyList())
                 AppLogger.d(tag, "Chapter ${chapterIndex + 1}: batched extraction got ${extracted.size} characters")
 
                 for ((name, traits) in extracted) {
@@ -141,7 +141,7 @@ class ChapterCharacterExtractionUseCase(private val characterDao: CharacterDao) 
                     async(Dispatchers.IO) {
                         semaphore.withPermit {
                             try {
-                                val segExtracted = QwenStub.extractCharactersAndTraitsInSegment(segment, emptyList(), emptyList())
+                                val segExtracted = LlmService.extractCharactersAndTraitsInSegment(segment, emptyList(), emptyList())
                                 onPageProcessed?.invoke()
                                 segExtracted
                             } catch (ex: Exception) {
@@ -180,7 +180,7 @@ class ChapterCharacterExtractionUseCase(private val characterDao: CharacterDao) 
                     // Find context (dialogs/mentions) for this character
                     val excerpt = extractCharacterContext(trimmed, name)
                     if (excerpt.isNotBlank()) {
-                        val inferredTraits = QwenStub.inferTraitsForCharacter(name, excerpt)
+                        val inferredTraits = LlmService.inferTraitsForCharacter(name, excerpt)
                         if (inferredTraits.isNotEmpty()) {
                             nameToTraits[name] = inferredTraits
                             AppLogger.d(tag, "AUG-009: Inferred traits for $name: $inferredTraits")
@@ -221,7 +221,7 @@ class ChapterCharacterExtractionUseCase(private val characterDao: CharacterDao) 
             singlePassVoiceProfiles
         } else {
             AppLogger.d(tag, "Chapter ${chapterIndex + 1}: calling suggestVoiceProfilesJson (${allNames.size} chars)")
-            val voiceProfilesJson = QwenStub.suggestVoiceProfilesJson(inputJson)
+            val voiceProfilesJson = LlmService.suggestVoiceProfilesJson(inputJson)
             AppLogger.logPerformance(tag, "Phase 3: suggestVoiceProfilesJson (${allNames.size} chars)", System.currentTimeMillis() - phase3StartMs)
             parseVoiceProfilesResponse(voiceProfilesJson)
         }

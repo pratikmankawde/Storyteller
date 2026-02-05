@@ -1,4 +1,4 @@
-package com.dramebaz.app.util
+package com.dramebaz.app.utils
 
 import android.app.ActivityManager
 import android.content.Context
@@ -90,3 +90,4 @@ class MemoryMonitor(
         }
     }
 }
+

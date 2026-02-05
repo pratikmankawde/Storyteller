@@ -8,9 +8,9 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 /**
- * Runs chapter analysis (LLM/ONNX) in a background thread.
+ * Runs chapter analysis (LLM) in a background thread.
  * Previously ran in a separate :onnx process, but this caused broadcast issues
- * on Android 13+. ONNX failures are now handled with try-catch in QwenStub,
+ * on Android 13+. LLM failures are now handled with try-catch in LlmService,
  * so running in the main process is safe.
  */
 class ChapterAnalysisService : Service() {
@@ -42,17 +42,17 @@ class ChapterAnalysisService : Service() {
                 val chapterText = File(chapterPath).readText(charset = Charsets.UTF_8)
                 AppLogger.d(TAG, "Chapter text loaded: ${chapterText.length} chars")
 
-                // Ensure QwenStub has context set (already done in Application.onCreate but safe to repeat)
-                QwenStub.setApplicationContext(applicationContext)
+                // Ensure LlmService has context set (already done in Application.onCreate but safe to repeat)
+                LlmService.setApplicationContext(applicationContext)
 
                 // Basic analysis only (characters, dialogs, sounds, summary) - no extended analysis
                 // Extended analysis (themes, symbols, vocabulary) is done via "Analyze" button in Insights tab
                 val resp = runBlocking {
-                    QwenStub.analyzeChapter(chapterText)
+                    LlmService.analyzeChapter(chapterText)
                 }
                 AppLogger.i(TAG, "Chapter analysis complete: dialogs=${resp.dialogs?.size}, characters=${resp.characters?.size}")
 
-                File(resultPath).writeText(QwenStub.toJson(resp), Charsets.UTF_8)
+                File(resultPath).writeText(LlmService.toJson(resp), Charsets.UTF_8)
                 // Note: extendedPath file is not written - extended analysis is done separately in Insights tab
                 sendBroadcastResult(broadcastAction, resultPath, extendedPath, success = true)
                 AppLogger.i(TAG, "Analysis broadcast sent successfully")

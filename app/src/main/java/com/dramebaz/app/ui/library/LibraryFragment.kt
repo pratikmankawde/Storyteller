@@ -16,7 +16,7 @@ import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.ui.common.ErrorDialog
-import com.dramebaz.app.util.MemoryMonitor
+import com.dramebaz.app.utils.MemoryMonitor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch

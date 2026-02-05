@@ -2,7 +2,18 @@
   "project": "Dramebaz - Feature Completion & Optimization",
   "version": "2.0",
   "created": "2026-01-30",
+  "updated": "2026-02-05",
   "description": "Comprehensive task list to implement all missing, incomplete, and partially implemented features (excluding SFX audio generation)",
+  "code_architecture": {
+    "llm_refactoring_note": "LLM code refactored on 2026-02-05. File references in tasks may use old names (QwenStub.kt, OnnxQwenModel.kt) which still exist for backward compatibility.",
+    "llm_folder_structure": {
+      "models": ["LlmModel.kt (interface)", "LlmModelFactory.kt", "Qwen3ModelImpl.kt", "LiteRtLmEngineImpl.kt"],
+      "prompts": ["ExtractionPrompts.kt", "AnalysisPrompts.kt", "StoryPrompts.kt"],
+      "core": ["LlmService.kt (facade)", "LlmTypes.kt", "QwenStub.kt (backward compatible)", "Qwen3Model.kt"]
+    },
+    "design_patterns": ["Strategy (LlmModel interface)", "Factory (LlmModelFactory)", "Adapter (Qwen3ModelImpl)", "Facade (LlmService)"],
+    "utils_note": "util/ folder merged into utils/. MemoryMonitor.kt moved to utils/."
+  },
   "model_compatibility": {
     "llm": {
       "model": "Qwen3-1.7B-Q4_K_M GGUF (via llama.cpp JNI)",

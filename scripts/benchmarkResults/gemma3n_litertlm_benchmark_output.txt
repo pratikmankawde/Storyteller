@@ -1,0 +1,17 @@
+Gemma 3n E2B LiteRT-LM benchmark
+============================================================
+Model: D:\Learning\Ai\Models\LLM\gemma-3n-E2B-it-int4.litertlm
+PDF: C:\Users\Pratik\source\Storyteller\Space story.pdf (6858 chars)
+Wall time: Pass1=600.55s, Pass2=53.96s, Total=654.51s
+============================================================
+
+=== PASS 1: Characters + Traits + Voice profile ===
+
+Error: Process timed out after 600.6s.
+
+=== PASS 2: Character:Dialog mapping ===
+
+[Process exited with code 3221226505]
+
+Character: "Something heavy enough to ground it to this world." Narrator
+Character: "Let's get out of here," Jax said, his voice unusually soft.

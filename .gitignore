@@ -55,6 +55,8 @@ test_results.log
 *.exe
 *.onnx
 *.gguf
+*.class
+*.litertlm
 
 #llama-cpp server
 scripts/llama-cpp/

@@ -18,7 +18,8 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
+import com.dramebaz.app.utils.AppLogger
 import com.dramebaz.app.data.models.EmotionalSegment
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -443,13 +444,23 @@ class InsightsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                AppLogger.d("InsightsFragment", "Extended analysis button clicked, starting analysis for bookId=$bookId")
+
                 val chapters = withContext(Dispatchers.IO) {
                     app.db.chapterDao().getByBookId(bookId).first()
                 }
 
+                AppLogger.d("InsightsFragment", "Found ${chapters.size} total chapters")
+
                 // Find chapters that have fullAnalysisJson (basic analysis done) but no analysisJson (extended)
                 val needAnalysis = chapters.filter {
                     it.fullAnalysisJson != null && it.body.length > 50 && it.analysisJson.isNullOrBlank()
+                }
+
+                AppLogger.d("InsightsFragment", "Chapters needing extended analysis: ${needAnalysis.size}")
+                // Log why chapters might be filtered out
+                chapters.forEachIndexed { idx, ch ->
+                    AppLogger.d("InsightsFragment", "Ch[$idx] '${ch.title.take(20)}': fullAnalysisJson=${ch.fullAnalysisJson != null}, bodyLen=${ch.body.length}, analysisJson=${ch.analysisJson?.take(30) ?: "null"}")
                 }
 
                 if (needAnalysis.isEmpty()) {
@@ -481,14 +492,19 @@ class InsightsFragment : Fragment() {
                         pd.setMessage("Analyzing chapter ${index + 1}/${needAnalysis.size}:\n${chapter.title.take(30)}...")
                     }
 
+                    AppLogger.d("InsightsFragment", "Calling LlmService.extendedAnalysisJson for chapter: ${chapter.title}")
                     val extendedJson = withContext(Dispatchers.IO) {
-                        QwenStub.extendedAnalysisJson(chapter.body)
+                        LlmService.extendedAnalysisJson(chapter.body)
                     }
+                    AppLogger.d("InsightsFragment", "extendedAnalysisJson result length: ${extendedJson.length}, preview: ${extendedJson.take(100)}")
 
                     if (extendedJson.isNotBlank()) {
                         withContext(Dispatchers.IO) {
                             app.bookRepository.updateChapter(chapter.copy(analysisJson = extendedJson))
                         }
+                        AppLogger.d("InsightsFragment", "Saved extended analysis for chapter: ${chapter.title}")
+                    } else {
+                        AppLogger.w("InsightsFragment", "Extended analysis returned empty for chapter: ${chapter.title}")
                     }
                 }
 

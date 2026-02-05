@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dramebaz.app.DramebazApplication
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.db.AppDatabase
 import com.dramebaz.app.data.db.Character
 import com.dramebaz.app.data.repositories.BookRepository
@@ -50,8 +50,8 @@ class PdfCharacterExtractionTest {
             db = app.db
             bookRepository = app.bookRepository
 
-            // Initialize Qwen model for character extraction
-            QwenStub.initialize(context)
+            // Initialize LLM model for character extraction
+            LlmService.initialize(context)
 
             // Create use cases
             importUseCase = ImportBookUseCase(bookRepository)

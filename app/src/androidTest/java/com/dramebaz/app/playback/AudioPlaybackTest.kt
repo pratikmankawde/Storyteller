@@ -5,10 +5,13 @@ import android.media.MediaPlayer
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dramebaz.app.DramebazApplication
+import com.dramebaz.app.ai.tts.SherpaTtsEngine
 import com.dramebaz.app.data.models.Dialog
 import com.dramebaz.app.data.models.EmotionalSegment
 import com.dramebaz.app.data.models.VoiceProfile
 import com.dramebaz.app.playback.engine.PlaybackEngine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -29,6 +32,7 @@ class AudioPlaybackTest {
     private lateinit var context: Context
     private lateinit var ttsEngine: SherpaTtsEngine
     private lateinit var playbackEngine: PlaybackEngine
+    private val testScope = CoroutineScope(Dispatchers.Main)
 
     @Before
     fun setup() {
@@ -38,7 +42,7 @@ class AudioPlaybackTest {
             if (!ttsEngine.isInitialized()) {
                 assertTrue("TTS engine should initialize", ttsEngine.init())
             }
-            playbackEngine = PlaybackEngine(context, ttsEngine)
+            playbackEngine = PlaybackEngine(context, ttsEngine, testScope)
         }
     }
 

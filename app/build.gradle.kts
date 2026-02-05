@@ -31,7 +31,7 @@ android {
         }
 
         ndk {
-            abiFilters += listOf("arm64-v8a")
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -82,6 +82,13 @@ android {
             // Exclude duplicate libc++_shared.so from different native libraries
             pickFirsts.add("lib/arm64-v8a/libc++_shared.so")
             pickFirsts.add("lib/armeabi-v7a/libc++_shared.so")
+        }
+        resources {
+            // Exclude duplicate META-INF files from JUnit Jupiter test dependencies
+            excludes.add("META-INF/LICENSE.md")
+            excludes.add("META-INF/LICENSE-notice.md")
+            excludes.add("META-INF/AL2.0")
+            excludes.add("META-INF/LGPL2.1")
         }
     }
 }

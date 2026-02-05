@@ -16,7 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.ui.main.MainActivity
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -120,10 +120,10 @@ class SplashActivity : AppCompatActivity() {
             var isGpu = false
             try {
                 withContext(Dispatchers.Main) { updateStatus("Loading LLM model...") }
-                QwenStub.ensureInitialized()
-                llmLoaded = QwenStub.isUsingLlama()
-                gpuStatus = QwenStub.getExecutionProvider()
-                isGpu = QwenStub.isUsingGpu()
+                LlmService.ensureInitialized()
+                llmLoaded = LlmService.isUsingLlama()
+                gpuStatus = LlmService.getExecutionProvider()
+                isGpu = LlmService.isUsingGpu()
 
                 // Log GPU hand-off status
                 AppLogger.i("SplashActivity", "LLM loaded: $llmLoaded, Execution provider: $gpuStatus, GPU: $isGpu")

@@ -12,7 +12,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
 import com.dramebaz.app.ui.main.MainActivity
 import com.dramebaz.app.utils.AppLogger
@@ -287,7 +287,7 @@ class TestActivity : AppCompatActivity() {
                 its heads, allowing them to pass over the bridge of its own back.
             """.trimIndent()
             try {
-                val result = QwenStub.analyzeChapter(testChapter)
+                val result = LlmService.analyzeChapter(testChapter)
                 val characters = result.characters?.map { it.name }?.joinToString(", ") ?: "none"
                 val dialogs = result.dialogs?.size ?: 0
                 val message = if (result.chapterSummary != null) {
@@ -341,7 +341,7 @@ class TestActivity : AppCompatActivity() {
                 trailing a wake of Aurelian light as it pierced the atmosphere.
             """.trimIndent()
             try {
-                val result = QwenStub.extendedAnalysisJson(testChapter)
+                val result = LlmService.extendedAnalysisJson(testChapter)
                 val message = if (result.isNotBlank() && !result.contains("stub")) {
                     "Extended Analysis Success!\nResult length: ${result.length} chars"
                 } else {

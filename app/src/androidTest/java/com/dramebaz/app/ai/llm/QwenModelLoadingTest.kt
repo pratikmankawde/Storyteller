@@ -10,8 +10,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Test suite for LLM initialization (ONNX or stub via QwenStub).
+ * Test suite for LLM initialization via LlmService.
  * In production, the model is pre-loaded by SplashActivity.
+ * Note: LLM model may not load on test devices (limited memory/no model files).
+ * Tests verify that initialization completes without crashing and stub fallback works.
  */
 @RunWith(AndroidJUnit4::class)
 class QwenModelLoadingTest {
@@ -23,34 +25,46 @@ class QwenModelLoadingTest {
     }
 
     @Test
-    fun testStubInitialization() {
+    fun testLlmServiceInitialization() {
         runBlocking {
-            val initialized = QwenStub.initialize(context)
-            assertTrue("QwenStub should initialize (ONNX or stub)", initialized)
-            assertTrue("QwenStub should report ready", QwenStub.isReady())
-            QwenStub.release()
+            // Initialize - may return false if model doesn't load, but should not crash
+            val initialized = LlmService.initialize(context)
+            android.util.Log.i("QwenModelLoadingTest", "LlmService.initialize() returned: $initialized")
+
+            // Either model loaded OR we're in stub fallback mode
+            // The service should still function via StubFallbacks
+            val result = LlmService.analyzeChapter("Alice said hello.")
+            assertNotNull("Stub fallback should still work", result)
+
+            LlmService.release()
         }
     }
 
     @Test
-    fun testStubInitializationIdempotent() {
+    fun testLlmServiceInitializationIdempotent() {
         runBlocking {
-            val first = QwenStub.initialize(context)
-            val second = QwenStub.initialize(context)
-            assertTrue(first)
-            assertTrue(second)
-            QwenStub.release()
+            val first = LlmService.initialize(context)
+            val second = LlmService.initialize(context)
+            // Both calls should return the same result
+            assertEquals("Idempotent initialization should return same result", first, second)
+            LlmService.release()
         }
     }
 
     @Test
-    fun testStubReleaseThenReinit() {
+    fun testLlmServiceReleaseThenReinit() {
         runBlocking {
-            QwenStub.initialize(context)
-            QwenStub.release()
-            val reinit = QwenStub.initialize(context)
-            assertTrue(reinit)
-            QwenStub.release()
+            LlmService.initialize(context)
+            LlmService.release()
+            // After release, reinit should work (may be in stub mode)
+            val reinit = LlmService.initialize(context)
+            android.util.Log.i("QwenModelLoadingTest", "Re-initialize after release returned: $reinit")
+
+            // Verify stub fallback still works after reinit
+            val result = LlmService.analyzeChapter("Bob said goodbye.")
+            assertNotNull("Stub fallback should work after reinit", result)
+
+            LlmService.release()
         }
     }
 }

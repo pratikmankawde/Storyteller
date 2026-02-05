@@ -2,6 +2,34 @@
 
 This document lists all LLM prompts currently in use in the Storyteller app. Each prompt is used with the Qwen3-1.7B-Q4_K_M GGUF model via llama.cpp.
 
+## Code Architecture
+
+The LLM code is organized in `app/src/main/java/com/dramebaz/app/ai/llm/` with the following structure:
+
+```
+ai/llm/
+├── models/
+│   ├── LlmModel.kt           # Strategy interface for all LLM models
+│   ├── LlmModelFactory.kt    # Factory for creating model instances
+│   ├── Qwen3ModelImpl.kt     # Adapter wrapping Qwen3Model
+│   └── LiteRtLmEngineImpl.kt # Adapter wrapping LiteRtLmEngine
+├── prompts/
+│   ├── ExtractionPrompts.kt  # Pass 1-3 character extraction prompts
+│   ├── AnalysisPrompts.kt    # Chapter/extended analysis prompts
+│   └── StoryPrompts.kt       # Story generation, key moments, relationships prompts
+├── LlmService.kt             # Facade pattern - entry point for LLM operations
+├── LlmTypes.kt               # Common type definitions
+├── QwenStub.kt               # Backward-compatible entry point
+├── Qwen3Model.kt             # llama.cpp model implementation
+└── LlamaNative.kt            # JNI bindings for llama.cpp
+```
+
+**Design Patterns:**
+- **Strategy Pattern**: `LlmModel` interface for interchangeable model implementations
+- **Factory Pattern**: `LlmModelFactory` creates model instances based on device capabilities
+- **Adapter Pattern**: `Qwen3ModelImpl` and `LiteRtLmEngineImpl` wrap existing implementations
+- **Facade Pattern**: `LlmService` provides simplified interface to LLM subsystem
+
 ## Character Analysis Workflow
 
 The "Analyse Chapters" button uses the **3-Pass Character Analysis** workflow (see Prompts #9, #11, #14):

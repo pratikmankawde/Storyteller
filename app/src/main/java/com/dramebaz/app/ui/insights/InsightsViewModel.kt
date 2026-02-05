@@ -2,7 +2,7 @@ package com.dramebaz.app.ui.insights
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.repositories.BookRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -20,7 +20,7 @@ class InsightsViewModel(private val bookRepository: BookRepository) : ViewModel(
     suspend fun ensureExtendedAnalysisForFirstNeeding(bookId: Long): Boolean {
         val chapters = bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
         val ch = chapters.firstOrNull { it.fullAnalysisJson != null && it.body.length > 50 && it.analysisJson.isNullOrBlank() } ?: return false
-        val extendedJson = QwenStub.extendedAnalysisJsonStubOnly(ch.body)
+        val extendedJson = LlmService.extendedAnalysisJsonStubOnly(ch.body)
         if (extendedJson.isNullOrBlank()) return false
         bookRepository.updateChapter(ch.copy(analysisJson = extendedJson))
         return true

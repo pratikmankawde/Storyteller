@@ -1,7 +1,7 @@
 package com.dramebaz.app.domain.usecases
 
 import android.content.Context
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.ai.tts.LibrittsSpeakerCatalog
 import com.dramebaz.app.ai.tts.SpeakerMatcher
 import com.dramebaz.app.data.db.Character
@@ -465,7 +465,7 @@ class ThreePassCharacterAnalysisUseCase(
                 // and don't require full context. Reduces prompt processing by ~50%.
                 val truncatedPageText = pageText.take(5000)
                 pageCharacterNames = try {
-                    QwenStub.pass1ExtractCharacterNames(truncatedPageText)
+                    LlmService.pass1ExtractCharacterNames(truncatedPageText)
                 } catch (e: Exception) {
                     AppLogger.e(TAG, "   ❌ Pass-1 FAILED for page $pageNum", e)
                     emptyList()
@@ -522,7 +522,7 @@ class ThreePassCharacterAnalysisUseCase(
                 val pass2StartMs = System.currentTimeMillis()
 
                 val dialogEntries = try {
-                    QwenStub.pass2ExtractDialogs(pageText, pageCharacterNames)
+                    LlmService.pass2ExtractDialogs(pageText, pageCharacterNames)
                 } catch (e: Exception) {
                     AppLogger.e(TAG, "   ❌ Pass-2 FAILED for page $pageNum", e)
                     emptyList()
@@ -634,7 +634,7 @@ class ThreePassCharacterAnalysisUseCase(
             AppLogger.d(TAG, "   Pass-3: Processing $charNames (context: $contextLengths chars)")
 
             try {
-                val results = QwenStub.pass3ExtractTraitsAndVoiceProfile(
+                val results = LlmService.pass3ExtractTraitsAndVoiceProfile(
                     char1Name = char1.name,
                     char1Context = context1,
                     char2Name = char2?.name,
@@ -653,7 +653,7 @@ class ThreePassCharacterAnalysisUseCase(
                     // Apply fallback if no traits
                     val finalTraits = if (traits.isEmpty()) {
                         AppLogger.d(TAG, "   Pass-3: '$name' no traits, using fallback")
-                        QwenStub.inferTraitsFromName(name)
+                        LlmService.inferTraitsFromName(name)
                     } else {
                         traits
                     }
@@ -680,7 +680,7 @@ class ThreePassCharacterAnalysisUseCase(
                 AppLogger.e(TAG, "   ❌ Pass-3 FAILED for $charNames", e)
                 // Add fallback results for failed characters
                 listOfNotNull(char1, char2, char3, char4).forEach { failedChar ->
-                    val fallbackTraits = QwenStub.inferTraitsFromName(failedChar.name)
+                    val fallbackTraits = LlmService.inferTraitsFromName(failedChar.name)
                     failedChar.traits = fallbackTraits
                     pass3CompletedChars.add(failedChar.name.lowercase())
                     completedCount++

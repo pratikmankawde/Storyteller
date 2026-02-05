@@ -23,7 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.domain.usecases.ChapterCharacterExtractionUseCase
 import com.dramebaz.app.domain.usecases.MergeCharactersUseCase
 import com.dramebaz.app.data.db.Bookmark
@@ -37,7 +37,7 @@ import com.dramebaz.app.playback.mixer.AudioMixer
 import com.dramebaz.app.playback.mixer.PlaybackTheme
 import com.dramebaz.app.playback.service.AudioPlaybackService
 import com.dramebaz.app.ui.player.PlayerBottomSheet
-import com.dramebaz.app.util.MemoryMonitor
+import com.dramebaz.app.utils.MemoryMonitor
 import com.dramebaz.app.ui.common.ErrorDialog
 import com.dramebaz.app.utils.AppLogger
 import com.dramebaz.app.utils.CacheManager
@@ -1364,7 +1364,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 // Retry LLM if it failed
                 if (DegradedModeManager.llmMode.value == DegradedModeManager.LlmMode.STUB_FALLBACK) {
                     withContext(Dispatchers.IO) {
-                        QwenStub.retryLoadModel(requireContext())
+                        LlmService.retryLoadModel(requireContext())
                     }
                 }
 

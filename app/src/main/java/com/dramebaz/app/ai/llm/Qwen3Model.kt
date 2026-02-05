@@ -762,7 +762,9 @@ $jsonValidityReminder"""
      */
     private fun buildPass2_5ExtractDialogsPrompt(pageText: String, characterNames: List<String>): String {
         val text = pageText.take(maxInputChars) + if (pageText.length > maxInputChars) "\n[...truncated]" else ""
-        val charactersJson = gson.toJson(characterNames)
+        // Add "Narrator" to the character list to ensure narrator text is properly extracted
+        val charactersWithNarrator = characterNames + listOf("Narrator")
+        val charactersJson = gson.toJson(charactersWithNarrator)
         val systemPrompt = """You are a dialog extraction engine. Extract quoted speech and attribute it to the correct speaker. Output valid JSON only."""
         val userPrompt = """CHARACTERS ON THIS PAGE: $charactersJson
 

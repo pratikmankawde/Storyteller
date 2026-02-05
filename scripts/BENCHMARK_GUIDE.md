@@ -10,11 +10,11 @@ The benchmark scripts analyze a PDF document (default: `Space story.pdf`) in two
 
 ## Available Benchmark Scripts
 
-| Script | Model | Size | Context |
-|--------|-------|------|---------|
-| `benchmark_gemma3n_litertlm.py` | Gemma 3n E2B | 3.2 GB | 8192 tokens |
-| `benchmark_phi_mini_litertlm.py` | Phi-4-mini | 3.6 GB | 4069 tokens |
-| `benchmark_qwen_litertlm.py` | Qwen 2.5 1.5B | 1.5 GB | 4096 tokens |
+| Script                           | Model         | Size   | Context     |
+| -------------------------------- | ------------- | ------ | ----------- |
+| `benchmark_gemma3n_litertlm.py`  | Gemma 3n E2B  | 3.2 GB | 4069 tokens |
+| `benchmark_phi_mini_litertlm.py` | Phi-4-mini    | 3.6 GB | 4069 tokens |
+| `benchmark_qwen_litertlm.py`     | Qwen 2.5 1.5B | 1.5 GB | 4096 tokens |
 
 ---
 
@@ -43,11 +43,11 @@ The `lit.exe` CLI is already included in the `scripts/` folder. If you need to u
 
 Download LiteRT-LM format models (.litertlm files):
 
-| Model | Download Location | Expected Path |
-|-------|-------------------|---------------|
-| Gemma 3n E2B | [Google AI Edge](https://github.com/google-ai-edge/LiteRT-LM) | `D:\Learning\Ai\Models\LLM\gemma-3n-E2B-it-int4.litertlm` |
-| Phi-4-mini | LiteRT-LM registry | `D:\Learning\Ai\Models\LLM\Phi\Phi-4-mini-instruct_multi-prefill-seq_q8_ekv4096.litertlm` |
-| Qwen 2.5 1.5B | LiteRT-LM registry | `D:\Learning\Ai\Models\LLM\Qwen\Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm` |
+| Model         | Download Location                                             | Expected Path                                                                                |
+| ------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Gemma 3n E2B  | [Google AI Edge](https://github.com/google-ai-edge/LiteRT-LM) | `D:\Learning\Ai\Models\LLM\gemma-3n-E2B-it-int4.litertlm`                                    |
+| Phi-4-mini    | LiteRT-LM registry                                            | `D:\Learning\Ai\Models\LLM\Phi\Phi-4-mini-instruct_multi-prefill-seq_q8_ekv4096.litertlm`    |
+| Qwen 2.5 1.5B | LiteRT-LM registry                                            | `D:\Learning\Ai\Models\LLM\Qwen\Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm` |
 
 Check available models in the registry:
 ```powershell
@@ -117,13 +117,13 @@ python scripts/benchmark_qwen_litertlm.py
 python scripts/benchmark_phi_mini_litertlm.py --help
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--pdf PATH` | Path to input PDF (default: `Space story.pdf`) |
-| `--output PATH` | Output file path |
-| `--max-chapters N` | Process only first N chapters |
-| `--session` | Keep model loaded between prompts (faster) |
-| `--backend cpu\|gpu` | Inference backend |
+| Option               | Description                                    |
+| -------------------- | ---------------------------------------------- |
+| `--pdf PATH`         | Path to input PDF (default: `Space story.pdf`) |
+| `--output PATH`      | Output file path                               |
+| `--max-chapters N`   | Process only first N chapters                  |
+| `--session`          | Keep model loaded between prompts (faster)     |
+| `--backend cpu\|gpu` | Inference backend                              |
 
 ---
 
@@ -131,11 +131,11 @@ python scripts/benchmark_phi_mini_litertlm.py --help
 
 Results are saved to `scripts/benchmarkResults/`:
 
-| Model | Output File |
-|-------|-------------|
-| Gemma 3n | `gemma3n_litertlm_benchmark_output.txt` |
+| Model      | Output File                              |
+| ---------- | ---------------------------------------- |
+| Gemma 3n   | `gemma3n_litertlm_benchmark_output.txt`  |
 | Phi-4-mini | `phi_mini_litertlm_benchmark_output.txt` |
-| Qwen 2.5 | `qwen_litertlm_benchmark_output.txt` |
+| Qwen 2.5   | `qwen_litertlm_benchmark_output.txt`     |
 
 ### Output Format
 
@@ -162,12 +162,12 @@ See `scripts/SPEED_AND_CONFIG.md` for detailed tuning options.
 
 ### Quick Tips
 
-| Goal | Action |
-|------|--------|
-| **Faster runs** | Use `--session` + `LITERT_BACKEND=gpu` |
-| **Less memory** | Use Qwen 2.5 1.5B (1.5 GB vs 3.6 GB) |
-| **Better quality** | Use Phi-4-mini (cleaner JSON output) |
-| **Process less** | Use `--max-chapters 1` for testing |
+| Goal               | Action                                 |
+| ------------------ | -------------------------------------- |
+| **Faster runs**    | Use `--session` + `LITERT_BACKEND=gpu` |
+| **Less memory**    | Use Qwen 2.5 1.5B (1.5 GB vs 3.6 GB)   |
+| **Better quality** | Use Phi-4-mini (cleaner JSON output)   |
+| **Process less**   | Use `--max-chapters 1` for testing     |
 
 ---
 
@@ -209,26 +209,25 @@ Results from running benchmarks on `Space story.pdf` (6858 characters):
 
 ### Performance
 
-| Model | Size | Pass 1 | Pass 2 | Total Time |
-|-------|------|--------|--------|------------|
-| Phi-4-mini | 3.6 GB | 533.38s | 318.89s | **852.27s** (~14.2 min) |
-| Qwen 2.5 1.5B | 1.5 GB | 182.18s | 172.26s | **354.44s** (~5.9 min) |
+| Model         | Size   | Pass 1  | Pass 2  | Total Time              |
+| ------------- | ------ | ------- | ------- | ----------------------- |
+| Phi-4-mini    | 3.6 GB | 533.38s | 318.89s | **852.27s** (~14.2 min) |
+| Qwen 2.5 1.5B | 1.5 GB | 182.18s | 172.26s | **354.44s** (~5.9 min)  |
 
 ### Quality
 
-| Aspect | Phi-4-mini | Qwen 2.5 1.5B |
-|--------|-----------|---------------|
-| Characters Found | ✅ 5/5 | ✅ 5/5 |
-| JSON Format | ✅ Clean single array | ⚠️ Separate per character |
-| Voice Profile Variety | ✅ Varied pitch/speed/energy | ⚠️ All values at 1.0 |
-| Dialog Extraction | ✅ Clean format | ⚠️ Includes artifacts |
+| Aspect                | Phi-4-mini                  | Qwen 2.5 1.5B            |
+| --------------------- | --------------------------- | ------------------------ |
+| Characters Found      | ✅ 5/5                       | ✅ 5/5                    |
+| JSON Format           | ✅ Clean single array        | ⚠️ Separate per character |
+| Voice Profile Variety | ✅ Varied pitch/speed/energy | ⚠️ All values at 1.0      |
+| Dialog Extraction     | ✅ Clean format              | ⚠️ Includes artifacts     |
 
 ### Recommendations
 
-| Use Case | Recommended Model |
-|----------|-------------------|
-| Speed-critical / Resource-limited | **Qwen 2.5 1.5B** (2.4x faster) |
-| Quality-focused TTS voice profiles | **Phi-4-mini** |
-| Production dialog extraction | **Phi-4-mini** |
-| Quick prototyping / testing | **Qwen 2.5 1.5B** |
-
+| Use Case                           | Recommended Model               |
+| ---------------------------------- | ------------------------------- |
+| Speed-critical / Resource-limited  | **Qwen 2.5 1.5B** (2.4x faster) |
+| Quality-focused TTS voice profiles | **Phi-4-mini**                  |
+| Production dialog extraction       | **Phi-4-mini**                  |
+| Quick prototyping / testing        | **Qwen 2.5 1.5B**               |

@@ -13,7 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
 import com.dramebaz.app.ui.common.ErrorDialog
 import com.dramebaz.app.utils.AppLogger
@@ -82,7 +82,7 @@ class StoryGenerationFragment : Fragment() {
                     AppLogger.d(tag, "Generating story with prompt: ${prompt.take(50)}...")
                     // AUG-040: Sanitize prompt before sending to LLM
                     val sanitizedPrompt = InputValidator.sanitizeLlmPrompt(prompt)
-                    QwenStub.generateStory(sanitizedPrompt)
+                    LlmService.generateStory(sanitizedPrompt)
                 }
 
                 if (storyContent.isNotEmpty()) {

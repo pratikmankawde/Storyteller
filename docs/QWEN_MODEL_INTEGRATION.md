@@ -69,7 +69,27 @@ The Q8_0 model was observed to complete successfully on PC but hang on Android. 
 
 ## Files
 
+### Core Files
 - `app/src/main/java/com/dramebaz/app/ai/llm/Qwen3Model.kt` - llama.cpp model loading and inference
 - `app/src/main/java/com/dramebaz/app/ai/llm/QwenStub.kt` - Entry point, llama.cpp on ARM then stub
 - `app/src/main/java/com/dramebaz/app/ai/llm/LlamaNative.kt` - JNI bindings for llama.cpp
+- `app/src/main/java/com/dramebaz/app/ai/llm/LlmService.kt` - Facade pattern entry point for LLM operations
+- `app/src/main/java/com/dramebaz/app/ai/llm/LlmTypes.kt` - Common type definitions (ChapterAnalysisResponse, CharacterStub, etc.)
 - `app/libs/llama-*.aar` - llama.cpp Android AAR
+
+### Model Abstractions (models/ subfolder)
+- `app/src/main/java/com/dramebaz/app/ai/llm/models/LlmModel.kt` - Strategy interface for all LLM models
+- `app/src/main/java/com/dramebaz/app/ai/llm/models/LlmModelFactory.kt` - Factory for creating model instances
+- `app/src/main/java/com/dramebaz/app/ai/llm/models/Qwen3ModelImpl.kt` - Adapter wrapping Qwen3Model
+- `app/src/main/java/com/dramebaz/app/ai/llm/models/LiteRtLmEngineImpl.kt` - Adapter wrapping LiteRtLmEngine
+
+### Prompts (prompts/ subfolder)
+- `app/src/main/java/com/dramebaz/app/ai/llm/prompts/ExtractionPrompts.kt` - Pass 1-3 character extraction prompts
+- `app/src/main/java/com/dramebaz/app/ai/llm/prompts/AnalysisPrompts.kt` - Chapter/extended analysis prompts
+- `app/src/main/java/com/dramebaz/app/ai/llm/prompts/StoryPrompts.kt` - Story generation, key moments, relationships prompts
+
+### Design Patterns Applied
+- **Strategy Pattern**: `LlmModel` interface allows different model implementations to be used interchangeably
+- **Factory Pattern**: `LlmModelFactory` creates appropriate model instances based on device capabilities
+- **Adapter Pattern**: `Qwen3ModelImpl` and `LiteRtLmEngineImpl` wrap existing implementations
+- **Facade Pattern**: `LlmService` provides a simplified interface to the LLM subsystem

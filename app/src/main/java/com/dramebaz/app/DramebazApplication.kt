@@ -6,7 +6,7 @@ import com.dramebaz.app.audio.SegmentAudioGenerator
 import com.dramebaz.app.data.audio.PageAudioStorage
 import com.dramebaz.app.data.db.createAppDatabase
 import com.dramebaz.app.data.db.AppDatabase
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.repositories.BookRepository
 import com.dramebaz.app.domain.usecases.AnalysisQueueManager
 import com.dramebaz.app.domain.usecases.GetRecapUseCase
@@ -49,7 +49,7 @@ class DramebazApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         AppLogger.i(tag, "Application onCreate() - Initializing Dramebaz")
-        QwenStub.setApplicationContext(applicationContext)
+        LlmService.setApplicationContext(applicationContext)
         // TTS is loaded by SplashActivity; LLM (ONNX) initializes lazily on first use.
 
         // Initialize analysis queue manager for auto-analysis after import

@@ -830,9 +830,12 @@
   "pending_implementations": [],
   "notes": {
     "llm_integration": "Qwen3-1.7B-Q4-ONNX model integrated with ONNX Runtime GenAI. Model path: Downloads folder (Qwen3-1.7B-Q4-ONNX/)",
+    "llm_architecture": "LLM code refactored into modular structure: models/ (LlmModel interface, factory, adapters), prompts/ (extraction, analysis, story), LlmService facade. Design patterns: Strategy, Factory, Adapter, Facade.",
+    "llm_files": "Entry points: LlmService.kt (new facade), QwenStub.kt (backward compatible). Types in LlmTypes.kt. Prompts organized in prompts/ subfolder.",
     "tts_integration": "vits-piper-en_GB-vctk-medium model integrated with Sherpa-ONNX. Model files in app/src/main/assets/models/tts/sherpa/",
     "prompt_format": "Qwen prompts use chat format: <|im_start|>system<|im_end|><|im_start|>user<|im_end|><|im_start|>assistant",
     "json_schemas": "All JSON schemas match FullFeatured app Instructions.md specifications",
-    "testing": "Comprehensive instrumented tests added in app/src/androidTest/ for model loading, text analysis, TTS generation, and audio playback. Run with: ./gradlew connectedAndroidTest"
+    "testing": "Comprehensive instrumented tests added in app/src/androidTest/ for model loading, text analysis, TTS generation, and audio playback. Run with: ./gradlew connectedAndroidTest",
+    "utils_folder": "Utility code consolidated into utils/ folder (util/ folder removed). MemoryMonitor.kt moved to utils/."
   }
 }

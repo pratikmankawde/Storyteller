@@ -8,6 +8,7 @@ import com.dramebaz.app.ai.tts.VoiceProfileMapper
 import com.dramebaz.app.data.models.VoiceProfile
 import com.dramebaz.app.playback.engine.ProsodyController
 import com.dramebaz.app.data.models.Dialog
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -179,14 +180,14 @@ class PerformanceBenchmarks {
 
             // Warmup
             repeat(WARMUP_ITERATIONS) {
-                bookRepo.getAllBooks()
+                bookRepo.allBooks().first()
             }
 
             // Benchmark
             val times = mutableListOf<Long>()
             repeat(BENCHMARK_ITERATIONS) {
                 val start = System.currentTimeMillis()
-                bookRepo.getAllBooks()
+                bookRepo.allBooks().first()
                 val elapsed = System.currentTimeMillis() - start
                 times.add(elapsed)
             }
@@ -195,7 +196,7 @@ class PerformanceBenchmarks {
             val minTime = times.minOrNull() ?: 0L
             val maxTime = times.maxOrNull() ?: 0L
 
-            android.util.Log.i("Benchmark", "DB getAllBooks - Avg: ${avgTime}ms, Min: ${minTime}ms, Max: ${maxTime}ms")
+            android.util.Log.i("Benchmark", "DB allBooks - Avg: ${avgTime}ms, Min: ${minTime}ms, Max: ${maxTime}ms")
 
             assertTrue("DB query should complete in <${DB_QUERY_THRESHOLD_MS}ms (actual: ${avgTime}ms)",
                 avgTime < DB_QUERY_THRESHOLD_MS)
@@ -211,7 +212,7 @@ class PerformanceBenchmarks {
 
         // Warmup
         repeat(WARMUP_ITERATIONS) {
-            inputValidator.isValidStoryPrompt(testPrompt)
+            inputValidator.validateStoryPrompt(testPrompt)
             inputValidator.sanitizeLlmPrompt(testPrompt)
             inputValidator.sanitizeForTts(testPrompt)
         }
@@ -220,7 +221,7 @@ class PerformanceBenchmarks {
         val times = mutableListOf<Long>()
         repeat(BENCHMARK_ITERATIONS) {
             val start = System.nanoTime()
-            inputValidator.isValidStoryPrompt(testPrompt)
+            inputValidator.validateStoryPrompt(testPrompt)
             inputValidator.sanitizeLlmPrompt(testPrompt)
             inputValidator.sanitizeForTts(testPrompt)
             val elapsed = (System.nanoTime() - start) / 1_000_000

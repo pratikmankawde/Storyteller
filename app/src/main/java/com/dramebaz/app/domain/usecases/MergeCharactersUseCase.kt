@@ -1,7 +1,7 @@
 package com.dramebaz.app.domain.usecases
 
 import android.content.Context
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.utils.AppLogger
 import com.dramebaz.app.ai.tts.SpeakerMatcher
 import com.dramebaz.app.data.db.Character
@@ -67,12 +67,11 @@ $characterJsonSnippets
 
 Produce a merged global character list."""
 
-            // Use Qwen to merge - try using generateStory for structured output
+            // Use LLM to merge - try using generateStory for structured output
             val response = try {
                 // Try to get structured JSON response
-                val qwenModel = com.dramebaz.app.ai.llm.QwenStub
                 // Use extendedAnalysisJson as it can handle structured prompts
-                qwenModel.extendedAnalysisJson(prompt)
+                LlmService.extendedAnalysisJson(prompt)
             } catch (e: Exception) {
                 AppLogger.w(tag, "Error calling Qwen for merging", e)
                 null

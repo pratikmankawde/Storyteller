@@ -1,7 +1,7 @@
 package com.dramebaz.app.domain.usecases
 
 import android.content.Context
-import com.dramebaz.app.ai.llm.QwenStub
+import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.audio.SegmentAudioGenerator
 import com.dramebaz.app.data.db.AppDatabase
 import com.dramebaz.app.data.db.Chapter
@@ -143,10 +143,10 @@ object AnalysisQueueManager {
         updateStatus(bookId, AnalysisStatus(AnalysisState.ANALYZING, 30, "Analyzing chapter..."))
 
         // Use stub-only analysis to avoid native crashes during background processing
-        val resp = QwenStub.analyzeChapterStubOnly(chapter.body)
+        val resp = LlmService.analyzeChapterStubOnly(chapter.body)
         updateStatus(bookId, AnalysisStatus(AnalysisState.ANALYZING, 60, "Extracting themes..."))
 
-        val extendedJson = QwenStub.extendedAnalysisJsonStubOnly(chapter.body)
+        val extendedJson = LlmService.extendedAnalysisJsonStubOnly(chapter.body)
         updateStatus(bookId, AnalysisStatus(AnalysisState.ANALYZING, 80, "Saving results..."))
 
         repo.updateChapter(chapter.copy(
