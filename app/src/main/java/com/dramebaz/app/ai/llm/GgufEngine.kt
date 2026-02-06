@@ -207,11 +207,13 @@ class GgufEngine(private val context: Context, private val externalModelPath: St
      * Generate a response from the model given system and user prompts.
      * This is the public API for workflow classes.
      *
+     * Enhanced with comprehensive error handling to catch and log native crashes.
+     *
      * @param systemPrompt System prompt that sets context/role for the model
      * @param userPrompt User prompt with the actual request
      * @param maxTokens Maximum tokens to generate
      * @param temperature Sampling temperature (0.0 = deterministic, 1.0+ = creative)
-     * @return Generated text response
+     * @return Generated text response, or empty string on error
      */
     suspend fun generateWithPrompts(
         systemPrompt: String,
@@ -219,30 +221,94 @@ class GgufEngine(private val context: Context, private val externalModelPath: St
         maxTokens: Int = 1024,
         temperature: Float = 0.7f
     ): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        if (!modelLoaded) return@withContext ""
-        val prompt = buildChatPrompt(systemPrompt, userPrompt)
-        generateResponse(prompt, maxTokens, temperature, jsonMode = false)
+        if (!modelLoaded) {
+            LlmErrorHandler.logError(
+                category = LlmErrorHandler.ErrorCategory.MODEL_NOT_LOADED,
+                operation = "GgufEngine.generateWithPrompts",
+                message = "Model not loaded",
+                inputText = userPrompt
+            )
+            return@withContext ""
+        }
+
+        return@withContext LlmErrorHandler.safeExecute(
+            operation = "GgufEngine.generateWithPrompts",
+            inputText = userPrompt,
+            defaultValue = ""
+        ) {
+            val prompt = buildChatPrompt(systemPrompt, userPrompt)
+            generateResponse(prompt, maxTokens, temperature, jsonMode = false)
+        }
     }
 
     // ==================== Private Inference ====================
 
+    /**
+     * Core inference method with comprehensive error handling.
+     * Wraps the native LlamaNative.generate() call with:
+     * - Input sanitization to prevent native crashes
+     * - Pre/post inference logging for debugging
+     * - Detailed error categorization and logging
+     */
     private fun generateResponse(prompt: String, maxTokens: Int, temperature: Float, jsonMode: Boolean = true): String {
         if (!modelLoaded || nativeHandle == 0L) {
-            AppLogger.w(TAG, "generateResponse: model not loaded or invalid handle")
+            LlmErrorHandler.logError(
+                category = LlmErrorHandler.ErrorCategory.MODEL_NOT_LOADED,
+                operation = "GgufEngine.generateResponse",
+                message = "Model not loaded or invalid handle (handle=$nativeHandle, loaded=$modelLoaded)",
+                inputText = prompt
+            )
             return ""
         }
+
+        // Sanitize input to prevent native crashes from malformed text
+        val sanitizedPrompt = LlmErrorHandler.sanitizeInput(prompt, maxLength = 50_000)
+        if (sanitizedPrompt == null) {
+            LlmErrorHandler.logError(
+                category = LlmErrorHandler.ErrorCategory.INVALID_INPUT,
+                operation = "GgufEngine.generateResponse",
+                message = "Invalid or empty input after sanitization",
+                inputText = prompt
+            )
+            return ""
+        }
+
+        val t = if (jsonMode) temperature.coerceIn(0f, 0.2f) else temperature
+
+        // Log pre-inference for debugging native crashes
+        LlmErrorHandler.logPreInference(
+            operation = "GgufEngine.generateResponse",
+            inputLength = sanitizedPrompt.length,
+            maxTokens = maxTokens,
+            temperature = t,
+            additionalInfo = mapOf(
+                "jsonMode" to jsonMode,
+                "nativeHandle" to nativeHandle
+            )
+        )
+
+        val startMs = System.currentTimeMillis()
         return try {
-            val t = if (jsonMode) temperature.coerceIn(0f, 0.2f) else temperature
-            val promptLen = prompt.length
-            AppLogger.d(TAG, "generateResponse: starting LLM call (prompt=${promptLen} chars, maxTokens=$maxTokens, temp=$t)")
-            val startMs = System.currentTimeMillis()
-            val response = LlamaNative.generate(nativeHandle, prompt, maxTokens, t)
+            val response = LlamaNative.generate(nativeHandle, sanitizedPrompt, maxTokens, t)
             val elapsedMs = System.currentTimeMillis() - startMs
-            val responseLen = response?.length ?: 0
-            AppLogger.d(TAG, "generateResponse: LLM completed in ${elapsedMs}ms (response=${responseLen} chars)")
+
+            LlmErrorHandler.logPostInference(
+                operation = "GgufEngine.generateResponse",
+                outputLength = response?.length ?: 0,
+                durationMs = elapsedMs
+            )
+
             response ?: ""
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "Generate error", e)
+        } catch (e: Throwable) {
+            val elapsedMs = System.currentTimeMillis() - startMs
+            val category = LlmErrorHandler.categorizeError(e)
+            LlmErrorHandler.logError(
+                category = category,
+                operation = "GgufEngine.generateResponse",
+                message = "Native inference error after ${elapsedMs}ms: ${e.message}",
+                throwable = e,
+                inputText = sanitizedPrompt
+            )
             ""
         }
     }

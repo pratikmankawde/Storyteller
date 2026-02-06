@@ -336,6 +336,8 @@ User's additional direction: """
      * Generate a response from the model using async streaming (sendMessageAsync).
      * Uses config for topK/topP; temperature can be overridden per call.
      * Logs total generation time for metrics.
+     *
+     * Enhanced with comprehensive error handling to catch and log native crashes.
      */
     suspend fun generate(
         systemPrompt: String,
@@ -344,7 +346,24 @@ User's additional direction: """
         temperature: Float = (getSelectedModelEntry()?.defaultConfig?.temperature?.toFloat() ?: 0.6f)
     ): String = withContext(Dispatchers.IO) {
         if (!isInitialized || engine == null) {
-            AppLogger.w(TAG, "Engine not initialized")
+            LlmErrorHandler.logError(
+                category = LlmErrorHandler.ErrorCategory.MODEL_NOT_LOADED,
+                operation = "LiteRtLmEngine.generate",
+                message = "Engine not initialized",
+                inputText = userPrompt
+            )
+            return@withContext ""
+        }
+
+        // Sanitize input to prevent native crashes from malformed text
+        val sanitizedPrompt = LlmErrorHandler.sanitizeInput(userPrompt, maxLength = 50_000)
+        if (sanitizedPrompt == null) {
+            LlmErrorHandler.logError(
+                category = LlmErrorHandler.ErrorCategory.INVALID_INPUT,
+                operation = "LiteRtLmEngine.generate",
+                message = "Invalid or empty input after sanitization",
+                inputText = userPrompt
+            )
             return@withContext ""
         }
 
@@ -362,18 +381,41 @@ User's additional direction: """
             samplerConfig = samplerConfig
         )
 
+        // Log pre-inference for debugging native crashes
+        LlmErrorHandler.logPreInference(
+            operation = "LiteRtLmEngine.generate",
+            inputLength = sanitizedPrompt.length,
+            maxTokens = maxTokens,
+            temperature = temperature,
+            additionalInfo = mapOf(
+                "backend" to (chosenBackend?.name ?: "unknown"),
+                "systemPromptLen" to systemPrompt.length
+            )
+        )
+
         val t0 = System.nanoTime()
         try {
             engine!!.createConversation(conversationConfig).use { conversation ->
-                sendMessageAsyncAndCollect(conversation, userPrompt)
+                sendMessageAsyncAndCollect(conversation, sanitizedPrompt)
             }.also { response ->
                 val elapsedMs = (System.nanoTime() - t0) / 1_000_000
-                AppLogger.d(TAG, "generate() took ${elapsedMs}ms, response length=${response.length}")
+                LlmErrorHandler.logPostInference(
+                    operation = "LiteRtLmEngine.generate",
+                    outputLength = response.length,
+                    durationMs = elapsedMs
+                )
                 response
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             val elapsedMs = (System.nanoTime() - t0) / 1_000_000
-            AppLogger.e(TAG, "Error generating response after ${elapsedMs}ms", e)
+            val category = LlmErrorHandler.categorizeError(e)
+            LlmErrorHandler.logError(
+                category = category,
+                operation = "LiteRtLmEngine.generate",
+                message = "Error after ${elapsedMs}ms: ${e.message}",
+                throwable = e,
+                inputText = sanitizedPrompt
+            )
             ""
         }
     }
@@ -381,21 +423,51 @@ User's additional direction: """
     /**
      * Uses sendMessageAsync with MessageCallback and collects full response via suspendCancellableCoroutine.
      * Note: LiteRT-LM API requires Message.of() wrapper for the user prompt string.
+     *
+     * Enhanced with error logging in the callback to capture native errors.
      */
     private suspend fun sendMessageAsyncAndCollect(conversation: Conversation, userPrompt: String): String =
         suspendCancellableCoroutine { cont ->
             val sb = StringBuilder()
-            conversation.sendMessageAsync(Message.of(userPrompt), object : MessageCallback {
-                override fun onMessage(message: Message) {
-                    sb.append(message.toString())
-                }
-                override fun onDone() {
-                    if (cont.isActive) cont.resume(sb.toString())
-                }
-                override fun onError(throwable: Throwable) {
-                    if (cont.isActive) cont.resumeWithException(throwable)
-                }
-            })
+            var tokenCount = 0
+            try {
+                conversation.sendMessageAsync(Message.of(userPrompt), object : MessageCallback {
+                    override fun onMessage(message: Message) {
+                        try {
+                            sb.append(message.toString())
+                            tokenCount++
+                        } catch (e: Throwable) {
+                            // Log but don't crash - native callback errors
+                            AppLogger.e(TAG, "Error in onMessage callback (token $tokenCount)", e)
+                        }
+                    }
+                    override fun onDone() {
+                        AppLogger.d(TAG, "sendMessageAsync completed: $tokenCount tokens received")
+                        if (cont.isActive) cont.resume(sb.toString())
+                    }
+                    override fun onError(throwable: Throwable) {
+                        // Log the error with full context before resuming with exception
+                        LlmErrorHandler.logError(
+                            category = LlmErrorHandler.categorizeError(throwable),
+                            operation = "LiteRtLmEngine.sendMessageAsync.onError",
+                            message = "Callback error after $tokenCount tokens: ${throwable.message}",
+                            throwable = throwable,
+                            inputText = userPrompt.take(500)
+                        )
+                        if (cont.isActive) cont.resumeWithException(throwable)
+                    }
+                })
+            } catch (e: Throwable) {
+                // Catch any error during sendMessageAsync setup (before callbacks)
+                LlmErrorHandler.logError(
+                    category = LlmErrorHandler.categorizeError(e),
+                    operation = "LiteRtLmEngine.sendMessageAsync.setup",
+                    message = "Error setting up async message: ${e.message}",
+                    throwable = e,
+                    inputText = userPrompt.take(500)
+                )
+                if (cont.isActive) cont.resumeWithException(e)
+            }
         }
 
     // ==================== Two-Pass Character Analysis API ====================
@@ -831,20 +903,46 @@ $text
 
     /**
      * Send a multimodal message (using Contents) and collect the response.
+     * Enhanced with error logging for native crash debugging.
      */
     private suspend fun sendMessageAsyncAndCollectMultimodal(conversation: Conversation, contents: Contents): String =
         suspendCancellableCoroutine { cont ->
             val sb = StringBuilder()
-            conversation.sendMessageAsync(contents, object : MessageCallback {
-                override fun onMessage(msg: Message) {
-                    sb.append(msg.toString())
-                }
-                override fun onDone() {
-                    if (cont.isActive) cont.resume(sb.toString())
-                }
-                override fun onError(throwable: Throwable) {
-                    if (cont.isActive) cont.resumeWithException(throwable)
-                }
-            })
+            var tokenCount = 0
+            try {
+                conversation.sendMessageAsync(contents, object : MessageCallback {
+                    override fun onMessage(msg: Message) {
+                        try {
+                            sb.append(msg.toString())
+                            tokenCount++
+                        } catch (e: Throwable) {
+                            AppLogger.e(TAG, "Error in multimodal onMessage callback (token $tokenCount)", e)
+                        }
+                    }
+                    override fun onDone() {
+                        AppLogger.d(TAG, "Multimodal sendMessageAsync completed: $tokenCount tokens received")
+                        if (cont.isActive) cont.resume(sb.toString())
+                    }
+                    override fun onError(throwable: Throwable) {
+                        LlmErrorHandler.logError(
+                            category = LlmErrorHandler.categorizeError(throwable),
+                            operation = "LiteRtLmEngine.sendMessageAsyncMultimodal.onError",
+                            message = "Multimodal callback error after $tokenCount tokens: ${throwable.message}",
+                            throwable = throwable,
+                            inputText = "[multimodal content]"
+                        )
+                        if (cont.isActive) cont.resumeWithException(throwable)
+                    }
+                })
+            } catch (e: Throwable) {
+                LlmErrorHandler.logError(
+                    category = LlmErrorHandler.categorizeError(e),
+                    operation = "LiteRtLmEngine.sendMessageAsyncMultimodal.setup",
+                    message = "Error setting up multimodal async message: ${e.message}",
+                    throwable = e,
+                    inputText = "[multimodal content]"
+                )
+                if (cont.isActive) cont.resumeWithException(e)
+            }
         }
 }
