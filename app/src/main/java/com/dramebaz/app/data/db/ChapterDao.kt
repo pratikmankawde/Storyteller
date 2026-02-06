@@ -14,4 +14,11 @@ interface ChapterDao {
     @Query("SELECT * FROM chapters WHERE bookId = :bookId ORDER BY orderIndex") fun getByBookId(bookId: Long): Flow<List<Chapter>>
     @Query("SELECT * FROM chapters WHERE id = :id") suspend fun getById(id: Long): Chapter?
     @Query("DELETE FROM chapters WHERE bookId = :bookId") suspend fun deleteByBookId(bookId: Long)
+
+    /** CHAP-001: Delete a single chapter by ID */
+    @Query("DELETE FROM chapters WHERE id = :chapterId") suspend fun deleteChapter(chapterId: Long)
+
+    /** Get all chapters for a book as a list (for dialog counting). */
+    @Query("SELECT * FROM chapters WHERE bookId = :bookId ORDER BY orderIndex")
+    suspend fun getChaptersList(bookId: Long): List<Chapter>
 }

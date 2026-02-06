@@ -1,32 +1,28 @@
 package com.dramebaz.app.ui.library
 
-import android.app.ProgressDialog
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
-import com.dramebaz.app.ai.llm.CharacterAnalysisForegroundService
 import com.dramebaz.app.domain.usecases.AnalysisQueueManager
+import com.dramebaz.app.ui.reader.ChapterManagerDialog
 import com.dramebaz.app.utils.AppLogger
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.transition.MaterialContainerTransform
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
@@ -39,17 +35,16 @@ class BookDetailFragment : Fragment() {
     private val vm: BookDetailViewModel by viewModels { BookDetailViewModel.Factory(app.bookRepository) }
     private var bookId: Long = 0L
 
-    // AUG-025: Track analysis for cancellation
-    private var isCancelled = false
-    private var analysisStartTime = 0L
-
-    // Progress dialog for analysis (shown while foreground service is running)
-    private var progressDialog: ProgressDialog? = null
-    private var analysisReceiver: BroadcastReceiver? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         bookId = arguments?.getLong("bookId", 0L) ?: 0L
+
+        // UI-004: Set up shared element enter transition
+        sharedElementEnterTransition = MaterialContainerTransform().apply {
+            duration = 300L
+            scrimColor = Color.TRANSPARENT
+            setAllContainerColors(Color.TRANSPARENT)
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -60,6 +55,11 @@ class BookDetailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val title = view.findViewById<TextView>(R.id.title)
         val format = view.findViewById<TextView>(R.id.format)
+
+        // UI-004: Set up book cover for shared element transition
+        val bookCover = view.findViewById<ImageView>(R.id.book_cover)
+        val transitionName = "book_cover_$bookId"
+        ViewCompat.setTransitionName(bookCover, transitionName)
 
         // AUG-030: Chapter summaries card
         val chapterSummariesCard = view.findViewById<MaterialCardView>(R.id.chapter_summaries_card)
@@ -127,6 +127,44 @@ class BookDetailFragment : Fragment() {
                 onClick = {
                     findNavController().navigate(R.id.insightsFragment, Bundle().apply { putLong("bookId", bookId) })
                 }
+            ),
+            // CHAP-001: Chapter Manager action card
+            ActionCard(
+                id = "chapters",
+                title = "Chapters",
+                subtitle = "Manage chapters",
+                iconRes = android.R.drawable.ic_menu_sort_by_size,
+                onClick = {
+                    ChapterManagerDialog.newInstance(bookId)
+                        .show(childFragmentManager, "ChapterManagerDialog")
+                }
+            ),
+            // SUMMARY-002: Series Linking action card
+            ActionCard(
+                id = "series",
+                title = "Series",
+                subtitle = "Link to a series",
+                iconRes = android.R.drawable.ic_menu_my_calendar,
+                onClick = {
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val book = vm.getBook(bookId)
+                        book?.let {
+                            SeriesLinkingDialog.show(requireContext(), it) { seriesId, seriesOrder ->
+                                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                                    val updated = it.copy(
+                                        seriesId = if (seriesId == 0L) null else seriesId,
+                                        seriesOrder = if (seriesId == 0L) null else seriesOrder
+                                    )
+                                    app.bookRepository.updateBook(updated)
+                                    withContext(Dispatchers.Main) {
+                                        val msg = if (seriesId == 0L) "Removed from series" else "Linked to series"
+                                        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             )
         )
 
@@ -138,43 +176,28 @@ class BookDetailFragment : Fragment() {
             removeDuration = 300
         }
 
-        // Analyse Chapters button - initially disabled until ready
+        // AUTO-ANALYSIS: Analysis status button - shows current analysis state
+        // Since analysis is now automatic after import, this button shows status
+        // and allows re-analysis if needed
         val btnAnalyze = view.findViewById<Button>(R.id.btn_analyze)
         btnAnalyze?.isEnabled = false
         btnAnalyze?.alpha = 0.5f
         btnAnalyze?.text = "Loading..."
 
-        // Check readiness: chapters loaded + TTS ready (LLM uses stub fallback if not loaded)
+        // Load initial book status and check analysis state
         viewLifecycleOwner.lifecycleScope.launch {
+            val book = vm.getBook(bookId)
             val chapters = app.bookRepository.chapters(bookId).first()
             val hasChapters = chapters.isNotEmpty()
-            val ttsReady = app.ttsEngine.isInitialized()
 
-            AppLogger.d("BookDetailFragment", "Readiness check: hasChapters=$hasChapters (${chapters.size}), ttsReady=$ttsReady")
-
-            if (hasChapters && ttsReady) {
-                btnAnalyze?.isEnabled = true
-                btnAnalyze?.alpha = 1.0f
-                btnAnalyze?.text = "Analyse Chapters"
+            if (book != null) {
+                updateAnalyzeButtonFromBookState(btnAnalyze, book, chapters.size)
             } else if (!hasChapters) {
                 btnAnalyze?.text = "No chapters"
-            } else {
-                btnAnalyze?.text = "Loading TTS..."
-                // Keep checking until TTS is ready
-                launch {
-                    while (!app.ttsEngine.isInitialized()) {
-                        kotlinx.coroutines.delay(500)
-                    }
-                    if (app.bookRepository.chapters(bookId).first().isNotEmpty()) {
-                        btnAnalyze?.isEnabled = true
-                        btnAnalyze?.alpha = 1.0f
-                        btnAnalyze?.text = "Analyse Chapters"
-                    }
-                }
             }
         }
 
-        // Observe analysis queue status for this book (auto-triggered after import)
+        // Observe live analysis queue status for this book
         viewLifecycleOwner.lifecycleScope.launch {
             AnalysisQueueManager.analysisStatus.collect { statusMap ->
                 val status = statusMap[bookId] ?: return@collect
@@ -185,17 +208,22 @@ class BookDetailFragment : Fragment() {
                         btnAnalyze?.alpha = 0.7f
                     }
                     AnalysisQueueManager.AnalysisState.ANALYZING -> {
-                        btnAnalyze?.text = "Analyzing (${status.progress}%)..."
+                        val chapterInfo = if (status.totalChapters > 0) {
+                            " (${status.analyzedChapters}/${status.totalChapters})"
+                        } else {
+                            " (${status.progress}%)"
+                        }
+                        btnAnalyze?.text = "Analyzing$chapterInfo..."
                         btnAnalyze?.isEnabled = false
                         btnAnalyze?.alpha = 0.7f
                     }
                     AnalysisQueueManager.AnalysisState.COMPLETE -> {
-                        btnAnalyze?.text = "Re-analyze Chapters"
+                        btnAnalyze?.text = "✓ Analysis Complete"
                         btnAnalyze?.isEnabled = true
                         btnAnalyze?.alpha = 1.0f
                     }
                     AnalysisQueueManager.AnalysisState.FAILED -> {
-                        btnAnalyze?.text = "Analysis Failed - Retry"
+                        btnAnalyze?.text = "Analysis Failed - Tap to Retry"
                         btnAnalyze?.isEnabled = true
                         btnAnalyze?.alpha = 1.0f
                     }
@@ -203,136 +231,34 @@ class BookDetailFragment : Fragment() {
             }
         }
 
+        // Button click: Re-enqueue for analysis or show current status
         btnAnalyze?.setOnClickListener {
-            val ctx = context ?: return@setOnClickListener
-            val appInstance = ctx.applicationContext as? DramebazApplication ?: return@setOnClickListener
+            viewLifecycleOwner.lifecycleScope.launch {
+                val book = vm.getBook(bookId) ?: return@launch
+                val analysisState = book.getAnalysisState()
 
-            // Reset cancellation flag and start time
-            isCancelled = false
-            analysisStartTime = System.currentTimeMillis()
-
-            // Show progress dialog
-            progressDialog = ProgressDialog(ctx).apply {
-                setMessage("Preparing…")
-                setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-                setIndeterminate(false)
-                max = 100
-                progress = 0
-                setProgressNumberFormat("%1d / %2d")
-                setCancelable(false)
-                setButton(ProgressDialog.BUTTON_NEGATIVE, "Cancel") { dialog, _ ->
-                    isCancelled = true
-                    // Send cancel intent to foreground service
-                    val cancelIntent = Intent(ctx, CharacterAnalysisForegroundService::class.java).apply {
-                        action = CharacterAnalysisForegroundService.ACTION_CANCEL
+                when (analysisState) {
+                    com.dramebaz.app.data.db.AnalysisState.COMPLETED -> {
+                        // Already analyzed - offer to view characters
+                        Toast.makeText(requireContext(),
+                            "All chapters analyzed! View Characters or Insights for results.",
+                            Toast.LENGTH_SHORT).show()
                     }
-                    ctx.startService(cancelIntent)
-                    dialog.dismiss()
-                    Toast.makeText(ctx, "Analysis cancelled", Toast.LENGTH_SHORT).show()
-                }
-                show()
-            }
-
-            // Register broadcast receiver for progress and completion updates
-            registerAnalysisReceiver(ctx)
-
-            // Load chapters and start foreground service
-            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    val chapters = appInstance.bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
-                    if (chapters.isEmpty()) {
-                        withContext(Dispatchers.Main) {
-                            if (isAdded) {
-                                progressDialog?.dismiss()
-                                unregisterAnalysisReceiver(ctx)
-                                Toast.makeText(ctx, "No chapters found in this book", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                        return@launch
+                    com.dramebaz.app.data.db.AnalysisState.FAILED,
+                    com.dramebaz.app.data.db.AnalysisState.CANCELLED -> {
+                        // Failed/cancelled - re-enqueue
+                        Toast.makeText(requireContext(), "Re-starting analysis...", Toast.LENGTH_SHORT).show()
+                        AnalysisQueueManager.enqueueBook(bookId)
                     }
-
-                    // Determine which chapter to analyze:
-                    // 1. Check reading session to see if user has started this book
-                    // 2. If reading, analyze current chapter (or next unanalyzed)
-                    // 3. If not reading, analyze first unanalyzed chapter
-                    val readingSession = app.db.readingSessionDao().getCurrent()
-                    val chapterToAnalyze = if (readingSession != null && readingSession.bookId == bookId) {
-                        // User is reading this book - find the chapter they're on or next unanalyzed
-                        val currentChapter = chapters.find { it.id == readingSession.chapterId }
-                        if (currentChapter != null && currentChapter.fullAnalysisJson.isNullOrBlank()) {
-                            // Current chapter needs analysis
-                            currentChapter
-                        } else {
-                            // Current chapter analyzed, find next unanalyzed
-                            val currentIdx = chapters.indexOfFirst { it.id == readingSession.chapterId }
-                            chapters.drop(currentIdx + 1).firstOrNull { it.fullAnalysisJson.isNullOrBlank() }
-                                ?: chapters.firstOrNull { it.fullAnalysisJson.isNullOrBlank() }
-                        }
-                    } else {
-                        // User hasn't started reading - find first unanalyzed chapter
-                        chapters.firstOrNull { it.fullAnalysisJson.isNullOrBlank() }
+                    com.dramebaz.app.data.db.AnalysisState.ANALYZING -> {
+                        Toast.makeText(requireContext(),
+                            "Analysis in progress: ${book.analyzedChapterCount}/${book.totalChaptersToAnalyze} chapters",
+                            Toast.LENGTH_SHORT).show()
                     }
-
-                    if (chapterToAnalyze == null) {
-                        withContext(Dispatchers.Main) {
-                            if (isAdded) {
-                                progressDialog?.dismiss()
-                                unregisterAnalysisReceiver(ctx)
-                                Toast.makeText(ctx, "All chapters are already analyzed!", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                        return@launch
-                    }
-
-                    fun normalizeChapterBody(body: String): String =
-                        body.trim().replace(Regex("\n{3,}"), "\n\n").trim().ifBlank { " " }
-                    val chapter = chapterToAnalyze.copy(body = normalizeChapterBody(chapterToAnalyze.body))
-                    val chapterIndex = chapters.indexOfFirst { it.id == chapter.id }
-
-                    val wordCount = chapter.body.split("\\s+".toRegex()).size
-                    val charLen = chapter.body.length
-                    val estimatedMinutes = (wordCount / 500).coerceAtLeast(1)
-
-                    withContext(Dispatchers.Main) {
-                        if (isAdded && !isCancelled) {
-                            progressDialog?.apply {
-                                max = 100
-                                progress = 0
-                                setMessage("Starting Character Analysis…\n" +
-                                    "Chapter: ${chapter.title}\n" +
-                                    "$wordCount words, $charLen chars\n" +
-                                    "~$estimatedMinutes min (runs in background)")
-                            }
-                        }
-                    }
-
-                    AppLogger.i("BookDetailFragment", "Starting foreground service for analysis: ${chapter.title}")
-
-                    // Start the foreground service
-                    val serviceIntent = Intent(ctx, CharacterAnalysisForegroundService::class.java).apply {
-                        putExtra(CharacterAnalysisForegroundService.EXTRA_BOOK_ID, bookId)
-                        putExtra(CharacterAnalysisForegroundService.EXTRA_CHAPTER_TEXT, chapter.body)
-                        putExtra(CharacterAnalysisForegroundService.EXTRA_CHAPTER_INDEX, chapterIndex.coerceAtLeast(0))
-                        putExtra(CharacterAnalysisForegroundService.EXTRA_TOTAL_CHAPTERS, chapters.size)
-                        putExtra(CharacterAnalysisForegroundService.EXTRA_CHAPTER_TITLE, chapter.title)
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            ctx.startForegroundService(serviceIntent)
-                        } else {
-                            ctx.startService(serviceIntent)
-                        }
-                    }
-
-                } catch (e: Exception) {
-                    AppLogger.e("BookDetailFragment", "Failed to start analysis service", e)
-                    withContext(Dispatchers.Main) {
-                        if (isAdded) {
-                            progressDialog?.dismiss()
-                            unregisterAnalysisReceiver(ctx)
-                            Toast.makeText(ctx, "Analysis failed: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
+                    com.dramebaz.app.data.db.AnalysisState.PENDING -> {
+                        Toast.makeText(requireContext(),
+                            "Analysis is queued and will start soon...",
+                            Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -340,99 +266,43 @@ class BookDetailFragment : Fragment() {
     }
 
     /**
-     * Register broadcast receiver for analysis progress and completion.
+     * AUTO-ANALYSIS: Update the analyze button based on book's persisted analysis state.
      */
-    private fun registerAnalysisReceiver(ctx: Context) {
-        AppLogger.i("BookDetailFragment", "📡 Registering analysis broadcast receiver...")
-        analysisReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                AppLogger.d("BookDetailFragment", "📥 Broadcast received: action=${intent?.action}")
-                when (intent?.action) {
-                    CharacterAnalysisForegroundService.ACTION_PROGRESS -> {
-                        val message = intent.getStringExtra(CharacterAnalysisForegroundService.EXTRA_PROGRESS_MESSAGE) ?: ""
-                        val percent = intent.getIntExtra(CharacterAnalysisForegroundService.EXTRA_PROGRESS_PERCENT, 0)
-                        AppLogger.d("BookDetailFragment", "   Progress: $percent% - $message")
-                        if (isAdded && !isCancelled) {
-                            // Ensure UI update happens on main thread
-                            activity?.runOnUiThread {
-                                progressDialog?.let { dialog ->
-                                    if (dialog.isShowing) {
-                                        dialog.progress = percent
-                                        dialog.setMessage(message)
-                                        AppLogger.d("BookDetailFragment", "   ✅ Dialog updated: $percent% - ${message.take(50)}...")
-                                    } else {
-                                        AppLogger.w("BookDetailFragment", "   Dialog not showing, skipping update")
-                                    }
-                                } ?: AppLogger.w("BookDetailFragment", "   progressDialog is null")
-                            }
-                        } else {
-                            AppLogger.w("BookDetailFragment", "   Cannot update UI: isAdded=$isAdded, isCancelled=$isCancelled")
-                        }
-                    }
-                    CharacterAnalysisForegroundService.ACTION_COMPLETE -> {
-                        val success = intent.getBooleanExtra(CharacterAnalysisForegroundService.EXTRA_SUCCESS, false)
-                        val characterCount = intent.getIntExtra(CharacterAnalysisForegroundService.EXTRA_CHARACTER_COUNT, 0)
-                        val errorMessage = intent.getStringExtra(CharacterAnalysisForegroundService.EXTRA_ERROR_MESSAGE)
-                        AppLogger.i("BookDetailFragment", "🏁 COMPLETE broadcast: success=$success, count=$characterCount, error=$errorMessage")
+    private fun updateAnalyzeButtonFromBookState(btnAnalyze: Button?, book: com.dramebaz.app.data.db.Book, totalChapters: Int) {
+        if (btnAnalyze == null) return
 
-                        if (isAdded) {
-                            AppLogger.d("BookDetailFragment", "   Dismissing progress dialog and unregistering receiver")
-                            progressDialog?.dismiss()
-                            unregisterAnalysisReceiver(ctx)
-
-                            if (success) {
-                                val totalTimeSec = (System.currentTimeMillis() - analysisStartTime) / 1000
-                                AppLogger.i("BookDetailFragment", "✅ Analysis SUCCESS in ${totalTimeSec}s, $characterCount characters")
-                                Toast.makeText(ctx,
-                                    "Analysis complete in ${totalTimeSec}s!\n" +
-                                    "Found $characterCount characters with voice profiles.\n" +
-                                    "Use Insights tab to analyze themes.",
-                                    Toast.LENGTH_LONG).show()
-
-                                if (characterCount > 0) {
-                                    AppLogger.d("BookDetailFragment", "   Navigating to characters screen")
-                                    val bundle = Bundle().apply { putLong("bookId", bookId) }
-                                    findNavController().navigate(R.id.action_bookDetail_to_characters, bundle)
-                                }
-                            } else {
-                                val msg = errorMessage ?: "Unknown error"
-                                AppLogger.e("BookDetailFragment", "❌ Analysis FAILED: $msg")
-                                if (!isCancelled) {
-                                    Toast.makeText(ctx, "Analysis failed: $msg", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        } else {
-                            AppLogger.w("BookDetailFragment", "   Fragment not added, cannot handle completion")
-                        }
-                    }
-                    else -> {
-                        AppLogger.w("BookDetailFragment", "   Unknown action: ${intent?.action}")
-                    }
+        when (book.getAnalysisState()) {
+            com.dramebaz.app.data.db.AnalysisState.PENDING -> {
+                btnAnalyze.text = "Analysis Pending..."
+                btnAnalyze.isEnabled = false
+                btnAnalyze.alpha = 0.7f
+            }
+            com.dramebaz.app.data.db.AnalysisState.ANALYZING -> {
+                val progress = if (book.totalChaptersToAnalyze > 0) {
+                    "${book.analyzedChapterCount}/${book.totalChaptersToAnalyze}"
+                } else {
+                    "${book.analysisProgress}%"
                 }
+                btnAnalyze.text = "Analyzing ($progress)..."
+                btnAnalyze.isEnabled = false
+                btnAnalyze.alpha = 0.7f
+            }
+            com.dramebaz.app.data.db.AnalysisState.COMPLETED -> {
+                btnAnalyze.text = "✓ Analysis Complete"
+                btnAnalyze.isEnabled = true
+                btnAnalyze.alpha = 1.0f
+            }
+            com.dramebaz.app.data.db.AnalysisState.FAILED -> {
+                btnAnalyze.text = "Analysis Failed - Tap to Retry"
+                btnAnalyze.isEnabled = true
+                btnAnalyze.alpha = 1.0f
+            }
+            com.dramebaz.app.data.db.AnalysisState.CANCELLED -> {
+                btnAnalyze.text = "Analysis Cancelled - Tap to Retry"
+                btnAnalyze.isEnabled = true
+                btnAnalyze.alpha = 1.0f
             }
         }
-
-        val filter = IntentFilter().apply {
-            addAction(CharacterAnalysisForegroundService.ACTION_PROGRESS)
-            addAction(CharacterAnalysisForegroundService.ACTION_COMPLETE)
-        }
-        ContextCompat.registerReceiver(ctx, analysisReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        AppLogger.i("BookDetailFragment", "✅ Analysis receiver registered for actions: ${filter.actionsIterator().asSequence().toList()}")
-    }
-
-    /**
-     * Unregister the analysis broadcast receiver.
-     */
-    private fun unregisterAnalysisReceiver(ctx: Context) {
-        analysisReceiver?.let {
-            try {
-                ctx.unregisterReceiver(it)
-                AppLogger.d("BookDetailFragment", "Analysis receiver unregistered")
-            } catch (e: Exception) {
-                // Receiver not registered
-            }
-        }
-        analysisReceiver = null
     }
 
     /**
@@ -599,14 +469,6 @@ class BookDetailFragment : Fragment() {
         }
 
         return container
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        // Clean up progress dialog and broadcast receiver
-        progressDialog?.dismiss()
-        progressDialog = null
-        context?.let { unregisterAnalysisReceiver(it) }
     }
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()

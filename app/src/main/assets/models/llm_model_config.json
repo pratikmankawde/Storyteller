@@ -5,6 +5,8 @@
       "displayName": "Gemma 3n E2B (int4)",
       "estimatedPeakMemoryInBytes": 4294967296,
       "skipMemoryCheck": true,
+      "llmSupportImage": true,
+      "llmSupportAudio": true,
       "defaultConfig": {
         "topK": 48,
         "topP": 0.9,
@@ -20,6 +22,81 @@
         "temperature": 0.35,
         "topP": 0.85,
         "maxTokens": 2100
+      }
+    },
+    {
+      "modelFileName": "gemma-3n-E4B-it-int4.litertlm",
+      "displayName": "Gemma 3n E4B (int4)",
+      "estimatedPeakMemoryInBytes": 5368709120,
+      "skipMemoryCheck": true,
+      "llmSupportImage": true,
+      "llmSupportAudio": true,
+      "defaultConfig": {
+        "topK": 64,
+        "topP": 0.95,
+        "temperature": 1,
+        "maxTokens": 4096,
+        "accelerators": "cpu,gpu"
+      }
+    },
+    {
+      "modelFileName": "gemma3-1b-it-int4.litertlm",
+      "displayName": "Gemma 3 1B (int4)",
+      "estimatedPeakMemoryInBytes": 629145600,
+      "skipMemoryCheck": true,
+      "llmSupportImage": false,
+      "llmSupportAudio": false,
+      "defaultConfig": {
+        "topK": 64,
+        "topP": 0.95,
+        "temperature": 1,
+        "maxTokens": 1024,
+        "accelerators": "gpu,cpu"
+      }
+    },
+    {
+      "modelFileName": "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+      "displayName": "Qwen 2.5 1.5B (q8)",
+      "estimatedPeakMemoryInBytes": 1717986918,
+      "skipMemoryCheck": true,
+      "llmSupportImage": false,
+      "llmSupportAudio": false,
+      "defaultConfig": {
+        "topK": 20,
+        "topP": 0.8,
+        "temperature": 0.7,
+        "maxTokens": 4096,
+        "accelerators": "gpu,cpu"
+      }
+    },
+    {
+      "modelFileName": "Phi-4-mini-instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+      "displayName": "Phi-4 Mini (q8)",
+      "estimatedPeakMemoryInBytes": 4194304000,
+      "skipMemoryCheck": true,
+      "llmSupportImage": false,
+      "llmSupportAudio": false,
+      "defaultConfig": {
+        "topK": 64,
+        "topP": 0.95,
+        "temperature": 1,
+        "maxTokens": 4096,
+        "accelerators": "gpu,cpu"
+      }
+    },
+    {
+      "modelFileName": "DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.litertlm",
+      "displayName": "DeepSeek R1 Qwen 1.5B (q8)",
+      "estimatedPeakMemoryInBytes": 1966080000,
+      "skipMemoryCheck": true,
+      "llmSupportImage": false,
+      "llmSupportAudio": false,
+      "defaultConfig": {
+        "topK": 64,
+        "topP": 0.95,
+        "temperature": 1,
+        "maxTokens": 4096,
+        "accelerators": "gpu,cpu"
       }
     }
   ],

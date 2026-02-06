@@ -216,6 +216,30 @@ class PageAudioStorage(private val context: Context) {
     }
 
     /**
+     * Delete all audio files for a book.
+     * Called when a book is deleted to clean up all associated audio.
+     * @return Number of files deleted
+     */
+    fun deleteAudioForBook(bookId: Long): Int {
+        val bookDir = File(rootDir, "book_$bookId")
+        if (!bookDir.exists()) {
+            AppLogger.d(tag, "No audio directory for book $bookId")
+            return 0
+        }
+
+        var deletedCount = 0
+        bookDir.walkTopDown().forEach { file ->
+            if (file.isFile && file.delete()) {
+                deletedCount++
+            }
+        }
+        // Delete the book directory and any empty subdirectories
+        bookDir.deleteRecursively()
+        AppLogger.i(tag, "Deleted $deletedCount audio files for book $bookId")
+        return deletedCount
+    }
+
+    /**
      * Get the relative path for a segment file (for storing in CharacterPageMapping.audioPath).
      */
     fun getSegmentRelativePath(

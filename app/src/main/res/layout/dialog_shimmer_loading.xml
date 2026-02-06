@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI-006: Shimmer Loading Dialog Layout
+     From NovelReaderWeb docs/UI.md - "LoadingShimmer"
+     Displays text-line shimmer effect with loading message. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/surface">
+
+    <!-- Loading Message -->
+    <TextView
+        android:id="@+id/shimmer_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textSize="16sp"
+        android:textColor="@color/text_primary"
+        android:textStyle="bold"
+        tools:text="Analyzing chapters..." />
+    
+    <!-- Progress Text (optional) -->
+    <TextView
+        android:id="@+id/shimmer_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:textSize="14sp"
+        android:textColor="@color/text_secondary"
+        android:visibility="gone"
+        tools:text="3 of 10 chapters"
+        tools:visibility="visible" />
+    
+    <!-- Shimmer Lines Container -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Title Line (80% width) -->
+        <com.dramebaz.app.ui.common.ShimmerView
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:layout_marginBottom="16dp"
+            android:layout_marginEnd="48dp" />
+        
+        <!-- Line 1 (100% width) -->
+        <com.dramebaz.app.ui.common.ShimmerView
+            android:layout_width="match_parent"
+            android:layout_height="14dp"
+            android:layout_marginBottom="10dp" />
+        
+        <!-- Line 2 (100% width) -->
+        <com.dramebaz.app.ui.common.ShimmerView
+            android:layout_width="match_parent"
+            android:layout_height="14dp"
+            android:layout_marginBottom="10dp" />
+        
+        <!-- Line 3 (70% width) -->
+        <com.dramebaz.app.ui.common.ShimmerView
+            android:layout_width="match_parent"
+            android:layout_height="14dp"
+            android:layout_marginBottom="16dp"
+            android:layout_marginEnd="80dp" />
+        
+        <!-- Line 4 (100% width) -->
+        <com.dramebaz.app.ui.common.ShimmerView
+            android:layout_width="match_parent"
+            android:layout_height="14dp"
+            android:layout_marginBottom="10dp" />
+        
+        <!-- Line 5 (55% width) -->
+        <com.dramebaz.app.ui.common.ShimmerView
+            android:layout_width="match_parent"
+            android:layout_height="14dp"
+            android:layout_marginEnd="120dp" />
+
+    </LinearLayout>
+
+</LinearLayout>
+

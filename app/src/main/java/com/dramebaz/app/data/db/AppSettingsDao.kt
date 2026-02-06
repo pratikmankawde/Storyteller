@@ -7,6 +7,6 @@ import androidx.room.Query
 
 @Dao
 interface AppSettingsDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE) fun put(settings: AppSettings): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(settings: AppSettings): Long
     @Query("SELECT value FROM app_settings WHERE key = :key") suspend fun get(key: String): String?
 }

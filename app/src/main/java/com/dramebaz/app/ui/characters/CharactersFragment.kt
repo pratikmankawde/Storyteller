@@ -20,8 +20,10 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * AUG-026: Character list with search and filtering
@@ -33,6 +35,7 @@ class CharactersFragment : Fragment() {
 
     // AUG-026: Full list and current filter state
     private var allCharacters: List<Character> = emptyList()
+    private var dialogCountsBySpeaker: Map<String, Int> = emptyMap()
     private var currentSearchQuery = ""
     private var currentSortMode = SortMode.NAME_ASC
 
@@ -60,7 +63,15 @@ class CharactersFragment : Fragment() {
                 override fun getSpanSize(position: Int): Int = 1
             }
         }
-        val adapter = CharacterAdapter { c -> findNavController().navigate(R.id.characterDetailFragment, Bundle().apply { putLong("characterId", c.id) }) }
+        val adapter = CharacterAdapter(
+            dialogCountsBySpeaker = { dialogCountsBySpeaker },
+            onItemClick = { c ->
+                // Narrator card is not clickable (id = -1)
+                if (c.id > 0) {
+                    findNavController().navigate(R.id.characterDetailFragment, Bundle().apply { putLong("characterId", c.id) })
+                }
+            }
+        )
         recycler.adapter = adapter
         recycler.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator().apply {
             addDuration = 300
@@ -89,6 +100,13 @@ class CharactersFragment : Fragment() {
             applyFilters(adapter, emptyState, recycler)
         }
 
+        // Load dialog counts from chapter analysis
+        viewLifecycleOwner.lifecycleScope.launch {
+            dialogCountsBySpeaker = withContext(Dispatchers.IO) {
+                vm.getDialogCountsBySpeaker(bookId)
+            }
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             vm.characters(bookId).collectLatest { characters ->
                 allCharacters = characters
@@ -97,9 +115,26 @@ class CharactersFragment : Fragment() {
         }
     }
 
+    /**
+     * Create a pseudo-character for Narrator to display in the list.
+     */
+    private fun createNarratorCharacter(): Character {
+        val narratorDialogCount = dialogCountsBySpeaker["narrator"] ?: 0
+        return Character(
+            id = -1,  // Special ID for Narrator (not in database)
+            bookId = bookId,
+            name = "Narrator",
+            traits = "Story narrator",
+            personalitySummary = "The voice that tells the story",
+            speakerId = 0  // Default narrator speaker ID
+        )
+    }
+
     // AUG-026: Apply search and sort filters
     private fun applyFilters(adapter: CharacterAdapter, emptyState: View, recycler: RecyclerView) {
-        var filtered = allCharacters
+        // Create list with Narrator at the top
+        val narratorCharacter = createNarratorCharacter()
+        var filtered = listOf(narratorCharacter) + allCharacters
 
         // Apply search filter
         if (currentSearchQuery.isNotBlank()) {
@@ -109,11 +144,24 @@ class CharactersFragment : Fragment() {
             }
         }
 
-        // Apply sort
+        // Apply sort (keep Narrator at top unless sorting by dialogs)
         filtered = when (currentSortMode) {
-            SortMode.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
-            SortMode.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
-            SortMode.DIALOG_COUNT -> filtered // Already sorted by importance from query
+            SortMode.NAME_ASC -> {
+                val narrator = filtered.find { it.id == -1L }
+                val others = filtered.filter { it.id != -1L }.sortedBy { it.name.lowercase() }
+                listOfNotNull(narrator) + others
+            }
+            SortMode.NAME_DESC -> {
+                val narrator = filtered.find { it.id == -1L }
+                val others = filtered.filter { it.id != -1L }.sortedByDescending { it.name.lowercase() }
+                listOfNotNull(narrator) + others
+            }
+            SortMode.DIALOG_COUNT -> {
+                // Sort all by dialog count (including Narrator)
+                filtered.sortedByDescending { c ->
+                    dialogCountsBySpeaker[c.name.lowercase()] ?: 0
+                }
+            }
         }
 
         adapter.submitList(filtered) {
@@ -124,7 +172,10 @@ class CharactersFragment : Fragment() {
     }
 }
 
-class CharacterAdapter(private val onItemClick: (Character) -> Unit) : RecyclerView.Adapter<CharacterAdapter.VH>() {
+class CharacterAdapter(
+    private val dialogCountsBySpeaker: () -> Map<String, Int>,
+    private val onItemClick: (Character) -> Unit
+) : RecyclerView.Adapter<CharacterAdapter.VH>() {
     private var list = listOf<Character>()
 
     fun submitList(l: List<Character>, onComplete: (() -> Unit)? = null) {
@@ -156,8 +207,8 @@ class CharacterAdapter(private val onItemClick: (Character) -> Unit) : RecyclerV
         val hasVoiceWarning = c.personalitySummary.contains("⚠️") || c.personalitySummary.contains("inconsistenc", ignoreCase = true)
         holder.voiceWarningIcon?.visibility = if (hasVoiceWarning) View.VISIBLE else View.GONE
 
-        // Display dialog count if available
-        val dialogCount = getDialogCount(c.dialogsJson)
+        // Display dialog count from chapter analysis (primary source)
+        val dialogCount = dialogCountsBySpeaker()[c.name.lowercase()] ?: getDialogCountFromJson(c.dialogsJson)
         if (dialogCount > 0) {
             holder.dialogCount?.text = "$dialogCount dialog${if (dialogCount > 1) "s" else ""}"
             holder.dialogCount?.visibility = View.VISIBLE
@@ -165,22 +216,24 @@ class CharacterAdapter(private val onItemClick: (Character) -> Unit) : RecyclerV
             holder.dialogCount?.visibility = View.GONE
         }
 
-        // Set up click listener with ripple effect
+        // Set up click listener with ripple effect (skip for Narrator pseudo-character)
         holder.itemView.setOnClickListener {
             onItemClick(c)
-            // Add click animation
-            holder.itemView.animate()
-                .scaleX(0.95f)
-                .scaleY(0.95f)
-                .setDuration(100)
-                .withEndAction {
-                    holder.itemView.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(100)
-                        .start()
-                }
-                .start()
+            // Add click animation only for real characters
+            if (c.id > 0) {
+                holder.itemView.animate()
+                    .scaleX(0.95f)
+                    .scaleY(0.95f)
+                    .setDuration(100)
+                    .withEndAction {
+                        holder.itemView.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(100)
+                            .start()
+                    }
+                    .start()
+            }
         }
 
         // Fade-in animation for items
@@ -195,9 +248,9 @@ class CharacterAdapter(private val onItemClick: (Character) -> Unit) : RecyclerV
     }
 
     /**
-     * Parse dialogsJson and return the count of dialogs.
+     * Parse dialogsJson and return the count of dialogs (fallback).
      */
-    private fun getDialogCount(dialogsJson: String?): Int {
+    private fun getDialogCountFromJson(dialogsJson: String?): Int {
         if (dialogsJson.isNullOrBlank()) return 0
         return try {
             val dialogs = Gson().fromJson(dialogsJson, Array<Any>::class.java)

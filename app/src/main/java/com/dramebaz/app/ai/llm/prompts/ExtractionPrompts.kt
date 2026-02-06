@@ -5,111 +5,123 @@ import com.google.gson.Gson
 /**
  * Centralized prompt templates for character and dialog extraction passes.
  * Separates prompt logic from model implementation for better maintainability.
+ *
+ * Token Budget (4096 total):
+ * - Pass-1: Prompt+Input 3500, Output 100
+ * - Pass-2: Prompt+Input 1800, Output 2200
+ * - Pass-3: Prompt+Input 2500, Output 1500
  */
 object ExtractionPrompts {
-    
+
     private val gson = Gson()
     private const val JSON_VALIDITY_REMINDER = "\nEnsure the JSON is valid and contains no trailing commas."
-    
-    // ==================== Pass-1: Character Name Extraction ====================
-    
-    val PASS1_SYSTEM_PROMPT = """You are a character name extraction engine. Extract ONLY character names that appear in the provided text."""
-    
-    fun buildPass1ExtractNamesPrompt(text: String, maxInputChars: Int = 10000): String {
-        val truncatedText = text.take(maxInputChars) + if (text.length > maxInputChars) "\n[...truncated]" else ""
-        return """STRICT RULES:
-- Extract ONLY proper names explicitly written in the text (e.g., "Harry Potter", "Hermione", "Mr. Dursley")
-- Do NOT include pronouns (he, she, they, etc.)
-- Do NOT include generic descriptions (the boy, the woman, the teacher)
-- Do NOT include group references (the family, the crowd, the students)
-- Do NOT include titles alone (Professor, Sir, Madam) unless used as the character's actual name
-- Do NOT infer or guess names not explicitly mentioned
-- Do NOT split full names: if "Harry Potter" appears, do NOT list "Potter" separately
-- Do NOT include names of characters who are only mentioned but not present/acting in the scene
-- Include a name only if the character speaks, acts, or is directly described in this specific page
 
-OUTPUT FORMAT (valid JSON only):
+    // ==================== Pass-1: Character Name Extraction (Per Page) ====================
+    // Token Budget: Prompt+Input 3500, Output 100
+
+    val PASS1_SYSTEM_PROMPT = """You are a character name extraction engine. Extract ONLY character names that appear in the provided story text."""
+
+    /**
+     * Build Pass-1 prompt for character name extraction.
+     * Uses simplified prompt to maximize input text budget.
+     */
+    fun buildPass1ExtractNamesPrompt(text: String): String {
+        return """OUTPUT FORMAT (valid JSON only):
 {"characters": ["Name1", "Name2", "Name3"]}
 
 TEXT:
-$truncatedText
-$JSON_VALIDITY_REMINDER"""
+$text"""
+    }
+
+    /**
+     * Legacy method for backward compatibility.
+     */
+    fun buildPass1ExtractNamesPrompt(text: String, maxInputChars: Int = 10000): String {
+        val truncatedText = text.take(maxInputChars) + if (text.length > maxInputChars) "\n[...truncated]" else ""
+        return buildPass1ExtractNamesPrompt(truncatedText)
     }
     
-    // ==================== Pass-2: Dialog Extraction ====================
-    
-    val PASS2_SYSTEM_PROMPT = """You are a dialog extraction engine. Extract quoted speech and attribute it to the correct speaker. Output valid JSON only."""
-    
-    fun buildPass2ExtractDialogsPrompt(text: String, characterNames: List<String>, maxInputChars: Int = 10000): String {
+    // ==================== Pass-2: Dialog Extraction (For All Characters) ====================
+    // Token Budget: Prompt+Input 1800, Output 2200
+
+    val PASS2_SYSTEM_PROMPT = """You are a dialog extraction engine. Read the text sequentially and extract all the dialogs of the given characters in the story excerpt."""
+
+    /**
+     * Build Pass-2 prompt for dialog extraction.
+     * @param text The cleaned story text
+     * @param characterNames List of character names appearing on this page (from Pass-1)
+     */
+    fun buildPass2ExtractDialogsPrompt(text: String, characterNames: List<String>): String {
+        val characterNamesStr = characterNames.joinToString(", ")
+
+        return """Extract all dialogs for: $characterNamesStr
+
+OUTPUT FORMAT (valid JSON array):
+[{"<character_name>": "<dialog_text>"}]
+
+Example:
+[{"Harry": "I'm not going back"}, {"Hermione": "We need to study"}, {"Harry": "Later"}]
+
+TEXT:
+$text"""
+    }
+
+    /**
+     * Legacy method for backward compatibility.
+     */
+    fun buildPass2ExtractDialogsPrompt(text: String, characterNames: List<String>, maxInputChars: Int): String {
         val truncatedText = text.take(maxInputChars) + if (text.length > maxInputChars) "\n[...truncated]" else ""
-        val charactersWithNarrator = characterNames + listOf("Narrator")
-        val charactersJson = gson.toJson(charactersWithNarrator)
-        
-        return """CHARACTERS ON THIS PAGE: $charactersJson
+        return buildPass2ExtractDialogsPrompt(truncatedText, characterNames)
+    }
+    
+    // ==================== Pass-3: Voice Profile Suggestion ====================
+    // Token Budget: Prompt+Input 2500, Output 1500
 
-EXTRACTION RULES:
-1. DIALOGS - Extract text within quotation marks ("..." or '...'):
-   - Attribute each dialog to the nearest character name appearing BEFORE or AFTER the quote (within ~200 chars)
-   - Use attribution patterns: "said [Name]", "[Name] said", "[Name]:", "[Name] asked", "[Name] replied", "whispered", "shouted", "muttered", etc.
-   - If a pronoun (he/she/they) refers to a recently mentioned character, attribute to that character
-   - If speaker cannot be determined, use "Unknown"
+    val PASS3_SYSTEM_PROMPT = """You are a voice casting director. Suggest a voice profile for characters based ONLY on their depiction in the story."""
 
-2. NARRATOR TEXT - Extract descriptive prose between dialogs:
-   - Scene descriptions, action descriptions, internal thoughts (if not in quotes)
-   - Attribute narrator text to "Narrator"
-   - Keep narrator segments reasonably sized (1-3 sentences each)
+    /**
+     * Build Pass-3 prompt for voice profile suggestion.
+     * @param characterNames List of character names to generate profiles for
+     * @param dialogContext Sample dialogs/context for each character
+     */
+    fun buildPass3VoiceProfilePrompt(characterNames: List<String>, dialogContext: String): String {
+        val characterNamesStr = characterNames.joinToString(", ")
 
-3. EMOTION DETECTION - For each segment:
-   - Infer emotion: neutral, happy, sad, angry, surprised, fearful, excited, worried, curious, defiant
-   - Estimate intensity: 0.0 (very mild) to 1.0 (very intense)
-   - Use context clues: exclamation marks, word choice, described actions
+        return """Suggest voice profiles for: $characterNamesStr
 
-4. ORDERING - Maintain the order of appearance in the text
+VOICE PROFILE PARAMETERS (all values 0.5-1.5):
+- pitch: 0.5=very low, 1.0=normal, 1.5=very high
+- speed: 0.5=very slow, 1.0=normal, 1.5=very fast
+- energy: 0.5=calm/subdued, 1.0=normal, 1.5=very energetic
 
-OUTPUT FORMAT (valid JSON only):
+OUTPUT FORMAT (valid JSON):
 {
-  "dialogs": [
-    {"speaker": "Character Name", "text": "Exact quoted speech or narrator text", "emotion": "neutral", "intensity": 0.5},
-    {"speaker": "Narrator", "text": "Descriptive prose between dialogs", "emotion": "neutral", "intensity": 0.3}
+  "characters": [
+    {
+      "name": "<character_name>",
+      "gender": "male|female",
+      "age": "child|young|middle-aged|elderly",
+      "tone": "brief description",
+      "accent": "neutral|british|southern|etc",
+      "voice_profile": {
+        "pitch": 1.0,
+        "speed": 1.0,
+        "energy": 1.0,
+        "emotion_bias": {"neutral": 0.5, "happy": 0.2}
+      }
+    }
   ]
 }
 
-TEXT:
-$truncatedText
-$JSON_VALIDITY_REMINDER"""
+DIALOGS/CONTEXT:
+$dialogContext"""
     }
-    
-    // ==================== Pass-3: Traits and Voice Profile ====================
-    
-    val PASS3_SYSTEM_PROMPT = "You are a character analyst for TTS voice casting. Extract observable traits and suggest voice profile. JSON only."
-    
+
+    /**
+     * Legacy method for backward compatibility with single character.
+     */
     fun buildPass3TraitsPrompt(characterName: String, context: String): String {
-        return """CHARACTER: "$characterName"
-
-TEXT:
-$context
-
-EXTRACT CONCISE TRAITS (1-2 words only):
-- Examples: "gravelly voice", "nervous fidgeting", "dry humor", "rambling", "high-pitched", "slow pacing"
-- DO NOT write verbose descriptions like "TTS Voice Traits: Pitch: Low..."
-
-TRAIT → VOICE MAPPING:
-- "gravelly/deep/commanding" → pitch: 0.8-0.9
-- "bright/light/young" → pitch: 1.1-1.2
-- "fast-paced/rambling/excited" → speed: 1.1-1.2
-- "slow/deliberate/monotone" → speed: 0.8-0.9
-- "energetic/dynamic/intense" → energy: 0.9-1.0
-- "calm/stoic/reserved" → energy: 0.5-0.7
-
-SPEAKER_ID GUIDE (VCTK 0-108): Male young 0-20, middle-aged 21-45, elderly 46-55; Female young 56-75, middle-aged 76-95, elderly 96-108
-
-OUTPUT FORMAT (valid JSON only):
-{
-  "character": "$characterName",
-  "traits": ["trait1", "trait2", "trait3"],
-  "voice_profile": {"pitch": 1.0, "speed": 1.0, "energy": 0.7, "gender": "male|female", "age": "child|young|middle-aged|elderly", "tone": "brief description", "speaker_id": 45}
-}
-$JSON_VALIDITY_REMINDER"""
+        return buildPass3VoiceProfilePrompt(listOf(characterName), context)
     }
 }
 

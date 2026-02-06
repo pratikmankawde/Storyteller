@@ -26,7 +26,7 @@
       "feature": "External Metadata Fetching (Google Search Grounding)",
       "description": "Fetch book ratings, reviews, and similar books using Google Search grounding",
       "done": false,
-      "status": "not_started",
+      "status": "skipped_network_required",
       "priority": "MEDIUM",
       "estimated_hours": 5,
       "reference_docs": [
@@ -54,7 +54,7 @@
       "feature": "External Metadata UI Display",
       "description": "Display external book data in book details and insights",
       "done": false,
-      "status": "not_started",
+      "status": "skipped_network_required",
       "priority": "LOW",
       "estimated_hours": 3,
       "reference_docs": [

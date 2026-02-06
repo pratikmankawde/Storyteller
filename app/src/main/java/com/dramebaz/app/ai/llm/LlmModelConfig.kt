@@ -20,7 +20,11 @@ data class LlmModelEntry(
     val pass1: LlmPassOverride? = null,
     val pass2: LlmPassOverride? = null,
     /** If true, skip the memory availability check and attempt to load anyway */
-    val skipMemoryCheck: Boolean = false
+    val skipMemoryCheck: Boolean = false,
+    /** If true, model supports image input (vision/multimodal) */
+    val llmSupportImage: Boolean = false,
+    /** If true, model supports audio input */
+    val llmSupportAudio: Boolean = false
 )
 
 /**
@@ -43,3 +47,25 @@ data class LlmPassOverride(
     val topK: Int? = null,
     val topP: Double? = null
 )
+
+/**
+ * Model capabilities information for runtime feature checks.
+ * Used to enable/disable UI features based on current model support.
+ */
+data class ModelCapabilities(
+    /** Model display name (e.g., "Gemma 3n E2B (int4)") */
+    val modelName: String,
+    /** If true, model supports image input (vision/multimodal) */
+    val supportsImage: Boolean,
+    /** If true, model supports audio input */
+    val supportsAudio: Boolean
+) {
+    companion object {
+        /** Default capabilities for when no model is loaded */
+        val UNKNOWN = ModelCapabilities(
+            modelName = "Unknown",
+            supportsImage = false,
+            supportsAudio = false
+        )
+    }
+}

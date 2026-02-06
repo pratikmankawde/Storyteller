@@ -46,77 +46,97 @@
             style="@style/Widget.Material3.Button.TextButton" />
     </LinearLayout>
 
-    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-        android:fillViewport="true"
-        android:padding="16dp">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical">
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/recap_card"
+    <!-- FrameLayout to stack recap card on top of ViewPager2 -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ViewPager2 for 3D page turning experience -->
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/viewpager_novel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/surface" />
+
+        <!-- Recap card overlay (shown at top when applicable) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/recap_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:visibility="gone"
+            app:cardElevation="8dp"
+            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="@color/accent_light">
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:visibility="gone"
-                app:cardElevation="4dp"
-                app:cardCornerRadius="12dp"
-                app:cardBackgroundColor="@color/accent_light">
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:id="@+id/recap_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Previously…"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_primary"
+                    android:drawableStart="@android:drawable/ic_menu_recent_history"
+                    android:drawablePadding="8dp" />
+                <TextView
+                    android:id="@+id/recap_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:lineSpacingMultiplier="1.5" />
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-                    <TextView
-                        android:id="@+id/recap_title"
-                        android:layout_width="match_parent"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/recap_listen"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Previously…"
-                        android:textStyle="bold"
-                        android:textSize="16sp"
-                        android:textColor="@color/text_primary"
-                        android:drawableStart="@android:drawable/ic_menu_recent_history"
-                        android:drawablePadding="8dp" />
-                    <TextView
-                        android:id="@+id/recap_text"
-                        android:layout_width="match_parent"
+                        android:layout_weight="1"
+                        android:text="Listen"
+                        android:drawableStart="@android:drawable/ic_media_play"
+                        android:drawablePadding="8dp"
+                        style="@style/Widget.Material3.Button.TonalButton" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/recap_skip"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary"
-                        android:lineSpacingMultiplier="1.5" />
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="12dp">
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/recap_listen"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Listen"
-                            android:drawableStart="@android:drawable/ic_media_play"
-                            android:drawablePadding="8dp"
-                            style="@style/Widget.Material3.Button.TonalButton" />
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/recap_skip"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_marginStart="8dp"
-                            android:text="Skip"
-                            style="@style/Widget.Material3.Button.TextButton" />
-                    </LinearLayout>
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="Skip"
+                        style="@style/Widget.Material3.Button.TextButton" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-            <TextView android:id="@+id/body"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="18sp"
-                android:lineSpacingMultiplier="1.6"
-                android:textColor="@color/text_primary"
-                android:padding="16dp" />
-        </LinearLayout>
-    </ScrollView>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Hidden body TextView for compatibility with legacy code paths -->
+        <TextView android:id="@+id/body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
+        <!-- FAB for jumping to current playing page -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fab_play_current_page"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:src="@android:drawable/ic_media_play"
+            android:contentDescription="Play current page"
+            android:visibility="gone"
+            app:fabSize="normal"
+            app:backgroundTint="@color/primary" />
+    </FrameLayout>
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/reader_footer"
         android:layout_width="match_parent"
@@ -129,6 +149,14 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
+
+            <!-- UI-003: Character Avatar Bubble for showing current speaker -->
+            <com.dramebaz.app.ui.reader.CharacterAvatarView
+                android:id="@+id/character_avatar"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone" />
 
             <!-- Progress Indicator -->
             <ProgressBar

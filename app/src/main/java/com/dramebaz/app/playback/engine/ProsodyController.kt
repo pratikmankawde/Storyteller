@@ -18,9 +18,22 @@ object ProsodyController {
      * AUG-013: Generate TTS params for dialog with prosody hints support.
      * Since VITS cannot adjust pitch at runtime, we use speaker selection for pitch variation.
      * Returns TtsParams with optional alternate speaker ID for pitch variation.
+     * @param enableEmotionModifiers If false, returns neutral prosody without emotion-based adjustments.
      */
-    fun forDialog(dialog: Dialog, voiceProfile: VoiceProfile?, baseSpeakerId: Int? = null): TtsParams {
+    fun forDialog(dialog: Dialog, voiceProfile: VoiceProfile?, baseSpeakerId: Int? = null, enableEmotionModifiers: Boolean = true): TtsParams {
         val base = VoiceProfileMapper.toTtsParams(voiceProfile)
+
+        // AUG-FEATURE: If emotion modifiers disabled, return base params without emotion adjustments
+        if (!enableEmotionModifiers) {
+            return TtsParams(
+                pitch = base.pitch,
+                speed = base.speed,
+                energy = base.energy,
+                emotionPreset = "neutral",
+                speakerId = baseSpeakerId
+            )
+        }
+
         val intensity = dialog.intensity.coerceIn(0f, 1f)
 
         // Base speed scale from emotion

@@ -13,8 +13,11 @@ import com.dramebaz.app.data.models.VoiceProfile
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -50,6 +53,33 @@ class PlaybackEngine(
     private var currentSegmentIndex = 0  // AUG-018: Track current segment for saving
     private var globalSpeedMultiplier = 1.0f  // AUG-021: Global speed multiplier
 
+    // UI-001: Karaoke highlighting StateFlows
+    private val _activeSegmentRange = MutableStateFlow<KaraokeHighlighter.TextRange?>(null)
+    val activeSegmentRange: StateFlow<KaraokeHighlighter.TextRange?> = _activeSegmentRange.asStateFlow()
+
+    private val _currentWordSegment = MutableStateFlow<KaraokeHighlighter.WordSegment?>(null)
+    val currentWordSegment: StateFlow<KaraokeHighlighter.WordSegment?> = _currentWordSegment.asStateFlow()
+
+    // Word segments for current audio segment (for word-level highlighting)
+    private var currentWordSegments: List<KaraokeHighlighter.WordSegment> = emptyList()
+
+    // UI-002: Amplitude StateFlow for waveform visualization
+    private val _audioAmplitude = MutableStateFlow(0f)
+    val audioAmplitude: StateFlow<Float> = _audioAmplitude.asStateFlow()
+
+    // UI-002: Playback state for waveform (true when audio is playing)
+    private val _isPlayingState = MutableStateFlow(false)
+    val isPlayingState: StateFlow<Boolean> = _isPlayingState.asStateFlow()
+
+    // UI-003: Current speaker info for character avatar bubbles
+    data class SpeakerInfo(
+        val name: String,
+        val speakerId: Int? = null,
+        val isDialog: Boolean = false
+    )
+    private val _currentSpeaker = MutableStateFlow<SpeakerInfo?>(null)
+    val currentSpeaker: StateFlow<SpeakerInfo?> = _currentSpeaker.asStateFlow()
+
     companion object {
         private const val LOOKAHEAD_SEGMENTS = 3  // Number of segments to pre-generate ahead
         private const val BUFFER_AHEAD_MS = 60_000L  // AUG-019: Buffer 60 seconds ahead
@@ -64,11 +94,16 @@ class PlaybackEngine(
         val prosodyParams: VoiceProfileMapper.TtsParams,
         val speakerId: Int? = null,  // T11.1: Optional speaker ID (0-108 for VCTK)
         val audioFile: File? = null,
-        val startOffset: Long = 0L
+        val startOffset: Long = 0L,
+        // UI-001: Text range for karaoke highlighting
+        val textStartIndex: Int = 0,
+        val textEndIndex: Int = text.length,
+        val speaker: String? = null
     )
 
     /**
      * Add a narration segment to the playback queue.
+     * UI-003: Now includes speaker name for avatar display.
      */
     fun addNarration(
         text: String,
@@ -83,7 +118,8 @@ class PlaybackEngine(
             isDialog = false,
             voiceProfile = voiceProfile,
             prosodyParams = prosody,
-            speakerId = speakerId
+            speakerId = speakerId,
+            speaker = "Narrator"  // UI-003: Mark as narrator
         )
         audioQueue.offer(segment)
         AppLogger.d(tag, "Added narration segment #$segmentIndex: textLength=${text.length}, " +
@@ -93,22 +129,28 @@ class PlaybackEngine(
 
     /**
      * Add a dialog segment to the playback queue.
+     * UI-003: Now includes speaker name for avatar display.
+     * AUG-FEATURE: enableEmotionModifiers controls whether emotion-based prosody adjustments are applied.
      */
     fun addDialog(
         dialog: Dialog,
-        characterVoiceProfile: VoiceProfile?
+        characterVoiceProfile: VoiceProfile?,
+        speakerId: Int? = null,  // UI-003: Speaker ID for the character
+        enableEmotionModifiers: Boolean = true  // AUG-FEATURE: Feature toggle for emotion modifiers
     ) {
-        val prosody = ProsodyController.forDialog(dialog, characterVoiceProfile)
+        val prosody = ProsodyController.forDialog(dialog, characterVoiceProfile, speakerId, enableEmotionModifiers)
         val segment = AudioSegment(
             text = dialog.dialog,
             isDialog = true,
             voiceProfile = characterVoiceProfile,
-            prosodyParams = prosody
+            prosodyParams = prosody,
+            speakerId = speakerId,
+            speaker = dialog.speaker  // UI-003: Pass speaker name
         )
         audioQueue.offer(segment)
         AppLogger.d(tag, "Added dialog segment: speaker=${dialog.speaker}, " +
                 "emotion=${dialog.emotion}, intensity=${dialog.intensity}, " +
-                "textLength=${dialog.dialog.length}, queueSize=${audioQueue.size}")
+                "textLength=${dialog.dialog.length}, speakerId=$speakerId, queueSize=${audioQueue.size}")
     }
 
     /**
@@ -280,14 +322,45 @@ class PlaybackEngine(
             AppLogger.d(tag, "Playing segment: file=${audioFile.name}, isDialog=${segment.isDialog}")
             mediaPlayer?.release()
 
+            // UI-001: Emit segment range for karaoke highlighting
+            val segmentRange = KaraokeHighlighter.TextRange(
+                start = segment.textStartIndex,
+                end = segment.textEndIndex,
+                text = segment.text,
+                isDialog = segment.isDialog,
+                speaker = segment.speaker
+            )
+            _activeSegmentRange.value = segmentRange
+            AppLogger.d(tag, "UI-001: Emitting segment range [${segmentRange.start}, ${segmentRange.end}]")
+
+            // UI-003: Emit current speaker for character avatar bubbles
+            _currentSpeaker.value = SpeakerInfo(
+                name = segment.speaker ?: "Narrator",
+                speakerId = segment.speakerId,
+                isDialog = segment.isDialog
+            )
+            AppLogger.d(tag, "UI-003: Current speaker: ${segment.speaker ?: "Narrator"}, speakerId=${segment.speakerId}")
+
             val player = MediaPlayer().apply {
                 setDataSource(audioFile.absolutePath)
                 prepare()
-                AppLogger.d(tag, "MediaPlayer prepared: duration=${duration}ms")
+                val audioDuration = duration.toLong()
+                AppLogger.d(tag, "MediaPlayer prepared: duration=${audioDuration}ms")
+
+                // UI-001: Build word segments for fine-grained highlighting
+                currentWordSegments = KaraokeHighlighter.buildWordSegments(
+                    text = segment.text,
+                    startIndex = segment.textStartIndex,
+                    audioStartMs = 0L,
+                    audioEndMs = audioDuration
+                )
+                AppLogger.d(tag, "UI-001: Built ${currentWordSegments.size} word segments")
 
                 setOnCompletionListener {
                     release()
                     this@PlaybackEngine.mediaPlayer = null
+                    // UI-001: Clear current word when segment completes
+                    _currentWordSegment.value = null
                     // Continue to next segment
                     val engine = this@PlaybackEngine
                     scope.launch {
@@ -304,8 +377,12 @@ class PlaybackEngine(
 
                 start()
 
+                // UI-002: Update playing state for waveform
+                _isPlayingState.value = true
+
                 // Update progress
                 val handler = android.os.Handler(android.os.Looper.getMainLooper())
+                val wordSegments = currentWordSegments  // Capture for runnable
                 val updateProgress = object : Runnable {
                     override fun run() {
                         val mp = this@PlaybackEngine.mediaPlayer
@@ -317,11 +394,26 @@ class PlaybackEngine(
                                 this@PlaybackEngine.currentPosition = pos
                                 this@PlaybackEngine.totalDuration = dur
                                 onProgressCallback?.invoke(pos, dur)
+
+                                // UI-001: Update current word for karaoke highlighting
+                                val currentWord = KaraokeHighlighter.findCurrentWord(wordSegments, pos)
+                                if (currentWord != _currentWordSegment.value) {
+                                    _currentWordSegment.value = currentWord
+                                }
+
+                                // UI-002: Emit simulated amplitude for waveform visualization
+                                // Since MediaPlayer doesn't provide PCM access, simulate based on position
+                                val amplitude = generateSimulatedAmplitude(pos, dur)
+                                _audioAmplitude.value = amplitude
+
                                 checkAndSaveProgress()  // AUG-018: Periodically save progress
-                                handler.postDelayed(this, 100)
+                                handler.postDelayed(this, 50)  // UI-001: Faster updates for word-level sync
                             } catch (e: Exception) {
                                 // Player was released
                             }
+                        } else {
+                            // UI-002: Reset amplitude when not playing
+                            _audioAmplitude.value = 0f
                         }
                     }
                 }
@@ -339,11 +431,16 @@ class PlaybackEngine(
         AppLogger.d(tag, "Pausing playback")
         mediaPlayer?.pause()
         saveProgress()  // AUG-018: Save on pause
+        // UI-002: Update playing state
+        _isPlayingState.value = false
+        _audioAmplitude.value = 0f
     }
 
     fun resume() {
         AppLogger.d(tag, "Resuming playback")
         mediaPlayer?.start()
+        // UI-002: Update playing state
+        _isPlayingState.value = true
     }
 
     fun stop() {
@@ -359,6 +456,13 @@ class PlaybackEngine(
         synthesizedAudioQueue.clear()
         currentPosition = 0L
         totalDuration = 0L
+        // UI-001: Clear karaoke highlighting state
+        _activeSegmentRange.value = null
+        _currentWordSegment.value = null
+        currentWordSegments = emptyList()
+        // UI-002: Clear waveform state
+        _isPlayingState.value = false
+        _audioAmplitude.value = 0f
     }
 
     fun seekTo(position: Long) {
@@ -437,6 +541,27 @@ class PlaybackEngine(
         if (now - lastProgressSaveTime >= PROGRESS_SAVE_INTERVAL_MS) {
             saveProgress()
         }
+    }
+
+    /**
+     * UI-002: Generate simulated amplitude for waveform visualization.
+     * Since MediaPlayer doesn't provide PCM buffer access, we simulate
+     * natural-looking audio amplitude based on playback position.
+     * This creates a visually pleasing waveform that responds to playback.
+     */
+    private fun generateSimulatedAmplitude(positionMs: Long, durationMs: Long): Float {
+        if (durationMs <= 0) return 0f
+
+        val time = positionMs / 1000.0
+        // Combine multiple sine waves at different frequencies for natural speech pattern
+        val wave1 = kotlin.math.sin(time * 8.0).toFloat() * 0.4f  // Base rhythm
+        val wave2 = kotlin.math.sin(time * 13.0).toFloat() * 0.25f  // Mid frequency
+        val wave3 = kotlin.math.sin(time * 23.0).toFloat() * 0.15f  // High frequency detail
+        val wave4 = kotlin.math.sin(time * 3.0).toFloat() * 0.2f  // Slow envelope
+
+        // Combine and normalize to 0.1-0.9 range (never silent, never clipping)
+        val combined = (wave1 + wave2 + wave3 + wave4 + 1f) / 2f
+        return (combined * 0.8f + 0.1f).coerceIn(0.1f, 0.9f)
     }
 
     fun cleanup() {

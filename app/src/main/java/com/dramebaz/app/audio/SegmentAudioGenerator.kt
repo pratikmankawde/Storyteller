@@ -260,6 +260,7 @@ class SegmentAudioGenerator(
     /**
      * Get speaker ID for a character, caching results.
      * For Narrator, looks up from database to use user-configured speaker ID.
+     * If character has no speakerId, generates a deterministic one from name hash.
      */
     private suspend fun getSpeakerIdForCharacter(
         bookId: Long,
@@ -268,8 +269,31 @@ class SegmentAudioGenerator(
     ): Int? {
         return cache.getOrPut(characterName) {
             val character = characterDao.getByBookIdAndName(bookId, characterName)
-            character?.speakerId ?: defaultNarratorSpeakerId
+            val speakerId = character?.speakerId
+            if (speakerId != null) {
+                AppLogger.d(tag, "Found speakerId $speakerId for character '$characterName' in database")
+                speakerId
+            } else if (characterName.equals("Narrator", ignoreCase = true)) {
+                // Narrator uses default speaker ID 0
+                AppLogger.d(tag, "Using default narrator speaker ID 0")
+                defaultNarratorSpeakerId
+            } else {
+                // Generate deterministic speaker ID from character name hash (1-903, avoiding 0 which is narrator)
+                val generatedId = generateSpeakerIdFromName(characterName)
+                AppLogger.d(tag, "Generated speakerId $generatedId for character '$characterName' from name hash")
+                generatedId
+            }
         }
+    }
+
+    /**
+     * Generate a deterministic speaker ID from character name.
+     * Uses hash to ensure same character always gets same voice.
+     * Returns speaker ID in range 1-903 (avoiding 0 which is reserved for narrator).
+     */
+    private fun generateSpeakerIdFromName(name: String): Int {
+        val hash = kotlin.math.abs(name.hashCode())
+        return 1 + (hash % 903)  // Range 1-903, avoiding narrator's 0
     }
 
     /**

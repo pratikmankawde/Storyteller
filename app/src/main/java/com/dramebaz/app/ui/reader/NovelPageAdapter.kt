@@ -1,9 +1,13 @@
 package com.dramebaz.app.ui.reader
 
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
+import android.text.style.StyleSpan
+import android.graphics.Typeface
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,11 +15,17 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.dramebaz.app.R
+import com.dramebaz.app.data.models.FontFamily
+import com.dramebaz.app.data.models.ReadingSettings
+import com.dramebaz.app.data.models.ReadingTheme
 import com.dramebaz.app.pdf.PdfPageRenderer
+import com.dramebaz.app.playback.engine.KaraokeHighlighter
+import com.dramebaz.app.ui.theme.FontManager
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,15 +69,42 @@ class NovelPageAdapter(
     private var currentHighlightedPage: Int = -1
     private var currentHighlightedLine: Int = -1
 
+    // UI-001: Karaoke highlighting state
+    private var karaokePageIndex: Int = -1
+    private var karaokeSegmentRange: KaraokeHighlighter.TextRange? = null
+    private var karaokeCurrentWord: KaraokeHighlighter.WordSegment? = null
+    private var karaokeSegmentColor: Int = 0
+    private var karaokeWordColor: Int = 0
+
     // PDF renderer for native PDF page display
     private var pdfRenderer: PdfPageRenderer? = null
 
     // Map to track rendering jobs for cancellation
     private val renderingJobs = mutableMapOf<Int, Job>()
 
+    // SETTINGS-002: Reading settings for display customization
+    private var currentReadingSettings: ReadingSettings = ReadingSettings()
+    private val baseFontSizeSp = 18f // Base font size in SP (matches XML layout)
+
+    // Context for loading custom fonts
+    private lateinit var context: android.content.Context
+
     companion object {
         private const val VIEW_TYPE_TEXT = 0
         private const val VIEW_TYPE_PDF = 1
+    }
+
+    /**
+     * SETTINGS-002: Update reading settings and refresh all visible pages.
+     * Called when user changes display settings (font size, line height, theme, font family).
+     */
+    fun updateReadingSettings(settings: ReadingSettings) {
+        if (currentReadingSettings != settings) {
+            currentReadingSettings = settings
+            AppLogger.d(tag, "Reading settings updated: fontSize=${settings.fontSize}, lineHeight=${settings.lineHeight}, theme=${settings.theme}, fontFamily=${settings.fontFamily}")
+            // Notify all items to rebind with new settings
+            notifyItemRangeChanged(0, itemCount)
+        }
     }
 
     /**
@@ -77,6 +114,36 @@ class NovelPageAdapter(
     fun setPdfRenderer(renderer: PdfPageRenderer?) {
         pdfRenderer = renderer
         AppLogger.d(tag, "PDF renderer set: ${renderer != null}")
+    }
+
+    /**
+     * SETTINGS-002: Get Typeface for the specified font family.
+     * Uses FontManager for proper loading of custom fonts.
+     */
+    private fun getFontTypeface(fontFamily: FontFamily): Typeface {
+        return FontManager.getTypeface(context, fontFamily)
+    }
+
+    /**
+     * SETTINGS-002: Apply reading theme colors to the page.
+     */
+    private fun applyThemeColors(holder: TextPageViewHolder, theme: ReadingTheme) {
+        val backgroundColor = Color.parseColor(theme.backgroundColor)
+        val textColor = Color.parseColor(theme.textColor)
+
+        // Apply to CardView background
+        (holder.itemView as? CardView)?.setCardBackgroundColor(backgroundColor)
+
+        // Apply to inner LinearLayout
+        holder.itemView.findViewById<View>(R.id.page_text)?.parent?.let { parent ->
+            (parent as? View)?.parent?.let { grandParent ->
+                (grandParent as? View)?.setBackgroundColor(backgroundColor)
+            }
+        }
+
+        // Apply text color
+        holder.pageText.setTextColor(textColor)
+        holder.pageNumber.setTextColor(textColor and 0x99FFFFFF.toInt()) // Slightly transparent
     }
 
     // ViewHolder for text-based pages (existing behavior)
@@ -107,6 +174,11 @@ class NovelPageAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        // Initialize context for font loading
+        if (!::context.isInitialized) {
+            context = parent.context.applicationContext
+        }
+
         return when (viewType) {
             VIEW_TYPE_PDF -> {
                 val view = LayoutInflater.from(parent.context)
@@ -273,13 +345,82 @@ class NovelPageAdapter(
             "Page ${page.pageNumber} of ${itemCount}"
         }
 
-        // Apply highlighting if this is the current page
-        if (position == currentHighlightedPage && currentHighlightedLine >= 0) {
+        // SETTINGS-002: Apply reading settings (font size, line height, font family, theme)
+        applyReadingSettings(holder)
+
+        // UI-001: Apply karaoke highlighting (word-by-word) if active for this page
+        if (position == karaokePageIndex && karaokeSegmentRange != null) {
+            val highlightedText = applyKaraokeSpans(page.text, karaokeSegmentRange!!, karaokeCurrentWord)
+            holder.pageText.text = highlightedText
+        }
+        // Apply line highlighting if this is the current page (fallback)
+        else if (position == currentHighlightedPage && currentHighlightedLine >= 0) {
             val highlightedText = highlightLine(page.text, page.lines, currentHighlightedLine)
             holder.pageText.text = highlightedText
         } else {
             holder.pageText.text = page.text
         }
+    }
+
+    /**
+     * SETTINGS-002: Apply current reading settings to a text page view holder.
+     */
+    private fun applyReadingSettings(holder: TextPageViewHolder) {
+        val settings = currentReadingSettings
+
+        // Apply font size (base size * multiplier)
+        val fontSizeSp = baseFontSizeSp * settings.fontSize
+        holder.pageText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp)
+
+        // Apply line height (line spacing multiplier)
+        holder.pageText.setLineSpacing(0f, settings.lineHeight)
+
+        // Apply font family
+        holder.pageText.typeface = getFontTypeface(settings.fontFamily)
+
+        // Apply theme colors
+        applyThemeColors(holder, settings.theme)
+    }
+
+    /**
+     * UI-001: Apply karaoke highlighting spans to text.
+     */
+    private fun applyKaraokeSpans(
+        text: String,
+        segmentRange: KaraokeHighlighter.TextRange,
+        currentWord: KaraokeHighlighter.WordSegment?
+    ): SpannableString {
+        val spannable = SpannableString(text)
+
+        // Highlight the entire segment with light background
+        if (!segmentRange.isEmpty && segmentRange.end <= text.length) {
+            spannable.setSpan(
+                BackgroundColorSpan(karaokeSegmentColor),
+                segmentRange.start,
+                segmentRange.end,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+
+        // Highlight the current word with bold and stronger background
+        currentWord?.let { word ->
+            if (word.endIndex <= text.length && word.startIndex >= 0) {
+                spannable.setSpan(
+                    BackgroundColorSpan(karaokeWordColor),
+                    word.startIndex,
+                    word.endIndex,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                spannable.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    word.startIndex,
+                    word.endIndex,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        }
+
+        return spannable
     }
 
     /**
@@ -308,9 +449,43 @@ class NovelPageAdapter(
         val oldPage = currentHighlightedPage
         currentHighlightedPage = -1
         currentHighlightedLine = -1
+        // UI-001: Clear karaoke highlighting too
+        val oldKaraokePage = karaokePageIndex
+        karaokePageIndex = -1
+        karaokeSegmentRange = null
+        karaokeCurrentWord = null
 
         if (oldPage >= 0 && oldPage < itemCount) {
             notifyItemChanged(oldPage)
+        }
+        if (oldKaraokePage >= 0 && oldKaraokePage < itemCount && oldKaraokePage != oldPage) {
+            notifyItemChanged(oldKaraokePage)
+        }
+    }
+
+    /**
+     * UI-001: Apply karaoke highlighting (word-by-word sync) to a specific page.
+     */
+    fun applyKaraokeHighlighting(
+        pageIndex: Int,
+        segmentRange: KaraokeHighlighter.TextRange,
+        currentWord: KaraokeHighlighter.WordSegment?,
+        segmentHighlightColor: Int,
+        wordHighlightColor: Int
+    ) {
+        val oldPage = karaokePageIndex
+        karaokePageIndex = pageIndex
+        karaokeSegmentRange = segmentRange
+        karaokeCurrentWord = currentWord
+        karaokeSegmentColor = segmentHighlightColor
+        karaokeWordColor = wordHighlightColor
+
+        // Notify both old and new pages if different
+        if (oldPage >= 0 && oldPage < itemCount && oldPage != pageIndex) {
+            notifyItemChanged(oldPage)
+        }
+        if (pageIndex >= 0 && pageIndex < itemCount) {
+            notifyItemChanged(pageIndex)
         }
     }
 

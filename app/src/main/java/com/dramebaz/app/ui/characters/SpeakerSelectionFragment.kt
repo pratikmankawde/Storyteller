@@ -67,7 +67,8 @@ class SpeakerSelectionFragment : Fragment() {
             val name = character?.name ?: characterName
 
             // AUG-014: Use getSimilarSpeakers for scored results
-            val scoredSpeakers = SpeakerMatcher.getSimilarSpeakers(traits, personalitySummary, name, topN = 109)
+            // Filter to top 30 matches for better UX - shows only most relevant speakers
+            val scoredSpeakers = SpeakerMatcher.getSimilarSpeakers(traits, personalitySummary, name, topN = 30)
 
             val adapter = SpeakerAdapter(
                 scoredSpeakers,

@@ -19,7 +19,41 @@ Generate the story now:"""
     fun buildStoryPrompt(userPrompt: String): String {
         return userPrompt
     }
-    
+
+    // ==================== STORY-003: Story Remix ====================
+
+    val STORY_REMIX_SYSTEM_PROMPT = """You are a creative story writer. Your task is to REMIX an existing story based on the user's instructions.
+Rules:
+1. Generate ONLY story content - no explanations, no meta-commentary, no JSON
+2. Preserve the core narrative elements (characters, setting, major plot points) unless instructed otherwise
+3. Apply the requested transformation creatively and consistently
+4. Write a complete story with a beginning, middle, and end
+5. Include dialogue, character development, and descriptive scenes
+6. The remixed story should be substantial (at least 1000 words)
+7. Write in third person narrative style
+8. Do not include any instructions or notes, only the story text itself.
+Generate the remixed story now:"""
+
+    /**
+     * STORY-003: Build a remix prompt with source story context.
+     * @param userInstruction User's remix instruction (e.g., "make it scary", "from villain's perspective")
+     * @param sourceStory The original story content to remix (truncated if too long)
+     * @param maxSourceChars Maximum characters to include from source story
+     */
+    fun buildRemixPrompt(userInstruction: String, sourceStory: String, maxSourceChars: Int = 5000): String {
+        val truncatedSource = if (sourceStory.length > maxSourceChars) {
+            sourceStory.take(maxSourceChars) + "\n[...story continues...]"
+        } else {
+            sourceStory
+        }
+        return """REMIX INSTRUCTION: $userInstruction
+
+ORIGINAL STORY:
+$truncatedSource
+
+Apply the remix instruction to transform this story while preserving its core elements."""
+    }
+
     // ==================== Key Moments Extraction ====================
     
     private const val JSON_VALIDITY_REMINDER = "\nEnsure the JSON is valid and contains no trailing commas."

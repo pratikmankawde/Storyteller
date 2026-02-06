@@ -20,7 +20,7 @@ class InsightsViewModel(private val bookRepository: BookRepository) : ViewModel(
     suspend fun ensureExtendedAnalysisForFirstNeeding(bookId: Long): Boolean {
         val chapters = bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
         val ch = chapters.firstOrNull { it.fullAnalysisJson != null && it.body.length > 50 && it.analysisJson.isNullOrBlank() } ?: return false
-        val extendedJson = LlmService.extendedAnalysisJsonStubOnly(ch.body)
+        val extendedJson = LlmService.extendedAnalysisJson(ch.body)
         if (extendedJson.isNullOrBlank()) return false
         bookRepository.updateChapter(ch.copy(analysisJson = extendedJson))
         return true

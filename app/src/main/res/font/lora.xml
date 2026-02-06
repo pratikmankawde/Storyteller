@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Lora font family - downloadable font from Google Fonts.
+    A well-balanced contemporary serif with roots in calligraphy.
+    Used as "Novel" font (similar to Georgia).
+-->
+<font-family xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:fontProviderAuthority="com.google.android.gms.fonts"
+    app:fontProviderPackage="com.google.android.gms"
+    app:fontProviderQuery="Lora"
+    app:fontProviderCerts="@array/com_google_android_gms_fonts_certs">
+</font-family>
+

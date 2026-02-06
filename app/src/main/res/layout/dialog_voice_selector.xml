@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- VOICE-001: Voice Selector Dialog for character voice customization -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/background"
+    android:paddingBottom="24dp">
+
+    <!-- Drag Handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/settings_drag_handle" />
+
+    <!-- Character Info Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="12dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/character_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Character Name"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/character_traits"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Female, 30s"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary" />
+    </LinearLayout>
+
+    <!-- Current Voice Info -->
+    <TextView
+        android:id="@+id/current_voice_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="8dp"
+        android:text="Current voice: Speaker #0"
+        android:textSize="14sp"
+        android:textColor="@color/text_secondary" />
+
+    <!-- Gender Filter Buttons -->
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/gender_filter_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:layout_marginBottom="12dp"
+        app:singleSelection="true"
+        app:selectionRequired="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_all"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="All" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_female"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Female" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_male"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Male" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <!-- Voice List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/voice_list"
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:clipToPadding="false"
+        android:paddingHorizontal="12dp" />
+
+    <!-- Sliders Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="4dp"
+        android:text="Voice Tuning"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_secondary" />
+
+    <!-- Speed Slider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:gravity="center_vertical">
+        <TextView android:layout_width="60dp" android:layout_height="wrap_content" android:text="Speed" android:textColor="@color/text_secondary" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/speed_slider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:valueFrom="0.5"
+            android:valueTo="2.0"
+            android:value="1.0"
+            android:stepSize="0.1" />
+        <TextView android:id="@+id/speed_value" android:layout_width="40dp" android:layout_height="wrap_content" android:text="1.0" android:textColor="@color/text_secondary" android:gravity="end" />
+    </LinearLayout>
+
+    <!-- Energy Slider -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:gravity="center_vertical">
+        <TextView android:layout_width="60dp" android:layout_height="wrap_content" android:text="Energy" android:textColor="@color/text_secondary" />
+        <com.google.android.material.slider.Slider
+            android:id="@+id/energy_slider"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:valueFrom="0.5"
+            android:valueTo="1.5"
+            android:value="1.0"
+            android:stepSize="0.1" />
+        <TextView android:id="@+id/energy_value" android:layout_width="40dp" android:layout_height="wrap_content" android:text="1.0" android:textColor="@color/text_secondary" android:gravity="end" />
+    </LinearLayout>
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="16dp"
+        android:gravity="center">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_test"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Test Voice"
+            app:icon="@drawable/ic_play_circle" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Save"
+            app:icon="@drawable/ic_check_circle" />
+    </LinearLayout>
+</LinearLayout>
+

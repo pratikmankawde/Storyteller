@@ -11,6 +11,8 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
 import com.dramebaz.app.ai.tts.LibrittsSpeakerCatalog
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -32,7 +34,11 @@ import kotlin.coroutines.resumeWithException
  *
  * Model: gemma-3n-E2B-it-int4.litertlm (path from config).
  */
-class LiteRtLmEngine(private val context: Context) {
+/**
+ * @param context Android context
+ * @param externalModelPath Optional explicit path to .litertlm model file. If null, uses config-based discovery.
+ */
+class LiteRtLmEngine(private val context: Context, private val externalModelPath: String? = null) {
     companion object {
         private const val TAG = "LiteRtLmEngine"
         private const val CONFIG_ASSET_PATH = "models/llm_model_config.json"
@@ -53,6 +59,21 @@ class LiteRtLmEngine(private val context: Context) {
         private const val CHARS_PER_TOKEN_ESTIMATE = 4
 
         private const val TOKEN_LIMIT_ERROR = "Max number of tokens reached"
+
+        // STORY-002: Image-to-Story prompts
+        private const val IMAGE_STORY_SYSTEM_PROMPT = """You are a creative storytelling AI.
+Analyze the given image and generate a complete, engaging short story inspired by it.
+The story should:
+- Be 500-800 words long
+- Have a clear beginning, middle, and end
+- Include vivid descriptions and dialogue
+- Capture the mood and elements visible in the image
+- Be suitable for all ages"""
+
+        private const val IMAGE_STORY_USER_PROMPT_PREFIX = """Look at this image and write a creative short story inspired by what you see.
+Consider the setting, characters (if any), mood, colors, and atmosphere in the image.
+
+User's additional direction: """
     }
 
     /**
@@ -80,6 +101,17 @@ class LiteRtLmEngine(private val context: Context) {
     private var chosenBackend: Backend? = null
     private var modelConfig: LlmModelEntry? = null
 
+    // Preferred backend set by user settings (null = use config order)
+    private var preferredBackend: Backend? = null
+
+    /**
+     * Set the preferred backend for initialization.
+     * Must be called before initialize().
+     */
+    fun setPreferredBackend(backend: Backend?) {
+        preferredBackend = backend
+    }
+
     private fun loadModelConfig(): LlmModelEntry? {
         if (modelConfig != null) return modelConfig
         return try {
@@ -98,7 +130,9 @@ class LiteRtLmEngine(private val context: Context) {
                 defaultConfig = LlmDefaultConfig(topK = 48, topP = 0.9, temperature = 0.6, maxTokens = 2048, accelerators = "gpu,cpu"),
                 pass1 = LlmPassOverride(temperature = 0.1, maxTokens = 100),
                 pass2 = LlmPassOverride(temperature = 0.35, topP = 0.85, maxTokens = 2100),
-                skipMemoryCheck = true // Enable by default in fallback
+                skipMemoryCheck = true, // Enable by default in fallback
+                llmSupportImage = true, // Gemma 3n E2B is multimodal
+                llmSupportAudio = true
             )
             modelConfig
         }
@@ -158,7 +192,20 @@ class LiteRtLmEngine(private val context: Context) {
             return@withContext false
         }
 
-        val modelPath = findModelFile(entry.modelFileName)
+        // Use external path if provided, otherwise use config-based discovery
+        val modelPath = if (externalModelPath != null) {
+            val externalFile = java.io.File(externalModelPath)
+            if (externalFile.exists() && externalFile.isFile) {
+                AppLogger.i(TAG, "Using externally specified model: $externalModelPath")
+                externalModelPath
+            } else {
+                AppLogger.w(TAG, "External model path doesn't exist: $externalModelPath, falling back to config")
+                findModelFile(entry.modelFileName)
+            }
+        } else {
+            findModelFile(entry.modelFileName)
+        }
+
         if (modelPath == null) {
             AppLogger.e(TAG, "Model file not found. Expected: ${entry.modelFileName}")
             AppLogger.e(TAG, "Please download the model to /sdcard/Download/${entry.modelFileName}")
@@ -191,25 +238,55 @@ class LiteRtLmEngine(private val context: Context) {
             }
         }
 
-        val backends = parseBackendOrder(entry.defaultConfig.accelerators)
+        // Use preferred backend if set, otherwise use config order
+        val backends = if (preferredBackend != null) {
+            AppLogger.i(TAG, "Using preferred backend: ${preferredBackend!!.name}")
+            listOf(preferredBackend!!)
+        } else {
+            parseBackendOrder(entry.defaultConfig.accelerators)
+        }
+
+        // Check model capabilities from config to determine vision backend strategy
+        val modelSupportsVision = entry.llmSupportImage
+        AppLogger.i(TAG, "Model capabilities: llmSupportImage=${entry.llmSupportImage}, llmSupportAudio=${entry.llmSupportAudio}")
+
         for (backend in backends) {
-            try {
-                AppLogger.i(TAG, "Initializing LiteRT-LM with ${backend.name} backend...")
-                val config = EngineConfig(
-                    modelPath = modelPath,
-                    backend = backend,
-                    cacheDir = context.cacheDir.absolutePath
-                )
-                engine = Engine(config)
-                engine?.initialize()
-                chosenBackend = backend
-                isInitialized = true
-                AppLogger.i(TAG, "✅ LiteRT-LM initialized successfully with ${backend.name} backend")
-                return@withContext true
-            } catch (e: Exception) {
-                AppLogger.w(TAG, "${backend.name} backend failed: ${e.message}")
-                // Log full stack trace for debugging
-                AppLogger.d(TAG, "Stack trace: ${e.stackTraceToString()}")
+            // For models that don't support vision, skip vision backend attempt entirely
+            // For multimodal models, try vision first, then fall back to text-only if needed
+            val visionModes = if (modelSupportsVision) listOf(true, false) else listOf(false)
+
+            for (useVision in visionModes) {
+                try {
+                    val visionBackendConfig = if (useVision) Backend.GPU else null
+                    val visionLabel = if (useVision) "visionBackend=GPU" else "visionBackend=null (text-only)"
+                    AppLogger.i(TAG, "Initializing LiteRT-LM with ${backend.name} backend ($visionLabel)...")
+
+                    val config = EngineConfig(
+                        modelPath = modelPath,
+                        backend = backend,
+                        visionBackend = visionBackendConfig,  // null for text-only models
+                        cacheDir = context.cacheDir.absolutePath
+                    )
+                    engine = Engine(config)
+                    engine?.initialize()
+                    chosenBackend = backend
+                    isInitialized = true
+                    AppLogger.i(TAG, "✅ LiteRT-LM initialized successfully with ${backend.name} backend ($visionLabel)")
+                    return@withContext true
+                } catch (e: Exception) {
+                    val errorMsg = e.message ?: ""
+                    AppLogger.w(TAG, "${backend.name} backend failed (vision=$useVision): $errorMsg")
+
+                    // If vision encoder not found, try without vision backend (fallback for misconfigured models)
+                    if (useVision && errorMsg.contains("TF_LITE_VISION_ENCODER", ignoreCase = true)) {
+                        AppLogger.i(TAG, "Model doesn't support vision, retrying as text-only...")
+                        continue  // Try again with useVision=false
+                    }
+
+                    // Log full stack trace for debugging
+                    AppLogger.d(TAG, "Stack trace: ${e.stackTraceToString()}")
+                    break  // Move to next backend
+                }
             }
         }
 
@@ -223,6 +300,37 @@ class LiteRtLmEngine(private val context: Context) {
     fun isUsingGpu(): Boolean = chosenBackend == Backend.GPU
 
     fun getExecutionProvider(): String = chosenBackend?.let { "${it.name} (LiteRT-LM)" } ?: "unknown"
+
+    /**
+     * Get the capabilities of the currently loaded model.
+     * @return ModelCapabilities with image/audio support flags
+     */
+    fun getModelCapabilities(): ModelCapabilities {
+        val entry = getSelectedModelEntry() ?: return ModelCapabilities.UNKNOWN
+
+        // If using an external model path, derive the model name from the file name
+        // This ensures we show the actual loaded model name, not the config display name
+        val modelName = if (externalModelPath != null) {
+            // Extract clean model name from file path (e.g., "Qwen2.5-1.5B-Instruct" from full path)
+            val fileName = java.io.File(externalModelPath).nameWithoutExtension
+            // Clean up common suffixes for a nicer display name
+            fileName.replace("_multi-prefill-seq", "")
+                .replace("_q8_ekv4096", " (Q8)")
+                .replace("_q4_ekv4096", " (Q4)")
+                .replace("_int4", " (int4)")
+                .replace("_int8", " (int8)")
+                .replace("_", " ")
+                .trim()
+        } else {
+            entry.displayName ?: entry.modelFileName
+        }
+
+        return ModelCapabilities(
+            modelName = modelName,
+            supportsImage = entry.llmSupportImage,
+            supportsAudio = entry.llmSupportAudio
+        )
+    }
 
     /**
      * Generate a response from the model using async streaming (sendMessageAsync).
@@ -654,4 +762,89 @@ $text
             "speaker_id" to speakerId
         )
     }
+
+    // ==================== STORY-002: Image-to-Story Generation ====================
+
+    /**
+     * STORY-002: Generate a story from an inspiration image.
+     * Uses Gemma 3n multimodal capabilities to analyze the image and generate a story.
+     *
+     * @param imagePath Path to the image file on device
+     * @param userPrompt Optional user prompt for story direction
+     * @return Generated story text
+     */
+    suspend fun generateFromImage(
+        imagePath: String,
+        userPrompt: String = "Write an engaging story inspired by this image."
+    ): String = withContext(Dispatchers.IO) {
+        if (!isInitialized || engine == null) {
+            AppLogger.w(TAG, "generateFromImage: Engine not initialized")
+            return@withContext ""
+        }
+
+        // Verify image file exists
+        val imageFile = java.io.File(imagePath)
+        if (!imageFile.exists()) {
+            AppLogger.e(TAG, "generateFromImage: Image file not found: $imagePath")
+            return@withContext ""
+        }
+
+        val entry = getSelectedModelEntry() ?: return@withContext ""
+        val samplerConfig = buildSamplerConfig(entry.defaultConfig, null).let { base ->
+            SamplerConfig(
+                topK = base.topK,
+                topP = base.topP,
+                temperature = 0.7  // Creative temperature for story generation
+            )
+        }
+
+        val conversationConfig = ConversationConfig(
+            systemInstruction = Contents.of(Content.Text(IMAGE_STORY_SYSTEM_PROMPT)),
+            samplerConfig = samplerConfig
+        )
+
+        val t0 = System.nanoTime()
+        try {
+            engine!!.createConversation(conversationConfig).use { conversation ->
+                // Build multimodal message with image and text
+                val fullPrompt = "$IMAGE_STORY_USER_PROMPT_PREFIX$userPrompt"
+
+                // Use Contents.of() with Content.ImageFile() and Content.Text() for multimodal input
+                // LiteRT-LM Kotlin API supports multimodal via Contents.of(Content.ImageFile, Content.Text)
+                val multimodalContents = Contents.of(
+                    Content.ImageFile(imagePath),
+                    Content.Text(fullPrompt)
+                )
+
+                sendMessageAsyncAndCollectMultimodal(conversation, multimodalContents)
+            }.also { response ->
+                val elapsedMs = (System.nanoTime() - t0) / 1_000_000
+                AppLogger.d(TAG, "generateFromImage() took ${elapsedMs}ms, response length=${response.length}")
+                response
+            }
+        } catch (e: Exception) {
+            val elapsedMs = (System.nanoTime() - t0) / 1_000_000
+            AppLogger.e(TAG, "Error generating story from image after ${elapsedMs}ms", e)
+            ""
+        }
+    }
+
+    /**
+     * Send a multimodal message (using Contents) and collect the response.
+     */
+    private suspend fun sendMessageAsyncAndCollectMultimodal(conversation: Conversation, contents: Contents): String =
+        suspendCancellableCoroutine { cont ->
+            val sb = StringBuilder()
+            conversation.sendMessageAsync(contents, object : MessageCallback {
+                override fun onMessage(msg: Message) {
+                    sb.append(msg.toString())
+                }
+                override fun onDone() {
+                    if (cont.isActive) cont.resume(sb.toString())
+                }
+                override fun onError(throwable: Throwable) {
+                    if (cont.isActive) cont.resumeWithException(throwable)
+                }
+            })
+        }
 }

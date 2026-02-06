@@ -1,6 +1,5 @@
 package com.dramebaz.app.ui.player
 
-import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8,7 +7,9 @@ import android.view.ViewGroup
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.TextView
+import com.dramebaz.app.data.models.AudioSettings
 import com.dramebaz.app.playback.mixer.PlaybackTheme
+import com.dramebaz.app.ui.common.VoiceWaveformView
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit
 /**
  * T2.4 / T8.3: PlayerBottomSheet - Play/pause, seek, theme selection.
  * AUG-021: Added playback speed control.
+ * SETTINGS-001: Now syncs with SettingsRepository for initial speed/theme.
  */
 class PlayerBottomSheet : BottomSheetDialogFragment() {
 
@@ -32,8 +34,25 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
     companion object {
         // AUG-021: Available speed options
         val SPEED_OPTIONS = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-        private const val PREFS_NAME = "playback_prefs"
-        private const val KEY_SPEED = "playback_speed"
+        private const val ARG_INITIAL_SPEED = "initial_speed"
+        private const val ARG_INITIAL_THEME = "initial_theme"
+
+        /**
+         * SETTINGS-001: Create a new PlayerBottomSheet with initial settings from SettingsRepository.
+         */
+        fun newInstance(audioSettings: AudioSettings): PlayerBottomSheet {
+            return PlayerBottomSheet().apply {
+                arguments = Bundle().apply {
+                    putFloat(ARG_INITIAL_SPEED, audioSettings.playbackSpeed)
+                    putString(ARG_INITIAL_THEME, audioSettings.playbackTheme.name)
+                }
+            }
+        }
+
+        /**
+         * Create a new PlayerBottomSheet with default settings.
+         */
+        fun newInstance(): PlayerBottomSheet = PlayerBottomSheet()
     }
 
     private var listener: PlayerControlsListener? = null
@@ -42,6 +61,20 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
     private var isPlaying = false
     private var currentTheme = PlaybackTheme.CLASSIC
     private var currentSpeed = 1.0f  // AUG-021: Default speed
+
+    // UI-002: Waveform view reference
+    private var waveformView: VoiceWaveformView? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // SETTINGS-001: Load initial settings from arguments
+        arguments?.let { args ->
+            currentSpeed = args.getFloat(ARG_INITIAL_SPEED, 1.0f)
+            args.getString(ARG_INITIAL_THEME)?.let { themeName ->
+                currentTheme = PlaybackTheme.entries.find { it.name == themeName } ?: PlaybackTheme.CLASSIC
+            }
+        }
+    }
 
     fun setListener(listener: PlayerControlsListener) {
         this.listener = listener
@@ -61,6 +94,12 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
         val currentTime = view.findViewById<TextView>(com.dramebaz.app.R.id.current_time)
         val totalTime = view.findViewById<TextView>(com.dramebaz.app.R.id.total_time)
         val themeGroup = view.findViewById<MaterialButtonToggleGroup>(com.dramebaz.app.R.id.theme_group)
+
+        // UI-002: Initialize waveform view
+        waveformView = view.findViewById(com.dramebaz.app.R.id.voice_waveform)
+        if (isPlaying) {
+            waveformView?.startAnimation()
+        }
 
         // Initialize seek bar
         seekBar.max = 1000
@@ -121,8 +160,8 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
         }
 
         // AUG-021: Speed control button
+        // SETTINGS-001: Initial speed is loaded from arguments in onCreate()
         val btnSpeed = view.findViewById<MaterialButton>(com.dramebaz.app.R.id.btn_speed)
-        loadSavedSpeed()
         updateSpeedButton(btnSpeed)
 
         btnSpeed.setOnClickListener { button ->
@@ -133,8 +172,8 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
             popup.setOnMenuItemClickListener { menuItem ->
                 val selectedSpeed = SPEED_OPTIONS[menuItem.itemId]
                 currentSpeed = selectedSpeed
-                saveSpeed(selectedSpeed)
                 updateSpeedButton(btnSpeed)
+                // SETTINGS-001: Notify listener to update SettingsRepository
                 listener?.onSpeedChanged(selectedSpeed)
                 true
             }
@@ -144,20 +183,6 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
         // Update UI
         updateProgress(currentPosition, totalDuration)
         updatePlayPauseButton(btnPlayPause)
-    }
-
-    // AUG-021: Speed persistence
-    private fun loadSavedSpeed() {
-        context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)?.let { prefs ->
-            currentSpeed = prefs.getFloat(KEY_SPEED, 1.0f)
-        }
-    }
-
-    private fun saveSpeed(speed: Float) {
-        context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)?.edit()?.apply {
-            putFloat(KEY_SPEED, speed)
-            apply()
-        }
     }
 
     private fun updateSpeedButton(button: MaterialButton) {
@@ -198,6 +223,21 @@ class PlayerBottomSheet : BottomSheetDialogFragment() {
             val btnPlayPause = it.findViewById<MaterialButton>(com.dramebaz.app.R.id.btn_play_pause)
             updatePlayPauseButton(btnPlayPause)
         }
+        // UI-002: Update waveform animation state
+        if (playing) {
+            waveformView?.startAnimation()
+        } else {
+            waveformView?.stopAnimation()
+            waveformView?.reset()
+        }
+    }
+
+    /**
+     * UI-002: Update waveform amplitude from audio playback.
+     * @param amplitude Normalized amplitude value (0.0 to 1.0)
+     */
+    fun updateWaveformAmplitude(amplitude: Float) {
+        waveformView?.setAmplitude(amplitude)
     }
 
     private fun updatePlayPauseButton(button: MaterialButton) {

@@ -12,7 +12,15 @@
         android:text="Playback Controls"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="8dp" />
+
+    <!-- UI-002: VoiceWaveform Visualizer -->
+    <com.dramebaz.app.ui.common.VoiceWaveformView
+        android:id="@+id/voice_waveform"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginBottom="8dp"
+        android:visibility="visible" />
 
     <SeekBar
         android:id="@+id/seek_bar"

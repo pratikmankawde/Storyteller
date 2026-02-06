@@ -5,11 +5,11 @@ package com.dramebaz.app.ai.llm.prompts
  * Includes full analysis, extended analysis, and character detection prompts.
  */
 object AnalysisPrompts {
-    
+
     private const val JSON_VALIDITY_REMINDER = "\nEnsure the JSON is valid and contains no trailing commas."
-    
+
     // ==================== Chapter Analysis ====================
-    
+
     val ANALYSIS_SYSTEM_PROMPT = """You are a fiction story analyzer. The input is a NARRATIVE STORY EXCERPT from a novel or book.
 
 STORY STRUCTURE:

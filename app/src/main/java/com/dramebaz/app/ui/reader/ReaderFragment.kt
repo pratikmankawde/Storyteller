@@ -23,14 +23,17 @@ import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
-import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.domain.usecases.ChapterCharacterExtractionUseCase
+import com.dramebaz.app.domain.usecases.ChapterLookaheadManager
 import com.dramebaz.app.domain.usecases.MergeCharactersUseCase
 import com.dramebaz.app.data.db.Bookmark
 import com.dramebaz.app.data.db.ReadingSession
 import com.dramebaz.app.data.models.Dialog
 import com.dramebaz.app.data.models.EmotionalSegment
+import com.dramebaz.app.data.models.ReadingMode
 import com.dramebaz.app.data.models.VoiceProfile
+import com.dramebaz.app.playback.engine.AudioBufferManager
+import com.dramebaz.app.playback.engine.KaraokeHighlighter
 import com.dramebaz.app.playback.engine.PlaybackEngine
 import com.dramebaz.app.playback.engine.TextAudioSync
 import com.dramebaz.app.playback.mixer.AudioMixer
@@ -44,9 +47,19 @@ import com.dramebaz.app.utils.CacheManager
 import com.dramebaz.app.utils.DegradedModeManager
 import com.dramebaz.app.pdf.PdfPageRenderer
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
+import com.dramebaz.app.ai.llm.LlmService
+import com.dramebaz.app.ai.llm.pipeline.PassConfig
+import com.dramebaz.app.ai.llm.pipeline.ThemeAnalysisPass
+import com.dramebaz.app.ai.llm.prompts.ThemeAnalysisInput
+import com.dramebaz.app.ai.tts.VoiceConsistencyChecker
+import com.dramebaz.app.data.models.GeneratedTheme
+import com.dramebaz.app.ui.theme.DynamicThemeManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,12 +77,14 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     private var chapterId: Long = 0L
     /** Chapter ID actually loaded and displayed (resolved from arguments or first chapter). Used for bookmark. */
     private var loadedChapterId: Long = 0L
-    private var currentModeIndex = 0
-    private val modes = listOf("reading", "listening", "mixed")
+    // READ-001: Reading Mode Toggle - Using enum instead of legacy string-based modes
+    private var currentReadingMode: ReadingMode = ReadingMode.MIXED
 
     // Playback components
     private var playbackEngine: PlaybackEngine? = null
     private var audioMixer: AudioMixer? = null
+    // UI-003: Character avatar view for showing current speaker
+    private var characterAvatarView: CharacterAvatarView? = null
     private var textSegments: List<TextAudioSync.TextSegment> = emptyList()
     private var chapterText: String = ""
     private var chapterAnalysis: ChapterAnalysisResponse? = null
@@ -93,6 +108,11 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             audioService?.setOnProgressListener { position, duration ->
                 if (isNovelFormat && novelPages.isNotEmpty()) {
                     updateNovelHighlighting(position)
+                    // READ-002: Notify buffer manager of playback progress
+                    if (duration > 0) {
+                        val progress = position.toFloat() / duration.toFloat()
+                        audioBufferManager?.onPlaybackProgress(progress, novelPages.size)
+                    }
                 }
                 playerBottomSheet?.updateProgress(position, duration)
             }
@@ -168,8 +188,20 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     /** Page index that is currently playing (or -1 if none). Used to show/hide FAB. */
     private var playingPageIndex = -1
 
+    // READ-002: Audio Buffer Manager for seamless playback
+    private var audioBufferManager: com.dramebaz.app.playback.engine.AudioBufferManager? = null
+
+    // READ-003: Chapter Lookahead Manager for pre-analyzing next chapter
+    private var chapterLookaheadManager: ChapterLookaheadManager? = null
+
     // Memory monitoring
     private var memoryMonitor: MemoryMonitor? = null
+
+    // THEME-001: Dynamic theme manager for generative UI theming
+    private var dynamicThemeManager: DynamicThemeManager? = null
+
+    // VOICE-002: Voice consistency checker
+    private var voiceConsistencyChecker: VoiceConsistencyChecker? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -202,6 +234,12 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         // Start memory monitoring
         memoryMonitor = MemoryMonitor(requireContext(), toolbar)
         memoryMonitor?.start()
+
+        // THEME-001: Initialize dynamic theme manager
+        dynamicThemeManager = DynamicThemeManager(requireContext())
+
+        // VOICE-002: Initialize voice consistency checker
+        voiceConsistencyChecker = VoiceConsistencyChecker(app.db.characterDao())
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val book = vm.getBook(bookId)
@@ -257,6 +295,14 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                     triggerNextChapterPreAnalysis()
                 }
             }
+
+            // LIBRARY-001: Update reading progress as user reads through pages
+            if (novelPages.isNotEmpty()) {
+                val chapterProgress = (pageIndex + 1).toFloat() / novelPages.size
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    updateBookReadingProgress(chapterProgress)
+                }
+            }
         }
 
         viewPager?.adapter = novelPageAdapter
@@ -267,6 +313,14 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         viewPager?.clipToPadding = false
         viewPager?.clipChildren = false
 
+        // SETTINGS-002: Observe reading settings and apply to adapter
+        viewLifecycleOwner.lifecycleScope.launch {
+            app.settingsRepository.readingSettings.collectLatest { settings ->
+                AppLogger.d(tag, "Reading settings updated: fontSize=${settings.fontSize}, lineHeight=${settings.lineHeight}, theme=${settings.theme}")
+                novelPageAdapter?.updateReadingSettings(settings)
+            }
+        }
+
         // AUG-041: Setup degraded mode banner
         setupDegradedModeBanner(view)
 
@@ -275,6 +329,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         val recapText = view.findViewById<TextView>(R.id.recap_text) // May be null in novel view
         val btnMode = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_mode)
         val btnPlay = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_play)
+        // UI-003: Character avatar for showing current speaker
+        characterAvatarView = view.findViewById(R.id.character_avatar)
 
         // Initialize playback components
         AppLogger.d(tag, "Initializing PlaybackEngine and AudioMixer")
@@ -283,6 +339,11 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 // Use novel highlighting when in novel format, otherwise use text highlighting
                 if (isNovelFormat && novelPages.isNotEmpty()) {
                     updateNovelHighlighting(position)
+                    // READ-002: Notify buffer manager of playback progress
+                    if (duration > 0) {
+                        val progress = position.toFloat() / duration.toFloat()
+                        audioBufferManager?.onPlaybackProgress(progress, novelPages.size)
+                    }
                 } else {
                     updateTextHighlighting(body, position)
                 }
@@ -296,10 +357,65 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 // This prevents overwriting real LLM analysis with stub data when chapter finishes.
             }
         }
+
+        // SETTINGS-001: Initialize audio settings from repository
+        val audioSettings = app.settingsRepository.audioSettings.value
+        currentTheme = audioSettings.playbackTheme
+
         audioMixer = AudioMixer()
         audioMixer?.applyTheme(currentTheme)
 
+        // READ-002: Initialize Audio Buffer Manager for seamless playback
+        audioBufferManager = AudioBufferManager(
+            scope = viewLifecycleOwner.lifecycleScope,
+            onPrepareAudio = { startPage, count ->
+                preGenerateAudioForPagesAsync(startPage, count)
+            },
+            onBufferCleared = { pageIndex ->
+                // Remove from preGeneratedAudio map when buffer is cleared
+                preGeneratedAudio.remove(pageIndex)
+                AppLogger.d(tag, "Audio buffer cleared for page $pageIndex")
+            }
+        )
+
+        // READ-003: Initialize Chapter Lookahead Manager for pre-analyzing next chapter
+        chapterLookaheadManager = ChapterLookaheadManager(
+            scope = viewLifecycleOwner.lifecycleScope,
+            bookRepository = app.bookRepository
+        )
+
+        // READ-003: Observe lookahead state for subtle UI indicator
+        viewLifecycleOwner.lifecycleScope.launch {
+            chapterLookaheadManager?.lookaheadState?.collectLatest { state ->
+                when (state) {
+                    is ChapterLookaheadManager.LookaheadState.Analyzing -> {
+                        AppLogger.d(tag, "Lookahead analyzing: ${state.chapterTitle}")
+                        // Could show a subtle indicator here (optional)
+                    }
+                    is ChapterLookaheadManager.LookaheadState.Complete -> {
+                        AppLogger.i(tag, "Lookahead complete: ${state.chapterTitle}")
+                    }
+                    is ChapterLookaheadManager.LookaheadState.Failed -> {
+                        AppLogger.w(tag, "Lookahead failed: ${state.error}")
+                    }
+                    ChapterLookaheadManager.LookaheadState.Idle -> {}
+                }
+            }
+        }
+
+        // UI-001: Set up karaoke highlighting observer
+        setupKaraokeHighlightingObserver()
+
+        // UI-002: Set up waveform amplitude observer
+        setupWaveformObserver()
+
+        // UI-003: Set up character avatar observer
+        setupCharacterAvatarObserver()
+
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            // READ-001: Load saved reading mode preference first
+            loadSavedReadingMode()
+
             val startTime = System.currentTimeMillis()
             val cid = if (chapterId != 0L) chapterId else vm.firstChapterId(bookId)
             AppLogger.d(tag, "Loading chapter: chapterId=$cid")
@@ -309,6 +425,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             chapterText = ch?.body ?: "No chapter"
             chapterTitle = ch?.title ?: "Chapter"
             AppLogger.d(tag, "Chapter loaded: title=$chapterTitle, textLength=${chapterText.length}")
+
+            // LIBRARY-001: Update last read timestamp when book is opened
+            app.bookRepository.updateLastReadAt(bookId)
+            AppLogger.d(tag, "LIBRARY-001: Updated lastReadAt for book $bookId")
             // Log preview of chapter content for debugging
             val contentPreview = chapterText.take(300).replace("\n", " ").trim()
             AppLogger.d(tag, "Chapter content preview: \"$contentPreview...\"")
@@ -334,7 +454,9 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             }
 
             // AUG-006: Trigger character extraction if chapter has analysis but no characters in DB
-            if (ch != null && !ch.fullAnalysisJson.isNullOrBlank()) {
+            // AUG-FEATURE: Only run smart casting if enableSmartCasting is true
+            val smartCastingEnabled = app.settingsRepository.featureSettings.first().enableSmartCasting
+            if (ch != null && !ch.fullAnalysisJson.isNullOrBlank() && smartCastingEnabled) {
                 val existingCharacters = app.db.characterDao().getByBookId(bookId).first()
                 if (existingCharacters.isEmpty()) {
                     AppLogger.i(tag, "AUG-006: Chapter has analysis but no characters - triggering extraction in background")
@@ -406,11 +528,13 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 app.db.readingSessionDao().getCurrent()
             }
 
+            // SUMMARY-001: Use time-aware recap instead of simple recap
             val recapJob = async(Dispatchers.IO) {
                 val finalCid = cid ?: return@async null
                 val firstId = vm.firstChapterId(bookId)
                 if (firstId != null && finalCid != firstId) {
-                    vm.getRecapParagraph(bookId, finalCid)
+                    val timeAwareResult = vm.getTimeAwareRecap(bookId, finalCid)
+                    vm.formatRecapForDisplay(timeAwareResult)
                 } else null
             }
 
@@ -513,13 +637,19 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                     recapCard.visibility = View.VISIBLE
                     recapText?.text = recap
                 }
+
+                // THEME-001: Generate and apply dynamic theme based on book content
+                applyGenerativeTheme(view, bookTitle, chapterText)
+
+                // VOICE-002: Check voice consistency for characters
+                checkVoiceConsistency(view)
             }
 
             val finalCid = cid ?: return@launch
             // Persist session for T6.1/T6.4 (must run on IO - Room disallows main thread)
             withContext(Dispatchers.IO) {
                 app.db.readingSessionDao().insert(
-                    ReadingSession(1, bookId, finalCid, 0, 0, modes.getOrElse(currentModeIndex) { "mixed" })
+                    ReadingSession(1, bookId, finalCid, 0, 0, ReadingMode.toLegacyString(currentReadingMode))
                 )
             }
 
@@ -567,15 +697,17 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         }
         view.findViewById<View>(R.id.recap_skip)?.setOnClickListener { recapCard?.visibility = View.GONE }
 
-        // T6.4: Mode toggle
-        btnMode.text = "Mode: ${modes[currentModeIndex].replaceFirstChar { it.uppercase() }}"
+        // READ-001: Mode toggle using ReadingMode enum
+        updateModeButtonUI(btnMode)
+        applyReadingMode() // Apply initial mode state
         btnMode.setOnClickListener {
-            currentModeIndex = (currentModeIndex + 1) % modes.size
-            btnMode.text = "Mode: ${modes[currentModeIndex].replaceFirstChar { it.uppercase() }}"
+            currentReadingMode = ReadingMode.next(currentReadingMode)
+            updateModeButtonUI(btnMode)
+            applyReadingMode()
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 val cid = if (chapterId != 0L) chapterId else vm.firstChapterId(bookId) ?: 0L
                 app.db.readingSessionDao().insert(
-                    ReadingSession(1, bookId, cid, 0, 0, modes[currentModeIndex])
+                    ReadingSession(1, bookId, cid, 0, 0, ReadingMode.toLegacyString(currentReadingMode))
                 )
             }
         }
@@ -721,8 +853,11 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             return@withContext
         }
 
+        // AUG-FEATURE: Get enableEmotionModifiers setting for prosody control
+        val featureSettings = app.settingsRepository.featureSettings.first()
+        val enableEmotionModifiers = featureSettings.enableEmotionModifiers
         AppLogger.d(tag, "Preparing playback: dialogs=${analysis.dialogs?.size ?: 0}, " +
-                "characters=${analysis.characters?.size ?: 0}")
+                "characters=${analysis.characters?.size ?: 0}, enableEmotionModifiers=$enableEmotionModifiers")
 
         // Clear previous queue
         engine.stop()
@@ -788,9 +923,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             segmentIndex++
                         }
                     }
-                    // Add dialog
+                    // Add dialog - AUG-FEATURE: Pass enableEmotionModifiers setting
                     val dialogVoiceProfile = characterMap[dialog.speaker]
-                    engine.addDialog(dialog, dialogVoiceProfile)
+                    val dialogSpeakerId = speakerIdMap[dialog.speaker]
+                    engine.addDialog(dialog, dialogVoiceProfile, dialogSpeakerId, enableEmotionModifiers)
                     remainingText = remainingText.substring(dialogIndex + dialog.dialog.length)
                 }
                 // Remaining narration after dialogs
@@ -908,8 +1044,183 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         }
     }
 
+    /**
+     * UI-001: Set up observer for karaoke text highlighting.
+     * Observes activeSegmentRange and currentWordSegment from PlaybackEngine
+     * and applies word-by-word highlighting with smooth animations.
+     */
+    private fun setupKaraokeHighlightingObserver() {
+        val engine = playbackEngine ?: return
+
+        // AUG-FEATURE: Check if karaoke highlighting is enabled
+        viewLifecycleOwner.lifecycleScope.launch {
+            val featureSettings = app.settingsRepository.featureSettings.first()
+            if (!featureSettings.enableKaraokeHighlight) {
+                AppLogger.d(tag, "UI-001: Karaoke highlighting disabled, skipping setup")
+                return@launch
+            }
+
+            // Define highlight colors
+            val segmentHighlightColor = ContextCompat.getColor(requireContext(), android.R.color.holo_blue_light).let { c ->
+                android.graphics.Color.argb(60, android.graphics.Color.red(c), android.graphics.Color.green(c), android.graphics.Color.blue(c))
+            }
+            val wordHighlightColor = ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light).let { c ->
+                android.graphics.Color.argb(120, android.graphics.Color.red(c), android.graphics.Color.green(c), android.graphics.Color.blue(c))
+            }
+
+            // Observe karaoke highlighting StateFlows
+            combine(
+                engine.activeSegmentRange,
+                engine.currentWordSegment
+            ) { segmentRange, currentWord ->
+                Pair(segmentRange, currentWord)
+            }.collectLatest { (segmentRange, currentWord) ->
+                if (segmentRange != null && chapterText.isNotEmpty()) {
+                    if (isNovelFormat && novelPages.isNotEmpty()) {
+                        // Apply karaoke highlighting to novel page view
+                        applyKaraokeToNovelView(segmentRange, currentWord, segmentHighlightColor, wordHighlightColor)
+                    } else {
+                        // Apply karaoke highlighting to text view (non-novel format)
+                        val body = view?.findViewById<TextView>(R.id.body)
+                        body?.let { textView ->
+                            val highlighted = KaraokeHighlighter.highlightWord(
+                                fullText = chapterText,
+                                segmentRange = segmentRange,
+                                currentWord = currentWord,
+                                segmentHighlightColor = segmentHighlightColor,
+                                wordHighlightColor = wordHighlightColor
+                            )
+                            textView.text = highlighted
+                        }
+                    }
+                }
+            }
+
+            AppLogger.d(tag, "UI-001: Karaoke highlighting observer set up")
+        }
+    }
+
+    /**
+     * UI-001: Apply karaoke highlighting to novel page view.
+     * Highlights current segment and word across pages.
+     */
+    private fun applyKaraokeToNovelView(
+        segmentRange: KaraokeHighlighter.TextRange,
+        currentWord: KaraokeHighlighter.WordSegment?,
+        segmentHighlightColor: Int,
+        wordHighlightColor: Int
+    ) {
+        // Find which page contains the current segment
+        for (pageIndex in novelPages.indices) {
+            val page = novelPages[pageIndex]
+            val pageStartOffset = page.startOffset
+            val pageEndOffset = pageStartOffset + page.text.length
+
+            // Check if segment overlaps with this page
+            if (segmentRange.start < pageEndOffset && segmentRange.end > pageStartOffset) {
+                // Calculate relative positions within the page
+                val relativeSegmentStart = (segmentRange.start - pageStartOffset).coerceAtLeast(0)
+                val relativeSegmentEnd = (segmentRange.end - pageStartOffset).coerceAtMost(page.text.length)
+
+                val pageSegmentRange = KaraokeHighlighter.TextRange(
+                    start = relativeSegmentStart,
+                    end = relativeSegmentEnd,
+                    text = segmentRange.text,
+                    isDialog = segmentRange.isDialog,
+                    speaker = segmentRange.speaker
+                )
+
+                // Adjust word position relative to page
+                val pageWord = currentWord?.let { word ->
+                    if (word.startIndex >= pageStartOffset && word.endIndex <= pageEndOffset) {
+                        KaraokeHighlighter.WordSegment(
+                            word = word.word,
+                            startIndex = word.startIndex - pageStartOffset,
+                            endIndex = word.endIndex - pageStartOffset,
+                            audioStartMs = word.audioStartMs,
+                            audioEndMs = word.audioEndMs
+                        )
+                    } else null
+                }
+
+                // Apply highlighting to this page
+                novelPageAdapter?.applyKaraokeHighlighting(
+                    pageIndex = pageIndex,
+                    segmentRange = pageSegmentRange,
+                    currentWord = pageWord,
+                    segmentHighlightColor = segmentHighlightColor,
+                    wordHighlightColor = wordHighlightColor
+                )
+
+                // Ensure the page is visible
+                viewPager?.let { pager ->
+                    if (pager.currentItem != pageIndex) {
+                        pager.setCurrentItem(pageIndex, true)
+                    }
+                }
+
+                break
+            }
+        }
+    }
+
+    /**
+     * UI-002: Set up observer for waveform amplitude visualization.
+     * Observes audioAmplitude from PlaybackEngine and updates PlayerBottomSheet waveform.
+     */
+    private fun setupWaveformObserver() {
+        val engine = playbackEngine ?: return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            engine.audioAmplitude.collect { amplitude ->
+                playerBottomSheet?.updateWaveformAmplitude(amplitude)
+            }
+        }
+
+        AppLogger.d(tag, "UI-002: Waveform amplitude observer set up")
+    }
+
+    /**
+     * UI-003: Set up observer for character avatar bubbles.
+     * Observes currentSpeaker from PlaybackEngine and updates CharacterAvatarView.
+     */
+    private fun setupCharacterAvatarObserver() {
+        val engine = playbackEngine ?: return
+        val avatarView = characterAvatarView ?: return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            engine.currentSpeaker.collect { speakerInfo ->
+                withContext(Dispatchers.Main) {
+                    if (speakerInfo != null) {
+                        avatarView.visibility = View.VISIBLE
+                        avatarView.setCharacter(speakerInfo.name, speakerInfo.speakerId)
+                        avatarView.setState(CharacterAvatarView.AvatarState.SPEAKING)
+                    } else {
+                        avatarView.setState(CharacterAvatarView.AvatarState.IDLE)
+                    }
+                }
+            }
+        }
+
+        // Also observe isPlayingState to hide avatar when playback stops
+        viewLifecycleOwner.lifecycleScope.launch {
+            engine.isPlayingState.collect { isPlaying ->
+                withContext(Dispatchers.Main) {
+                    if (!isPlaying) {
+                        avatarView.setState(CharacterAvatarView.AvatarState.IDLE)
+                        avatarView.visibility = View.GONE
+                    }
+                }
+            }
+        }
+
+        AppLogger.d(tag, "UI-003: Character avatar observer set up")
+    }
+
     private fun showPlayerBottomSheet() {
-        playerBottomSheet = PlayerBottomSheet().apply {
+        // SETTINGS-001: Pass audio settings from repository
+        val audioSettings = app.settingsRepository.audioSettings.value
+        playerBottomSheet = PlayerBottomSheet.newInstance(audioSettings).apply {
             setListener(this@ReaderFragment)
         }
         playerBottomSheet?.show(parentFragmentManager, "PlayerBottomSheet")
@@ -981,11 +1292,21 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         AppLogger.i(tag, "Theme changed: $theme")
         currentTheme = theme
         audioMixer?.applyTheme(theme)
+        // SETTINGS-001: Persist to settings repository
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val currentSettings = app.settingsRepository.audioSettings.value
+            app.settingsRepository.updateAudioSettings(currentSettings.copy(playbackTheme = theme))
+        }
     }
 
     override fun onSpeedChanged(speed: Float) {
         AppLogger.i(tag, "Speed changed: $speed")
         audioService?.setSpeed(speed)
+        // SETTINGS-001: Persist to settings repository
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val currentSettings = app.settingsRepository.audioSettings.value
+            app.settingsRepository.updateAudioSettings(currentSettings.copy(playbackSpeed = speed))
+        }
     }
 
     /**
@@ -999,13 +1320,143 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         fab.visibility = if (show) View.VISIBLE else View.GONE
     }
 
+    /**
+     * THEME-001: Generate and apply dynamic theme based on book content.
+     * Uses LLM to analyze mood/genre and applies appropriate colors and fonts.
+     */
+    private fun applyGenerativeTheme(view: View, title: String, chapterText: String) {
+        val themeManager = dynamicThemeManager ?: return
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // AUG-FEATURE: Check if generative visuals are enabled
+                val featureSettings = app.settingsRepository.featureSettings.first()
+                if (!featureSettings.enableGenerativeVisuals) {
+                    AppLogger.d(tag, "THEME-001: Generative visuals disabled, skipping theme generation")
+                    return@launch
+                }
+
+                // Check if theme already exists for this book
+                val existingTheme = themeManager.loadTheme(bookId)
+                if (existingTheme != null) {
+                    AppLogger.d(tag, "THEME-001: Using cached theme for book $bookId: mood=${existingTheme.mood}")
+                    withContext(Dispatchers.Main) {
+                        themeManager.applyTheme(existingTheme, view)
+                    }
+                    return@launch
+                }
+
+                // Generate new theme using modular ThemeAnalysisPass
+                AppLogger.d(tag, "THEME-001: Generating theme for book: $title")
+                val generatedTheme = try {
+                    val model = LlmService.getModel()
+                    if (model != null) {
+                        val pass = ThemeAnalysisPass()
+                        val input = ThemeAnalysisInput(
+                            bookId = bookId,
+                            title = title,
+                            firstChapterText = chapterText
+                        )
+                        val output = pass.execute(model, input, PassConfig())
+                        GeneratedTheme.fromAnalysis(
+                            bookId = bookId,
+                            mood = output.mood,
+                            genre = output.genre,
+                            era = output.era,
+                            emotionalTone = output.emotionalTone,
+                            ambientSound = output.ambientSound
+                        )
+                    } else {
+                        // Fallback to default when no model available
+                        GeneratedTheme.createDefault(bookId)
+                    }
+                } catch (e: Exception) {
+                    AppLogger.w(tag, "THEME-001: LLM analysis failed, using default", e)
+                    GeneratedTheme.createDefault(bookId)
+                }
+
+                // Save theme for future use
+                themeManager.saveTheme(generatedTheme)
+
+                // Apply theme to UI
+                withContext(Dispatchers.Main) {
+                    if (isAdded) {
+                        themeManager.applyTheme(generatedTheme, view)
+                        AppLogger.i(tag, "THEME-001: Applied theme: mood=${generatedTheme.mood}, genre=${generatedTheme.genre}")
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e(tag, "THEME-001: Theme generation/application failed", e)
+            }
+        }
+    }
+
+    /**
+     * VOICE-002: Check voice consistency for all characters in the book.
+     * Shows a Snackbar warning if any characters have invalid/missing voice assignments.
+     */
+    private fun checkVoiceConsistency(view: View) {
+        val checker = voiceConsistencyChecker ?: return
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val result = checker.checkVoiceConsistency(bookId)
+
+                if (!result.isConsistent) {
+                    withContext(Dispatchers.Main) {
+                        if (isAdded) {
+                            showVoiceWarningSnackbar(view, result)
+                        }
+                    }
+                } else {
+                    AppLogger.d(tag, "VOICE-002: All ${result.totalChecked} characters have valid voices")
+                }
+            } catch (e: Exception) {
+                AppLogger.e(tag, "VOICE-002: Voice consistency check failed", e)
+            }
+        }
+    }
+
+    /**
+     * VOICE-002: Show Snackbar warning about invalid voice assignments.
+     */
+    private fun showVoiceWarningSnackbar(view: View, result: VoiceConsistencyChecker.ConsistencyResult) {
+        Snackbar.make(view, result.summary, Snackbar.LENGTH_LONG)
+            .setAction("Fix") {
+                fixInvalidVoices(result.invalidCharacters)
+            }
+            .show()
+    }
+
+    /**
+     * VOICE-002: Fix invalid voice assignments by applying suggested fallbacks.
+     */
+    private fun fixInvalidVoices(invalidVoices: List<VoiceConsistencyChecker.InvalidVoice>) {
+        val checker = voiceConsistencyChecker ?: return
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val fixed = checker.fixInvalidVoices(bookId, invalidVoices)
+                withContext(Dispatchers.Main) {
+                    if (isAdded && fixed > 0) {
+                        view?.let {
+                            Snackbar.make(it, "Fixed $fixed character voice(s)", Snackbar.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                AppLogger.i(tag, "VOICE-002: Fixed $fixed invalid voice assignments")
+            } catch (e: Exception) {
+                AppLogger.e(tag, "VOICE-002: Failed to fix invalid voices", e)
+            }
+        }
+    }
+
     /** AUG-037: Track if pre-analysis has already been triggered for next chapter */
     private var nextChapterPreAnalysisTriggered = false
 
     /**
-     * AUG-037: Pre-analyze next chapter when user reaches 80% of current chapter.
-     * AUG-FIX: Removed stub analysis - now only logs that next chapter is not analyzed.
-     * Users should use "Analyse Chapters" button for proper LLM-based analysis.
+     * READ-003: Pre-analyze next chapter when user reaches 80% of current chapter.
+     * Uses ChapterLookaheadManager for background LLM analysis.
      */
     private fun triggerNextChapterPreAnalysis() {
         if (nextChapterPreAnalysisTriggered) return
@@ -1013,20 +1464,33 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val chapters = app.bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
-                val currentIdx = chapters.indexOfFirst { it.id == loadedChapterId }
-                if (currentIdx < 0 || currentIdx + 1 >= chapters.size) return@launch
+                // Check if deep analysis is enabled
+                val featureSettings = app.settingsRepository.featureSettings.first()
+                val enableDeepAnalysis = featureSettings.enableDeepAnalysis
 
-                val nextCh = chapters[currentIdx + 1]
-                if (!nextCh.fullAnalysisJson.isNullOrBlank() || nextCh.body.length <= 50) {
-                    AppLogger.d(tag, "AUG-037: Next chapter already analyzed or too short")
+                if (!enableDeepAnalysis) {
+                    AppLogger.d(tag, "READ-003: Deep analysis disabled, skipping lookahead")
                     return@launch
                 }
 
-                // AUG-FIX: Just log that next chapter is not analyzed - don't run stub analysis
-                AppLogger.d(tag, "AUG-037: Next chapter '${nextCh.title}' not yet analyzed - use 'Analyse Chapters' for LLM analysis")
+                // Calculate progress for the lookahead manager
+                val progress = if (novelPages.isNotEmpty()) {
+                    (currentPageIndex + 1).toFloat() / novelPages.size
+                } else {
+                    0.8f // Already at 80% threshold if called
+                }
+
+                // Trigger lookahead through the manager
+                chapterLookaheadManager?.checkAndTriggerLookahead(
+                    currentProgress = progress,
+                    bookId = bookId,
+                    currentChapterId = loadedChapterId,
+                    enableDeepAnalysis = enableDeepAnalysis
+                )
+
+                AppLogger.i(tag, "READ-003: Lookahead analysis triggered for next chapter")
             } catch (e: Exception) {
-                AppLogger.e(tag, "AUG-037: Check for next chapter failed", e)
+                AppLogger.e(tag, "READ-003: Lookahead trigger failed", e)
             }
         }
     }
@@ -1183,6 +1647,23 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     }
 
     /**
+     * READ-002: Async wrapper for preGenerateAudioForPagesSync.
+     * Called by AudioBufferManager to pre-load audio for upcoming pages.
+     */
+    private suspend fun preGenerateAudioForPagesAsync(startPage: Int, count: Int) {
+        if (novelPages.isEmpty()) return
+        AppLogger.d(tag, "AudioBufferManager: Pre-generating audio for pages $startPage to ${startPage + count - 1}")
+        preGenerateAudioForPagesSync(startPage, count)
+
+        // Add generated audio to buffer manager
+        for (i in startPage until minOf(startPage + count, novelPages.size)) {
+            preGeneratedAudio[i]?.let { file ->
+                audioBufferManager?.addToBuffer(i, file)
+            }
+        }
+    }
+
+    /**
      * Play audio for the current page, using pre-generated audio if available.
      */
     private fun playCurrentPage() {
@@ -1207,6 +1688,11 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         val pageIndex = viewPager?.currentItem ?: 0
         currentPageIndex = pageIndex
 
+        // READ-002: Notify buffer manager that playback is starting
+        if (novelPages.isNotEmpty()) {
+            audioBufferManager?.onPlaybackStarted(pageIndex, novelPages.size)
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             val btnPlay = view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_play)
 
@@ -1224,12 +1710,15 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                     }
                     playingPageIndex = pageIndex
                     audioService?.playAudioFile(preGenAudio, bookTitle, "$chapterTitle - Page ${pageIndex + 1}", null)
+                    // SETTINGS-001: Apply saved playback speed
+                    audioService?.setSpeed(app.settingsRepository.audioSettings.value.playbackSpeed)
                     btnPlay?.text = "Pause"
                     playerBottomSheet?.updatePlaybackState(true)
                     updateFabPlayCurrentPageVisibility()
-                    if (pageIndex + 1 < novelPages.size && !preGeneratedAudio.containsKey(pageIndex + 1)) {
-                        preGenerateAudioForPages(pageIndex + 1, 1)
-                    }
+                    // READ-002: Buffer manager handles pre-generation now
+                    // Legacy: if (pageIndex + 1 < novelPages.size && !preGeneratedAudio.containsKey(pageIndex + 1)) {
+                    //     preGenerateAudioForPages(pageIndex + 1, 1)
+                    // }
                 }
                 return@launch
             }
@@ -1264,6 +1753,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             }
                             playingPageIndex = pageIndex
                             audioService?.playAudioFile(persisted, bookTitle, "$chapterTitle - Page ${pageIndex + 1}", null)
+                            // SETTINGS-001: Apply saved playback speed
+                            audioService?.setSpeed(app.settingsRepository.audioSettings.value.playbackSpeed)
                             btnPlay?.text = "Pause"
                             playerBottomSheet?.updatePlaybackState(true)
                             updateFabPlayCurrentPageVisibility()
@@ -1305,6 +1796,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         // Stop memory monitoring
         memoryMonitor?.stop()
         memoryMonitor = null
+
+        // READ-003: Clean up chapter lookahead manager
+        chapterLookaheadManager?.reset()
+        chapterLookaheadManager = null
 
         // Clean up PDF renderer and adapter
         novelPageAdapter?.cleanup()
@@ -1392,5 +1887,110 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
         // Initial check
         updateBanner()
+    }
+
+    // ============== READ-001: Reading Mode Toggle Methods ==============
+
+    /**
+     * Update the mode toggle button UI based on current reading mode.
+     */
+    private fun updateModeButtonUI(button: com.google.android.material.button.MaterialButton) {
+        button.text = "Mode: ${currentReadingMode.displayName}"
+        // Update icon based on mode
+        val iconRes = when (currentReadingMode) {
+            ReadingMode.TEXT -> android.R.drawable.ic_menu_view
+            ReadingMode.AUDIO -> android.R.drawable.ic_lock_silent_mode_off
+            ReadingMode.MIXED -> android.R.drawable.ic_menu_sort_by_size
+        }
+        button.setIconResource(iconRes)
+    }
+
+    /**
+     * Apply reading mode-specific behavior and UI adjustments.
+     * - TEXT mode: Standard reading, no auto-play, full UI
+     * - AUDIO mode: Auto-start playback, show minimal UI (hide text controls)
+     * - MIXED mode: Text with synchronized audio and karaoke highlighting
+     */
+    private fun applyReadingMode() {
+        val readerFooter = view?.findViewById<View>(R.id.reader_footer)
+        val btnPlay = view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_play)
+        val fabPlayCurrentPage = view?.findViewById<View>(R.id.fab_play_current_page)
+
+        when (currentReadingMode) {
+            ReadingMode.TEXT -> {
+                // TEXT mode: Standard reading, no auto-play
+                readerFooter?.visibility = View.VISIBLE
+                btnPlay?.visibility = View.GONE  // Hide play button in text-only mode
+                fabPlayCurrentPage?.visibility = View.GONE
+                // Stop any playing audio
+                audioService?.pause()
+                playbackEngine?.pause()
+                AppLogger.i(tag, "Applied TEXT mode: Audio controls hidden")
+            }
+            ReadingMode.AUDIO -> {
+                // AUDIO mode: Auto-start playback, show minimal UI
+                readerFooter?.visibility = View.VISIBLE
+                btnPlay?.visibility = View.VISIBLE
+                // Auto-start playback when switching to audio mode
+                if (audioService?.isPlaying() != true && playbackEngine?.isPlaying() != true) {
+                    playCurrentPage()
+                }
+                AppLogger.i(tag, "Applied AUDIO mode: Auto-play started")
+            }
+            ReadingMode.MIXED -> {
+                // MIXED mode: Full experience with text and audio
+                readerFooter?.visibility = View.VISIBLE
+                btnPlay?.visibility = View.VISIBLE
+                updateFabPlayCurrentPageVisibility()
+                // Karaoke highlighting is handled by NovelPageAdapter when audio plays
+                AppLogger.i(tag, "Applied MIXED mode: Full experience enabled")
+            }
+        }
+    }
+
+    /**
+     * Load saved reading mode from the database.
+     * Called during fragment initialization to restore user's preference.
+     */
+    private suspend fun loadSavedReadingMode() {
+        val session = withContext(Dispatchers.IO) {
+            app.db.readingSessionDao().getCurrent()
+        }
+        session?.let {
+            currentReadingMode = ReadingMode.fromLegacyString(it.mode)
+            AppLogger.d(tag, "Loaded saved reading mode: $currentReadingMode")
+        }
+    }
+
+    // ============ LIBRARY-001: Reading progress tracking ============
+
+    /**
+     * LIBRARY-001: Update overall book reading progress based on current chapter and page position.
+     * Calculates progress as: (completed chapters + current chapter progress) / total chapters
+     * Also checks if book is finished and marks it accordingly.
+     */
+    private suspend fun updateBookReadingProgress(chapterProgress: Float) {
+        try {
+            val chapters = app.bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
+            if (chapters.isEmpty()) return
+
+            val currentChapterIndex = chapters.indexOfFirst { it.id == loadedChapterId }
+            if (currentChapterIndex < 0) return
+
+            val totalChapters = chapters.size
+            // Overall progress = (completed chapters + current chapter progress) / total chapters
+            val overallProgress = (currentChapterIndex + chapterProgress) / totalChapters
+
+            app.bookRepository.updateReadingProgress(bookId, overallProgress)
+            AppLogger.d(tag, "LIBRARY-001: Updated progress for book $bookId: ${(overallProgress * 100).toInt()}% (chapter ${currentChapterIndex + 1}/$totalChapters, page progress: ${(chapterProgress * 100).toInt()}%)")
+
+            // Check if user finished the last chapter (at 100% of last chapter)
+            if (currentChapterIndex == totalChapters - 1 && chapterProgress >= 0.99f) {
+                app.bookRepository.markAsFinished(bookId)
+                AppLogger.i(tag, "LIBRARY-001: Book $bookId marked as FINISHED!")
+            }
+        } catch (e: Exception) {
+            AppLogger.e(tag, "LIBRARY-001: Failed to update reading progress", e)
+        }
     }
 }

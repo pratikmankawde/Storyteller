@@ -1,91 +1,64 @@
 package com.dramebaz.app.ai.llm.models
 
-import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
-
 /**
  * Interface defining the contract for all LLM model implementations.
- * Provides a unified API for character extraction, dialog analysis, and story generation.
- * 
+ *
+ * This is a pure inference wrapper interface - engines should only handle model loading,
+ * lifecycle management, and raw text generation. All pass-specific logic (prompts, parsing)
+ * belongs in the workflow classes (TwoPassWorkflow, ThreePassWorkflow).
+ *
  * Design Pattern: Strategy Pattern - allows different LLM implementations to be used interchangeably.
  */
 interface LlmModel {
-    
+
     /**
      * Load the model. Returns true if successful.
      */
     suspend fun loadModel(): Boolean
-    
+
     /**
      * Check if the model is loaded and ready for inference.
      */
     fun isModelLoaded(): Boolean
-    
+
     /**
      * Release model resources.
      */
     fun release()
-    
+
     /**
      * Get the execution provider (e.g., "GPU (Vulkan)", "CPU", "LiteRT-LM GPU")
      */
     fun getExecutionProvider(): String
-    
+
     /**
      * Check if model is using GPU acceleration.
      */
     fun isUsingGpu(): Boolean
-    
-    // ==================== Character Analysis Methods ====================
-    
+
+    // ==================== Core Inference Method ====================
+
     /**
-     * Pass-1: Extract character names from text.
-     * @param text Chapter or page text to analyze
-     * @return List of character names found
+     * Generate a response from the model given a system prompt and user prompt.
+     * This is the core inference method - all pass-specific logic should use this.
+     *
+     * @param systemPrompt System prompt that sets context/role for the model
+     * @param userPrompt User prompt with the actual request
+     * @param maxTokens Maximum tokens to generate
+     * @param temperature Sampling temperature (0.0 = deterministic, 1.0+ = creative)
+     * @return Generated text response
      */
-    suspend fun extractCharacterNames(text: String): List<String>
-    
-    /**
-     * Pass-2: Extract dialogs with speaker attribution.
-     * @param text Page text to analyze
-     * @param characterNames Known character names for attribution
-     * @return List of extracted dialogs
-     */
-    suspend fun extractDialogs(text: String, characterNames: List<String>): List<ExtractedDialog>
-    
-    /**
-     * Pass-3: Extract traits and voice profile for characters.
-     * @param characterName Character to analyze
-     * @param context Aggregated text where character appears
-     * @return Pair of (traits list, voice profile map)
-     */
-    suspend fun extractTraitsAndVoiceProfile(
-        characterName: String,
-        context: String
-    ): Pair<List<String>, Map<String, Any>>
-    
-    // ==================== Chapter Analysis Methods ====================
-    
-    /**
-     * Analyze chapter for summary, characters, dialogs, and sound cues.
-     */
-    suspend fun analyzeChapter(chapterText: String): ChapterAnalysisResponse?
-    
-    /**
-     * Extended analysis for themes, symbols, vocabulary, foreshadowing.
-     * @return JSON string with extended analysis
-     */
-    suspend fun extendedAnalysisJson(chapterText: String): String?
-    
-    // ==================== Story Generation ====================
-    
-    /**
-     * Generate a story based on user prompt.
-     */
-    suspend fun generateStory(userPrompt: String): String
+    suspend fun generateResponse(
+        systemPrompt: String,
+        userPrompt: String,
+        maxTokens: Int = 1024,
+        temperature: Float = 0.7f
+    ): String
 }
 
 /**
  * Data class for extracted dialog entries.
+ * Used by workflow classes for structured dialog extraction results.
  */
 data class ExtractedDialog(
     val speaker: String,

@@ -5,25 +5,25 @@ This directory contains individual task list JSON files for implementing feature
 ## Task Lists Summary
 
 ### From Documentation Analysis
-| File | Category | Tasks | Hours | Priority Features |
-|------|----------|-------|-------|-------------------|
-| `UITaskList.json` | UI/UX Enhancements | 6 | 31h | Karaoke Highlighting, Waveform Visualizer |
-| `AudioPipelineTaskList.json` | Audio Pipeline | 2 | 12h | Director Pipeline, TTS Emotion Modifiers |
-| `InsightsTaskList.json` | Insights & Analysis | 5 | 18h | Emotional Arc, Foreshadowing, Sentiment, Reading Level |
-| `ThemeTaskList.json` | Generative UI Themes | 1 | 6h | LLM-based Theme Generation |
-| `ArchitectureTaskList.json` | Architecture | 2 | 13h | LLM Strategy Pattern, Play Asset Delivery |
-| `SummaryTaskList.json` | Summary & Recaps | 2 | 8h | Time-Aware Recaps, Series Cross-Reference |
+| File                         | Category             | Tasks | Hours | Priority Features                                      |
+| ---------------------------- | -------------------- | ----- | ----- | ------------------------------------------------------ |
+| `UITaskList.json`            | UI/UX Enhancements   | 6     | 31h   | Karaoke Highlighting, Waveform Visualizer              |
+| `AudioPipelineTaskList.json` | Audio Pipeline       | 2     | 12h   | Director Pipeline, TTS Emotion Modifiers               |
+| `InsightsTaskList.json`      | Insights & Analysis  | 5     | 18h   | Emotional Arc, Foreshadowing, Sentiment, Reading Level |
+| `ThemeTaskList.json`         | Generative UI Themes | 1     | 6h    | LLM-based Theme Generation                             |
+| `ArchitectureTaskList.json`  | Architecture         | 2     | 13h   | LLM Strategy Pattern, Play Asset Delivery              |
+| `SummaryTaskList.json`       | Summary & Recaps     | 2     | 8h    | Time-Aware Recaps, Series Cross-Reference              |
 
 ### From Source Code Analysis (NEW)
-| File | Category | Tasks | Hours | Priority Features |
-|------|----------|-------|-------|-------------------|
-| `VisualizationTaskList.json` | Scene Visualization | 3 | 20h | Image Gen (Imagen), Video Gen (Veo) |
-| `StoryGeneratorTaskList.json` | AI Story Creation | 3 | 16h | Text-to-Story, Image-to-Story, Remix Mode |
-| `SettingsTaskList.json` | Settings & Config | 4 | 14h | Settings Sheet, Display, Features, Benchmark |
-| `ChapterManagementTaskList.json` | Chapter Management | 2 | 10h | Chapter Editor, Batch Re-Analysis |
-| `ExternalDataTaskList.json` | External Metadata | 2 | 8h | Google Search Grounding, Ratings, Reviews |
-| `VoiceManagementTaskList.json` | Voice Customization | 2 | 10h | Voice Selector, Consistency Check |
-| `ReadingModesTaskList.json` | Reading Experience | 3 | 12h | Mode Toggle, Audio Buffer, Lookahead |
+| File                             | Category            | Tasks | Hours | Priority Features                            |
+| -------------------------------- | ------------------- | ----- | ----- | -------------------------------------------- |
+| `VisualizationTaskList.json`     | Scene Visualization | 3     | 20h   | Image Gen (Imagen), Video Gen (Veo)          |
+| `StoryGeneratorTaskList.json`    | AI Story Creation   | 3     | 16h   | Text-to-Story, Image-to-Story, Remix Mode    |
+| `SettingsTaskList.json`          | Settings & Config   | 4     | 14h   | Settings Sheet, Display, Features, Benchmark |
+| `ChapterManagementTaskList.json` | Chapter Management  | 2     | 10h   | Chapter Editor, Batch Re-Analysis            |
+| `ExternalDataTaskList.json`      | External Metadata   | 2     | 8h    | Google Search Grounding, Ratings, Reviews    |
+| `VoiceManagementTaskList.json`   | Voice Customization | 2     | 10h   | Voice Selector, Consistency Check            |
+| `ReadingModesTaskList.json`      | Reading Experience  | 3     | 12h   | Mode Toggle, Audio Buffer, Lookahead         |
 
 **Total Estimated Hours: 178 hours** (88h from docs + 90h from source code)
 
@@ -207,21 +207,21 @@ flowchart TB
 
 ### Dependency Summary
 
-| Category | Depends On | Enables |
-|----------|------------|---------|
-| **Architecture** | - | Audio, Visualization, Story, Insights, External |
-| **Audio Pipeline** | Architecture | Reading, UI, Voice |
-| **Voice Management** | Audio | UI (Avatars) |
-| **Reading Experience** | Audio | Summaries |
-| **UI/UX** | Audio, Voice | - |
-| **Visualization** | Architecture | Story (Image-to-Story) |
-| **Story Creation** | Architecture, Visualization | - |
-| **Insights** | Chapter Management | Summaries, Themes |
-| **Summaries** | Insights, Reading | - |
-| **Themes** | Insights | Settings (Display) |
-| **Settings** | - | Audio, Visualization (via toggles) |
-| **Chapter Management** | - | Insights |
-| **External Data** | Architecture | - |
+| Category               | Depends On                  | Enables                                         |
+| ---------------------- | --------------------------- | ----------------------------------------------- |
+| **Architecture**       | -                           | Audio, Visualization, Story, Insights, External |
+| **Audio Pipeline**     | Architecture                | Reading, UI, Voice                              |
+| **Voice Management**   | Audio                       | UI (Avatars)                                    |
+| **Reading Experience** | Audio                       | Summaries                                       |
+| **UI/UX**              | Audio, Voice                | -                                               |
+| **Visualization**      | Architecture                | Story (Image-to-Story)                          |
+| **Story Creation**     | Architecture, Visualization | -                                               |
+| **Insights**           | Chapter Management          | Summaries, Themes                               |
+| **Summaries**          | Insights, Reading           | -                                               |
+| **Themes**             | Insights                    | Settings (Display)                              |
+| **Settings**           | -                           | Audio, Visualization (via toggles)              |
+| **Chapter Management** | -                           | Insights                                        |
+| **External Data**      | Architecture                | -                                               |
 
 ## Reference Documentation
 
@@ -229,29 +229,29 @@ All features reference the NovelReaderWeb project at:
 `C:\Users\Pratik\source\NovelReaderWeb\`
 
 ### Documentation Files
-| Document | Key Content |
-|----------|-------------|
-| `docs/AgentInstruction.md` | Master implementation guide |
-| `docs/AI.md` | LLM prompts, TTS emotion modifiers |
-| `docs/ARCHITECTURE.md` | Director Pipeline, Clean Architecture |
-| `docs/FEATURES.md` | Feature code samples |
-| `docs/HEURISTICS.md` | Chapter detection, dialog attribution |
-| `docs/UI.md` | Karaoke flow, animations, components |
-| `docs/UIFlow.md` | User event flows, state management |
-| `docs/SUMMARIES.md` | Auto-summarization implementation |
+| Document                   | Key Content                           |
+| -------------------------- | ------------------------------------- |
+| `docs/AgentInstruction.md` | Master implementation guide           |
+| `docs/AI.md`               | LLM prompts, TTS emotion modifiers    |
+| `docs/ARCHITECTURE.md`     | Director Pipeline, Clean Architecture |
+| `docs/FEATURES.md`         | Feature code samples                  |
+| `docs/HEURISTICS.md`       | Chapter detection, dialog attribution |
+| `docs/UI.md`               | Karaoke flow, animations, components  |
+| `docs/UIFlow.md`           | User event flows, state management    |
+| `docs/SUMMARIES.md`        | Auto-summarization implementation     |
 
 ### Key Source Files
-| Source File | Key Content |
-|-------------|-------------|
-| `src/components/book-reader/book-reader.component.ts` | Main reader with modes, visualization, recap |
-| `src/components/story-generator/story-generator.component.ts` | AI story creation & remix |
-| `src/components/settings-sheet/settings-sheet.component.ts` | Settings UI with tabs |
-| `src/components/chapter-manager/chapter-manager.component.ts` | Chapter editing & management |
-| `src/components/voice-selector/voice-selector.component.ts` | Voice customization per character |
-| `src/services/gemini.service.ts` | All LLM operations (analysis, generation) |
-| `src/services/tts.service.ts` | TTS with emotion modifiers |
-| `src/services/benchmark.service.ts` | Performance diagnostics |
-| `src/config/theme.resources.ts` | Theme colors, fonts |
+| Source File                                                   | Key Content                                  |
+| ------------------------------------------------------------- | -------------------------------------------- |
+| `src/components/book-reader/book-reader.component.ts`         | Main reader with modes, visualization, recap |
+| `src/components/story-generator/story-generator.component.ts` | AI story creation & remix                    |
+| `src/components/settings-sheet/settings-sheet.component.ts`   | Settings UI with tabs                        |
+| `src/components/chapter-manager/chapter-manager.component.ts` | Chapter editing & management                 |
+| `src/components/voice-selector/voice-selector.component.ts`   | Voice customization per character            |
+| `src/services/gemini.service.ts`                              | All LLM operations (analysis, generation)    |
+| `src/services/tts.service.ts`                                 | TTS with emotion modifiers                   |
+| `src/services/benchmark.service.ts`                           | Performance diagnostics                      |
+| `src/config/theme.resources.ts`                               | Theme colors, fonts                          |
 
 ## Recommended Implementation Order
 
@@ -278,7 +278,7 @@ All features reference the NovelReaderWeb project at:
 14. **THEME-001**: Generative UI Theme Analysis (6h) - Dynamic theming
 15. **VIS-003**: Scene Animation (6h) - Video generation with Veo
 16. **READ-002**: Audio Buffer Pre-loading (4h) - Seamless playback
-17. **UI-002**: VoiceWaveform Visualizer (6h) - Audio visualization
+17. **UI-002**: VoiceWaveform Visualizer (6h) - Audio visualization : **Skip for now**
 18. **UI-003**: Character Avatar Bubbles (4h) - Visual feedback
 19. **INSIGHTS-003**: Sentiment Distribution (3h) - Tone analysis
 20. **INSIGHTS-004**: Reading Level Analysis (2h) - Complexity assessment
@@ -329,4 +329,3 @@ Each task list follows the pattern from `tasklist.json`:
   "notes": {...}
 }
 ```
-

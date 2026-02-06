@@ -3,7 +3,10 @@ package com.dramebaz.app.ai.llm
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import com.dramebaz.app.ai.llm.pipeline.ChapterAnalysisInput
+import com.dramebaz.app.ai.llm.pipeline.ChapterAnalysisPass
 import com.dramebaz.app.utils.AppLogger
+import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
@@ -45,14 +48,35 @@ class ChapterAnalysisService : Service() {
                 // Ensure LlmService has context set (already done in Application.onCreate but safe to repeat)
                 LlmService.setApplicationContext(applicationContext)
 
-                // Basic analysis only (characters, dialogs, sounds, summary) - no extended analysis
-                // Extended analysis (themes, symbols, vocabulary) is done via "Analyze" button in Insights tab
-                val resp = runBlocking {
-                    LlmService.analyzeChapter(chapterText)
+                // Run chapter analysis using ChapterAnalysisPass
+                val chapterOutput = runBlocking {
+                    LlmService.ensureInitialized()
+                    val model = LlmService.getModel()
+                    if (model != null) {
+                        val chapterPass = ChapterAnalysisPass()
+                        chapterPass.execute(
+                            model = model,
+                            input = ChapterAnalysisInput(chapterText),
+                            config = ChapterAnalysisPass.DEFAULT_CONFIG
+                        )
+                    } else {
+                        // Fallback: use LlmService.analyzeChapter which handles model unavailability
+                        null
+                    }
                 }
-                AppLogger.i(TAG, "Chapter analysis complete: dialogs=${resp.dialogs?.size}, characters=${resp.characters?.size}")
 
-                File(resultPath).writeText(LlmService.toJson(resp), Charsets.UTF_8)
+                // If pass failed, use fallback
+                val responseJson = if (chapterOutput != null) {
+                    AppLogger.i(TAG, "Chapter analysis complete: dialogs=${chapterOutput.dialogs.size}, characters=${chapterOutput.characters.size}")
+                    Gson().toJson(chapterOutput)
+                } else {
+                    // Fallback to LlmService method (handles stubs internally)
+                    val fallbackResp = runBlocking { LlmService.analyzeChapter(chapterText) }
+                    AppLogger.i(TAG, "Chapter analysis (fallback) complete: dialogs=${fallbackResp.dialogs?.size}, characters=${fallbackResp.characters?.size}")
+                    LlmService.toJson(fallbackResp)
+                }
+
+                File(resultPath).writeText(responseJson, Charsets.UTF_8)
                 // Note: extendedPath file is not written - extended analysis is done separately in Insights tab
                 sendBroadcastResult(broadcastAction, resultPath, extendedPath, success = true)
                 AppLogger.i(TAG, "Analysis broadcast sent successfully")

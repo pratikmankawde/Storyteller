@@ -7,11 +7,18 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.dramebaz.app.DramebazApplication
+import com.dramebaz.app.data.audio.PageAudioStorage
 import com.dramebaz.app.data.db.Book
+import com.dramebaz.app.data.db.ReadingSessionDao
 import com.dramebaz.app.data.repositories.BookRepository
 import com.dramebaz.app.domain.usecases.AnalysisQueueManager
+import com.dramebaz.app.domain.usecases.GemmaCharacterAnalysisUseCase
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
+import com.dramebaz.app.domain.usecases.ThreePassCharacterAnalysisUseCase
 import com.dramebaz.app.domain.exceptions.ImportException
+import com.dramebaz.app.ai.llm.services.AnalysisForegroundService
+import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -23,9 +30,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 
+private const val TAG = "LibraryViewModel"
+
 class LibraryViewModel(
     private val bookRepository: BookRepository,
-    private val importUseCase: ImportBookUseCase
+    private val importUseCase: ImportBookUseCase,
+    private val pageAudioStorage: PageAudioStorage,
+    private val readingSessionDao: ReadingSessionDao,
+    private val gemmaAnalysisUseCase: GemmaCharacterAnalysisUseCase,
+    private val threePassAnalysisUseCase: ThreePassCharacterAnalysisUseCase,
+    private val appContext: Context
 ) : ViewModel() {
 
     val books: StateFlow<List<Book>> = bookRepository.allBooks()
@@ -38,11 +52,50 @@ class LibraryViewModel(
     val isImporting: kotlinx.coroutines.flow.StateFlow<Boolean> = _isImporting.asStateFlow()
 
     /**
-     * Delete a book and all its chapters from the library.
+     * Delete a book and all its associated data:
+     * - Cancel any running analysis jobs for this book
+     * - Audio files (page audio and segment audio)
+     * - Analysis checkpoints (Gemma and 3-pass)
+     * - Reading session (if it references this book)
+     * - Database records (chapters, characters, bookmarks, etc. via CASCADE)
      */
     fun deleteBook(book: Book) {
         viewModelScope.launch(Dispatchers.IO) {
-            bookRepository.deleteBookWithChapters(book.id)
+            val bookId = book.id
+            AppLogger.i(TAG, "Deleting book $bookId: ${book.title}")
+
+            // 0. Cancel any running analysis jobs for this book
+            AnalysisQueueManager.cancelAnalysisForBook(bookId)
+            AnalysisForegroundService.cancelForBook(appContext, bookId)
+            AppLogger.d(TAG, "Cancelled analysis jobs for book $bookId")
+
+            // 1. Delete audio files
+            val audioDeleted = pageAudioStorage.deleteAudioForBook(bookId)
+            AppLogger.d(TAG, "Deleted $audioDeleted audio files for book $bookId")
+
+            // 2. Delete analysis checkpoints
+            val gemmaDeleted = gemmaAnalysisUseCase.deleteCheckpointsForBook(bookId)
+            val threePassDeleted = threePassAnalysisUseCase.deleteCheckpointsForBook(bookId)
+            AppLogger.d(TAG, "Deleted checkpoints: gemma=$gemmaDeleted, 3-pass=$threePassDeleted")
+
+            // 3. Clear reading session if it references this book
+            val session = readingSessionDao.get()
+            if (session?.bookId == bookId) {
+                readingSessionDao.clear()
+                AppLogger.d(TAG, "Cleared reading session for book $bookId")
+            }
+
+            // 4. Delete from database (CASCADE handles chapters, characters, etc.)
+            bookRepository.deleteBookWithChapters(bookId)
+
+            // 5. Mark demo books as deleted so they don't get re-seeded on next app launch
+            if (book.title in DramebazApplication.DEMO_BOOK_TITLES) {
+                (appContext.applicationContext as? DramebazApplication)?.markDemoBookAsDeleted(book.title)
+            }
+
+            // 6. Clear from cancelled set now that deletion is complete
+            AnalysisQueueManager.clearCancelledBook(bookId)
+            AppLogger.i(TAG, "Book $bookId deleted successfully")
         }
     }
 
@@ -75,8 +128,8 @@ class LibraryViewModel(
                 name.endsWith(".epub", true) -> "epub"
                 else -> "txt"
             })
-                // DEACTIVATED: Auto-trigger analysis moved to ReaderFragment (AUG-037: pre-analyze at 80% progress)
-                // AnalysisQueueManager.enqueueBook(bookId)
+                // Auto-analyze first chapter on book load for quick initial insights
+                AnalysisQueueManager.enqueueFirstChapter(bookId)
                 _isImporting.value = false
             } catch (e: ImportException) {
                 _isImporting.value = false
@@ -115,12 +168,28 @@ class LibraryViewModel(
     }
 
     class Factory(
-        private val bookRepository: BookRepository
+        private val app: DramebazApplication
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            val importUseCase = ImportBookUseCase(bookRepository)
-            return LibraryViewModel(bookRepository, importUseCase) as T
+            val importUseCase = ImportBookUseCase(app.bookRepository)
+            val gemmaUseCase = GemmaCharacterAnalysisUseCase(
+                characterDao = app.db.characterDao(),
+                context = app
+            )
+            val threePassUseCase = ThreePassCharacterAnalysisUseCase(
+                characterDao = app.db.characterDao(),
+                context = app
+            )
+            return LibraryViewModel(
+                bookRepository = app.bookRepository,
+                importUseCase = importUseCase,
+                pageAudioStorage = app.pageAudioStorage,
+                readingSessionDao = app.db.readingSessionDao(),
+                gemmaAnalysisUseCase = gemmaUseCase,
+                threePassAnalysisUseCase = threePassUseCase,
+                appContext = app.applicationContext
+            ) as T
         }
     }
 }

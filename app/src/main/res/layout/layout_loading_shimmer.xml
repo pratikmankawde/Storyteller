@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UI-006: Loading Shimmer Effect Layout
+     From NovelReaderWeb docs/UI.md - "LoadingShimmer"
+     Use this layout during LLM analysis loading states.
+     Implies "reading" rather than generic loading. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/surface">
+
+    <!-- Title Placeholder (80% width) -->
+    <com.dramebaz.app.ui.common.ShimmerView
+        android:id="@+id/shimmer_title"
+        android:layout_width="0dp"
+        android:layout_height="24dp"
+        android:layout_marginBottom="24dp"
+        tools:layout_width="match_parent" />
+    
+    <!-- Line 1 (100% width) -->
+    <com.dramebaz.app.ui.common.ShimmerView
+        android:id="@+id/shimmer_line_1"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginBottom="12dp" />
+    
+    <!-- Line 2 (100% width) -->
+    <com.dramebaz.app.ui.common.ShimmerView
+        android:id="@+id/shimmer_line_2"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginBottom="12dp" />
+    
+    <!-- Line 3 (75% width - shorter line) -->
+    <com.dramebaz.app.ui.common.ShimmerView
+        android:id="@+id/shimmer_line_3"
+        android:layout_width="0dp"
+        android:layout_height="16dp"
+        android:layout_marginBottom="24dp"
+        tools:layout_width="match_parent" />
+    
+    <!-- Section 2 - Simulating paragraph break -->
+    
+    <!-- Line 4 (100% width) -->
+    <com.dramebaz.app.ui.common.ShimmerView
+        android:id="@+id/shimmer_line_4"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginBottom="12dp" />
+    
+    <!-- Line 5 (100% width) -->
+    <com.dramebaz.app.ui.common.ShimmerView
+        android:id="@+id/shimmer_line_5"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginBottom="12dp" />
+    
+    <!-- Line 6 (60% width - end of paragraph) -->
+    <com.dramebaz.app.ui.common.ShimmerView
+        android:id="@+id/shimmer_line_6"
+        android:layout_width="0dp"
+        android:layout_height="16dp"
+        tools:layout_width="match_parent" />
+
+</LinearLayout>
+

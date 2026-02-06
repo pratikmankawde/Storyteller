@@ -17,6 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.ai.llm.LlmService
+import com.dramebaz.app.domain.usecases.AnalysisQueueManager
 import com.dramebaz.app.ui.main.MainActivity
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -114,29 +115,48 @@ class SplashActivity : AppCompatActivity() {
                 // Continue to main; TTS will fail later on low-memory devices
             }
 
-            // Load LLM model (llama.cpp with GGUF)
+            // Load LLM model with saved settings (LiteRT-LM or GGUF)
             var llmLoaded = false
             var gpuStatus = "unknown"
             var isGpu = false
             try {
+                withContext(Dispatchers.Main) { updateStatus("Loading settings...") }
+
+                // Ensure settings are loaded before accessing them
+                app.settingsRepository.loadSettings()
+
                 withContext(Dispatchers.Main) { updateStatus("Loading LLM model...") }
-                LlmService.ensureInitialized()
-                llmLoaded = LlmService.isUsingLlama()
+
+                // Load saved LLM settings and initialize with them
+                val savedSettings = app.settingsRepository.llmSettings.value
+                AppLogger.i("SplashActivity", "Loading LLM with saved settings: model=${savedSettings.selectedModelType}, backend=${savedSettings.preferredBackend}, path=${savedSettings.selectedModelPath}")
+
+                LlmService.initializeWithSettings(applicationContext, savedSettings)
+                llmLoaded = LlmService.isReady()  // Check both LiteRT-LM and GGUF
                 gpuStatus = LlmService.getExecutionProvider()
                 isGpu = LlmService.isUsingGpu()
 
                 // Log GPU hand-off status
                 AppLogger.i("SplashActivity", "LLM loaded: $llmLoaded, Execution provider: $gpuStatus, GPU: $isGpu")
+
+                // Resume any incomplete book analysis from previous session
+                if (llmLoaded) {
+                    withContext(Dispatchers.Main) { updateStatus("Resuming analysis...") }
+                    AnalysisQueueManager.resumeIncompleteAnalysis()
+                }
             } catch (e: Exception) {
                 // Continue to main; LLM will use stub fallback
                 AppLogger.w("SplashActivity", "LLM initialization failed, using stub", e)
             }
 
             withContext(Dispatchers.Main) {
-                // Show Toast with model load and GPU hand-off status
+                // Get loaded model name for display
+                val modelName = LlmService.getModelCapabilities().modelName
+
+                // Show Toast with model name and GPU hand-off status
                 val message = when {
-                    llmLoaded && isGpu -> "✅ LLM loaded with GPU (Vulkan) acceleration"
-                    llmLoaded -> "⚠️ LLM loaded (CPU only - Vulkan unavailable)"
+                    llmLoaded && isGpu -> "✅ $modelName loaded (GPU)"
+                    llmLoaded -> "⚠️ $modelName loaded (CPU)"
                     else -> "❌ LLM Model failed to load (using stub)"
                 }
                 Toast.makeText(this@SplashActivity, message, Toast.LENGTH_LONG).show()

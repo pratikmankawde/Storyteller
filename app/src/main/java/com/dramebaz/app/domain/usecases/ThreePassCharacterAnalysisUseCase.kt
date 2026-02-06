@@ -842,4 +842,27 @@ class ThreePassCharacterAnalysisUseCase(
             }
         }
     }
+
+    /**
+     * Delete all checkpoints for a book.
+     * Called when a book is deleted to clean up checkpoint files.
+     * @return Number of checkpoint files deleted
+     */
+    fun deleteCheckpointsForBook(bookId: Long): Int {
+        val cacheDir = context?.cacheDir ?: return 0
+        val checkpointDir = File(cacheDir, CHECKPOINT_DIR)
+        if (!checkpointDir.exists()) return 0
+
+        var deletedCount = 0
+        checkpointDir.listFiles()?.forEach { file ->
+            // Files are named: {bookId}_ch{chapterIndex}.json
+            if (file.name.startsWith("${bookId}_ch")) {
+                if (file.delete()) {
+                    deletedCount++
+                }
+            }
+        }
+        AppLogger.i(TAG, "Deleted $deletedCount 3-pass checkpoints for book $bookId")
+        return deletedCount
+    }
 }

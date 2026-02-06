@@ -15,8 +15,9 @@
         android:padding="16dp"
         android:paddingTop="24dp">
 
-        <!-- Book Header Card -->
+        <!-- UI-004: Book Header Card with Cover for Shared Element Transition -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/book_header_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
@@ -26,35 +27,55 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:orientation="horizontal"
+                android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:maxLines="4"
-                    android:ellipsize="end"
-                    android:lineSpacingMultiplier="1.2"
-                    tools:text="The Great Adventure" />
+                <!-- UI-004: Book Cover for shared element transition -->
+                <ImageView
+                    android:id="@+id/book_cover"
+                    android:layout_width="100dp"
+                    android:layout_height="150dp"
+                    android:layout_marginEnd="16dp"
+                    android:scaleType="centerCrop"
+                    android:background="@color/surface_variant"
+                    android:contentDescription="@string/book_cover"
+                    app:srcCompat="@android:drawable/ic_menu_gallery"
+                    tools:ignore="ContentDescription" />
 
-                <TextView
-                    android:id="@+id/format"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="6dp"
-                    android:paddingBottom="6dp"
-                    android:textSize="12sp"
-                    android:textColor="@color/on_secondary"
-                    android:background="@color/secondary"
-                    android:textAllCaps="true"
-                    tools:text="PDF" />
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:maxLines="4"
+                        android:ellipsize="end"
+                        android:lineSpacingMultiplier="1.2"
+                        tools:text="The Great Adventure" />
+
+                    <TextView
+                        android:id="@+id/format"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp"
+                        android:textSize="12sp"
+                        android:textColor="@color/on_secondary"
+                        android:background="@color/secondary"
+                        android:textAllCaps="true"
+                        tools:text="PDF" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

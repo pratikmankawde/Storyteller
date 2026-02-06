@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Preloaded fonts for faster loading.
+    These fonts will be fetched when the app starts.
+-->
+<resources>
+    <array name="preloaded_fonts" translatable="false">
+        <item>@font/merriweather</item>
+        <item>@font/lora</item>
+        <item>@font/lexend</item>
+        <item>@font/atkinson_hyperlegible</item>
+    </array>
+</resources>
+

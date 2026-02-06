@@ -14,19 +14,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Qwen3-1.7B-Q4_K_M.gguf via minimal llama.cpp JNI (ggml-org/llama.cpp b7793).
- * Model files are in Downloads/ folder on device (e.g., Downloads/Qwen3-1.7B-Q4_K_M.gguf).
+ * GGUF Engine - Handles loading and inference for any GGUF format model.
+ * Uses llama.cpp JNI (ggml-org/llama.cpp b7793) for inference.
+ * Model files are discovered in Downloads/ folder on device.
  *
- * Model choice: Q4_K_M is ~2x faster than Q8_0 (87s vs 163s for 5-pass analysis on PC benchmark)
- * while still producing valid JSON output. The Q8_0 model was also observed to hang on Android
- * due to potential Vulkan GPU backend or memory constraints.
+ * This engine is file-type specific (GGUF format) and can load any compatible .gguf model,
+ * including Qwen, Llama, Mistral, Gemma GGUF variants, etc.
+ *
+ * Model-specific parameters (temperature, maxTokens, topK, topP, prompts) are loaded from
+ * an external JSON configuration file via ModelParamsManager.
+ *
+ * @param context Android context
+ * @param externalModelPath Optional explicit path to GGUF model file. If null, uses Downloads folder discovery.
  */
-class Qwen3Model(private val context: Context) {
+class GgufEngine(private val context: Context, private val externalModelPath: String? = null) {
     companion object {
-        private const val TAG = "Qwen3Model"
-        private const val MODEL_FILE_NAME = "Qwen3-1.7B-Q4_K_M.gguf"
-        // Match both Q8_0 and Q4_K_M variants for flexibility
-        private val GGUF_PATTERN = Regex("qwen.*1[._]?7b.*(q8|q4_k_m).*\\.gguf", RegexOption.IGNORE_CASE)
+        private const val TAG = "GgufEngine"
+        private const val DEFAULT_MODEL_FILE_NAME = "model.gguf"
+        // Match any .gguf file for flexibility
+        private val GGUF_PATTERN = Regex(".*\\.gguf", RegexOption.IGNORE_CASE)
     }
 
     private val gson = Gson()
@@ -51,21 +57,38 @@ class Qwen3Model(private val context: Context) {
         return paths.distinct()
     }
 
-    /** Look for model in Downloads/ folder first, then fallback search. */
+    /**
+     * Look for model - first check external path if provided, then Downloads folder.
+     * If a file needs to be copied to private storage, copy it there for faster loading.
+     */
     private fun findGgufModel(): String? {
         val privateModelPath = File(context.filesDir, "model.gguf")
+
+        // 1. Check if external path was provided (from LlmModelFactory discovery)
+        if (externalModelPath != null) {
+            val externalFile = File(externalModelPath)
+            if (externalFile.exists() && externalFile.isFile) {
+                AppLogger.i(TAG, "Using externally specified model: $externalModelPath")
+                // Use directly without copying - the file was discovered by the factory
+                return externalModelPath
+            } else {
+                AppLogger.w(TAG, "External model path doesn't exist: $externalModelPath")
+            }
+        }
+
+        // 2. Check if we already have a model copied to private storage
         if (privateModelPath.exists() && privateModelPath.length() > 0) {
             AppLogger.i(TAG, "Found existing model in private storage: ${privateModelPath.absolutePath}")
             return privateModelPath.absolutePath
         }
 
-        // Check for model directly in Downloads folder (preferred location)
+        // 3. Check for model directly in Downloads folder (known names)
         val knownPaths = listOf(
-            "/storage/emulated/0/Download/$MODEL_FILE_NAME",
-            "/sdcard/Download/$MODEL_FILE_NAME",
+            "/storage/emulated/0/Download/$DEFAULT_MODEL_FILE_NAME",
+            "/sdcard/Download/$DEFAULT_MODEL_FILE_NAME",
             // Legacy paths for subfolder structure
-            "/storage/emulated/0/Download/Qwen3-1.7B-Q4_K_M/$MODEL_FILE_NAME",
-            "/sdcard/Download/Qwen3-1.7B-Q4_K_M/$MODEL_FILE_NAME"
+            "/storage/emulated/0/Download/Qwen3-1.7B-Q4_K_M/$DEFAULT_MODEL_FILE_NAME",
+            "/sdcard/Download/Qwen3-1.7B-Q4_K_M/$DEFAULT_MODEL_FILE_NAME"
         )
         for (path in knownPaths) {
             val file = File(path)
@@ -75,6 +98,7 @@ class Qwen3Model(private val context: Context) {
             }
         }
 
+        // 4. Scan download directories for any .gguf file
         for (dirPath in getPossibleDownloadPaths()) {
             val dir = File(dirPath)
             if (!dir.exists() || !dir.isDirectory) continue
@@ -130,13 +154,13 @@ class Qwen3Model(private val context: Context) {
 
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
         try {
-            AppLogger.i(TAG, "Searching for GGUF model (Downloads/$MODEL_FILE_NAME or pattern qwen*1.7b*(q8|q4_k_m)*.gguf)")
+            AppLogger.i(TAG, "Searching for GGUF model in Downloads folder...")
             val foundPath = findGgufModel() ?: run {
                 AppLogger.e(TAG, "GGUF model not found in Downloads folder")
                 return@withContext false
             }
             val modelFile = File(foundPath)
-            AppLogger.i(TAG, "Using path: $foundPath (exists=${modelFile.exists()}, size=${modelFile.length()})")
+            AppLogger.i(TAG, "Using GGUF model: $foundPath (size=${modelFile.length() / (1024*1024)} MB)")
             val loadStartMs = System.currentTimeMillis()
             val handle = LlamaNative.loadModel(foundPath)
             if (handle == 0L) {
@@ -147,8 +171,8 @@ class Qwen3Model(private val context: Context) {
             modelLoaded = true
             val provider = LlamaNative.getExecutionProvider(handle)
             AppLogger.i(TAG, "Execution provider: $provider")
-            AppLogger.logPerformance(TAG, "Load model (llama.cpp JNI)", System.currentTimeMillis() - loadStartMs)
-            AppLogger.i(TAG, "Qwen3 GGUF loaded successfully")
+            AppLogger.logPerformance(TAG, "Load GGUF model (llama.cpp JNI)", System.currentTimeMillis() - loadStartMs)
+            AppLogger.i(TAG, "GGUF engine loaded successfully: ${modelFile.name}")
             true
         } catch (e: Exception) {
             AppLogger.e(TAG, "Error loading GGUF model", e)
@@ -176,6 +200,31 @@ class Qwen3Model(private val context: Context) {
     fun isUsingGpu(): Boolean {
         return getExecutionProvider().contains("GPU", ignoreCase = true)
     }
+
+    // ==================== Public Inference API ====================
+
+    /**
+     * Generate a response from the model given system and user prompts.
+     * This is the public API for workflow classes.
+     *
+     * @param systemPrompt System prompt that sets context/role for the model
+     * @param userPrompt User prompt with the actual request
+     * @param maxTokens Maximum tokens to generate
+     * @param temperature Sampling temperature (0.0 = deterministic, 1.0+ = creative)
+     * @return Generated text response
+     */
+    suspend fun generateWithPrompts(
+        systemPrompt: String,
+        userPrompt: String,
+        maxTokens: Int = 1024,
+        temperature: Float = 0.7f
+    ): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        if (!modelLoaded) return@withContext ""
+        val prompt = buildChatPrompt(systemPrompt, userPrompt)
+        generateResponse(prompt, maxTokens, temperature, jsonMode = false)
+    }
+
+    // ==================== Private Inference ====================
 
     private fun generateResponse(prompt: String, maxTokens: Int, temperature: Float, jsonMode: Boolean = true): String {
         if (!modelLoaded || nativeHandle == 0L) {
@@ -215,6 +264,11 @@ class Qwen3Model(private val context: Context) {
         return json
     }
 
+    /**
+     * @deprecated Use ChapterAnalysisPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.ChapterAnalysisPass
+     */
+    @Deprecated("Use ChapterAnalysisPass from modular pipeline", ReplaceWith("ChapterAnalysisPass().execute(model, input, config)"))
     suspend fun analyzeChapter(chapterText: String): ChapterAnalysisResponse? = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext null
         try {
@@ -251,6 +305,11 @@ class Qwen3Model(private val context: Context) {
         }
     }
 
+    /**
+     * @deprecated Use ExtendedAnalysisPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.ExtendedAnalysisPass
+     */
+    @Deprecated("Use ExtendedAnalysisPass from modular pipeline", ReplaceWith("ExtendedAnalysisPass().execute(model, input, config)"))
     suspend fun extendedAnalysisJson(chapterText: String): String? = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext null
         try {
@@ -263,6 +322,12 @@ class Qwen3Model(private val context: Context) {
         }
     }
 
+    /**
+     * @deprecated Use CharacterExtractionPass + TraitsExtractionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.CharacterExtractionPass
+     * @see com.dramebaz.app.ai.llm.pipeline.TraitsExtractionPass
+     */
+    @Deprecated("Use CharacterExtractionPass + TraitsExtractionPass from modular pipeline")
     suspend fun extractCharactersAndTraitsInSegment(
         segmentText: String,
         skipNamesWithTraits: Collection<String>,
@@ -279,6 +344,11 @@ class Qwen3Model(private val context: Context) {
         }
     }
 
+    /**
+     * @deprecated Use CharacterDetectionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.CharacterDetectionPass
+     */
+    @Deprecated("Use CharacterDetectionPass from modular pipeline", ReplaceWith("CharacterDetectionPass().execute(model, input, config)"))
     suspend fun detectCharactersOnPage(pageText: String): List<String> = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext emptyList()
         try {
@@ -291,6 +361,11 @@ class Qwen3Model(private val context: Context) {
         }
     }
 
+    /**
+     * @deprecated Use InferTraitsPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.InferTraitsPass
+     */
+    @Deprecated("Use InferTraitsPass from modular pipeline", ReplaceWith("InferTraitsPass().execute(model, input, config)"))
     suspend fun inferTraitsForCharacter(characterName: String, excerpt: String): List<String> = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext emptyList()
         try {
@@ -303,6 +378,11 @@ class Qwen3Model(private val context: Context) {
         }
     }
 
+    /**
+     * @deprecated Use VoiceProfileSuggestionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.VoiceProfileSuggestionPass
+     */
+    @Deprecated("Use VoiceProfileSuggestionPass from modular pipeline", ReplaceWith("VoiceProfileSuggestionPass().execute(model, input, config)"))
     suspend fun suggestVoiceProfilesJson(charactersWithTraitsJson: String): String? = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext null
         try {
@@ -316,6 +396,11 @@ class Qwen3Model(private val context: Context) {
         }
     }
 
+    /**
+     * @deprecated Use StoryGenerationPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.StoryGenerationPass
+     */
+    @Deprecated("Use StoryGenerationPass from modular pipeline", ReplaceWith("StoryGenerationPass().execute(model, input, config)"))
     suspend fun generateStory(userPrompt: String): String = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext ""
         val systemPrompt = """You are a creative story writer. Your task is to generate a complete, engaging story based on the user's prompt.
@@ -333,6 +418,154 @@ Generate the story now:"""
         response.trim().replace(Regex("```[\\w]*\\n"), "").replace(Regex("```"), "").trim().ifEmpty { "" }
     }
 
+    /**
+     * STORY-003: Remix an existing story based on user instructions.
+     * Uses a specialized remix prompt that includes the original story context.
+     *
+     * @deprecated Use StoryRemixPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.StoryRemixPass
+     */
+    @Deprecated("Use StoryRemixPass from modular pipeline", ReplaceWith("StoryRemixPass().execute(model, input, config)"))
+    suspend fun remixStory(remixPrompt: String): String = withContext(Dispatchers.IO) {
+        if (!modelLoaded) return@withContext ""
+        val systemPrompt = """You are a creative story writer. Your task is to REMIX an existing story based on the user's instructions.
+Rules:
+1. Generate ONLY story content - no explanations, no meta-commentary, no JSON
+2. Preserve the core narrative elements (characters, setting, major plot points) unless instructed otherwise
+3. Apply the requested transformation creatively and consistently
+4. Write a complete story with a beginning, middle, and end
+5. Include dialogue, character development, and descriptive scenes
+6. The remixed story should be substantial (at least 1000 words)
+7. Write in third person narrative style
+8. Do not include any instructions or notes, only the story text itself.
+Generate the remixed story now:"""
+        val fullPrompt = buildChatPrompt(systemPrompt, remixPrompt)
+        val response = generateResponse(fullPrompt, 1024, 0.3f, jsonMode = false)
+        response.trim().replace(Regex("```[\\w]*\\n"), "").replace(Regex("```"), "").trim().ifEmpty { "" }
+    }
+
+    // ==================== VIS-001: Scene Prompt Generation ====================
+
+    /**
+     * VIS-001: Generate an image generation prompt from scene text.
+     * Extracts visual elements (characters, setting, mood, lighting) and creates
+     * a structured prompt suitable for Stable Diffusion or Imagen.
+     *
+     * @deprecated Use ScenePromptGenerationPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.ScenePromptGenerationPass
+     */
+    @Deprecated("Use ScenePromptGenerationPass from modular pipeline", ReplaceWith("ScenePromptGenerationPass().execute(model, input, config)"))
+    suspend fun generateScenePrompt(
+        sceneText: String,
+        mood: String? = null,
+        characters: List<String> = emptyList()
+    ): com.dramebaz.app.data.models.ScenePrompt? = withContext(Dispatchers.IO) {
+        if (!modelLoaded) return@withContext null
+        try {
+            val prompt = buildScenePromptGenerationPrompt(sceneText, mood, characters)
+            val response = generateResponse(prompt, 512, 0.3f)
+            parseScenePromptResponse(response, sceneText)
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Error generating scene prompt", e)
+            null
+        }
+    }
+
+    private fun buildScenePromptGenerationPrompt(
+        sceneText: String,
+        mood: String?,
+        characters: List<String>
+    ): String {
+        val text = sceneText.take(2000) // Limit scene text for prompt
+        val moodHint = mood?.let { "Mood: $it\n" } ?: ""
+        val charHint = if (characters.isNotEmpty()) "Characters present: ${characters.joinToString(", ")}\n" else ""
+
+        val systemPrompt = """You are an image prompt generator. Extract visual elements from the scene and create a detailed image generation prompt. Output ONLY valid JSON."""
+
+        val userPrompt = """Analyze this scene and create an image generation prompt for Stable Diffusion or similar models.
+
+${moodHint}${charHint}
+<SCENE>
+$text
+</SCENE>
+
+Extract visual elements and return JSON:
+{"prompt": "detailed description of the scene for image generation", "negative_prompt": "elements to avoid", "style": "art style suggestion", "mood": "detected mood", "setting": "location/environment", "time_of_day": "morning/afternoon/evening/night/unknown", "characters": ["list of characters visible"]}
+
+Focus on: visual composition, lighting, colors, environment details, character descriptions if present.
+$jsonValidityReminder"""
+
+        return buildChatPrompt(systemPrompt, userPrompt)
+    }
+
+    private fun parseScenePromptResponse(
+        response: String,
+        originalText: String
+    ): com.dramebaz.app.data.models.ScenePrompt? {
+        return try {
+            val json = extractJsonFromResponse(response)
+            val obj = gson.fromJson(json, Map::class.java) as? Map<*, *> ?: return null
+
+            val prompt = obj["prompt"] as? String ?: return null
+            val negativePrompt = obj["negative_prompt"] as? String ?: com.dramebaz.app.data.models.ScenePrompt.DEFAULT_NEGATIVE
+            val style = obj["style"] as? String ?: "detailed digital illustration"
+            val mood = obj["mood"] as? String ?: "neutral"
+            val setting = obj["setting"] as? String ?: ""
+            val timeOfDay = obj["time_of_day"] as? String ?: ""
+            val characters = (obj["characters"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+
+            com.dramebaz.app.data.models.ScenePrompt(
+                prompt = prompt,
+                negativePrompt = negativePrompt,
+                style = style,
+                mood = mood,
+                setting = setting,
+                timeOfDay = timeOfDay,
+                characters = characters
+            )
+        } catch (e: Exception) {
+            AppLogger.w(TAG, "Failed to parse scene prompt response, using fallback", e)
+            // Fallback: create a basic prompt from the original text
+            createFallbackScenePrompt(originalText)
+        }
+    }
+
+    private fun createFallbackScenePrompt(sceneText: String): com.dramebaz.app.data.models.ScenePrompt {
+        // Extract basic visual elements using simple heuristics
+        val words = sceneText.lowercase()
+
+        val mood = when {
+            words.contains("dark") || words.contains("fear") || words.contains("shadow") -> "dark"
+            words.contains("bright") || words.contains("happy") || words.contains("sun") -> "bright"
+            words.contains("sad") || words.contains("tear") || words.contains("grief") -> "melancholy"
+            else -> "neutral"
+        }
+
+        val timeOfDay = when {
+            words.contains("morning") || words.contains("sunrise") || words.contains("dawn") -> "morning"
+            words.contains("afternoon") || words.contains("midday") -> "afternoon"
+            words.contains("evening") || words.contains("sunset") || words.contains("dusk") -> "evening"
+            words.contains("night") || words.contains("midnight") || words.contains("moon") -> "night"
+            else -> "unknown"
+        }
+
+        // Create a basic prompt from the first few sentences
+        val sentences = sceneText.split(Regex("[.!?]")).filter { it.isNotBlank() }.take(3)
+        val prompt = sentences.joinToString(". ") { it.trim() }
+
+        return com.dramebaz.app.data.models.ScenePrompt(
+            prompt = "Scene: $prompt",
+            mood = mood,
+            timeOfDay = timeOfDay,
+            style = "detailed digital illustration"
+        )
+    }
+
+    /**
+     * @deprecated Use KeyMomentsExtractionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.KeyMomentsExtractionPass
+     */
+    @Deprecated("Use KeyMomentsExtractionPass from modular pipeline", ReplaceWith("KeyMomentsExtractionPass().execute(model, input, config)"))
     suspend fun extractKeyMomentsForCharacter(characterName: String, chapterText: String, chapterTitle: String): List<Map<String, String>> = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext emptyList()
         try {
@@ -345,6 +578,11 @@ Generate the story now:"""
         }
     }
 
+    /**
+     * @deprecated Use RelationshipsExtractionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.RelationshipsExtractionPass
+     */
+    @Deprecated("Use RelationshipsExtractionPass from modular pipeline", ReplaceWith("RelationshipsExtractionPass().execute(model, input, config)"))
     suspend fun extractRelationshipsForCharacter(characterName: String, chapterText: String, allCharacterNames: List<String>): List<Map<String, String>> = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext emptyList()
         try {
@@ -362,7 +600,11 @@ Generate the story now:"""
     /**
      * Pass-1: Extract ONLY character names from the text.
      * Returns a list of character names exactly as they appear in the text.
+     *
+     * @deprecated Use CharacterExtractionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.CharacterExtractionPass
      */
+    @Deprecated("Use CharacterExtractionPass from modular pipeline", ReplaceWith("CharacterExtractionPass().execute(model, input, config)"))
     suspend fun extractCharacterNames(chapterText: String): List<String> = withContext(Dispatchers.IO) {
         AppLogger.d(TAG, "Pass-1: extractCharacterNames called (text=${chapterText.length} chars)")
         if (!modelLoaded) {
@@ -388,7 +630,11 @@ Generate the story now:"""
     /**
      * Pass-2: Extract explicit traits for a specific character from the text.
      * Should be called in parallel for each character from Pass-1.
+     *
+     * @deprecated Use TraitsExtractionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.TraitsExtractionPass
      */
+    @Deprecated("Use TraitsExtractionPass from modular pipeline", ReplaceWith("TraitsExtractionPass().execute(model, input, config)"))
     suspend fun extractTraitsForCharacter(characterName: String, chapterText: String): List<String> = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext emptyList()
         try {
@@ -407,7 +653,11 @@ Generate the story now:"""
      * @param pageText The text of the current page
      * @param characterNames List of character names found on this page (from Pass-1)
      * @return List of extracted dialogs with speaker attribution
+     *
+     * @deprecated Use DialogExtractionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.DialogExtractionPass
      */
+    @Deprecated("Use DialogExtractionPass from modular pipeline", ReplaceWith("DialogExtractionPass().execute(model, input, config)"))
     suspend fun extractDialogsFromPage(pageText: String, characterNames: List<String>): List<ExtractedDialogEntry> = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext emptyList()
         try {
@@ -434,7 +684,11 @@ Generate the story now:"""
     /**
      * Pass-3: Infer personality based on traits extracted in Pass-2.
      * Should be called in parallel for each character.
+     *
+     * @deprecated Use PersonalityInferencePass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.PersonalityInferencePass
      */
+    @Deprecated("Use PersonalityInferencePass from modular pipeline", ReplaceWith("PersonalityInferencePass().execute(model, input, config)"))
     suspend fun inferPersonalityFromTraits(characterName: String, traits: List<String>): List<String> = withContext(Dispatchers.IO) {
         if (!modelLoaded) return@withContext emptyList()
         try {
@@ -460,7 +714,12 @@ Generate the story now:"""
      * @param char4Name Optional fourth character name
      * @param char4Context Optional aggregated text for fourth character
      * @return List of Pair(characterName, Pair(traits, voiceProfile)) for each processed character
+     *
+     * @deprecated Use TraitsExtractionPass + VoiceProfileSuggestionPass from the modular pipeline instead.
+     * @see com.dramebaz.app.ai.llm.pipeline.TraitsExtractionPass
+     * @see com.dramebaz.app.ai.llm.pipeline.VoiceProfileSuggestionPass
      */
+    @Deprecated("Use TraitsExtractionPass + VoiceProfileSuggestionPass from modular pipeline")
     suspend fun pass3ExtractTraitsAndVoiceProfile(
         char1Name: String,
         char1Context: String,
@@ -1269,6 +1528,30 @@ $jsonValidityReminder"""
             }
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    // ==================== Raw Text Generation ====================
+
+    /**
+     * INS-002: Generate raw text response from LLM for custom prompts.
+     * Used for foreshadowing detection and other analysis tasks that need
+     * custom prompt formatting.
+     *
+     * @param prompt The full prompt including system/user/assistant markers
+     * @return Raw text response from the model
+     */
+    suspend fun generateRaw(prompt: String): String = withContext(Dispatchers.IO) {
+        if (!modelLoaded) {
+            AppLogger.w(TAG, "generateRaw: model not loaded")
+            return@withContext ""
+        }
+        try {
+            // Use JSON mode false for raw text generation
+            generateResponse(prompt, 1024, 0.2f, jsonMode = false)
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "generateRaw error", e)
+            ""
         }
     }
 }

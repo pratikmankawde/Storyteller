@@ -512,4 +512,26 @@ class GemmaCharacterAnalysisUseCase(
         engineInitialized = false
         AppLogger.i(TAG, "Gemma engine released")
     }
+
+    /**
+     * Delete all checkpoints for a book.
+     * Called when a book is deleted to clean up checkpoint files.
+     * @return Number of checkpoint files deleted
+     */
+    fun deleteCheckpointsForBook(bookId: Long): Int {
+        val checkpointDir = File(context.filesDir, CHECKPOINT_DIR)
+        if (!checkpointDir.exists()) return 0
+
+        var deletedCount = 0
+        checkpointDir.listFiles()?.forEach { file ->
+            // Files are named: gemma_checkpoint_{bookId}_{chapterIndex}.json
+            if (file.name.startsWith("gemma_checkpoint_${bookId}_")) {
+                if (file.delete()) {
+                    deletedCount++
+                }
+            }
+        }
+        AppLogger.i(TAG, "Deleted $deletedCount Gemma checkpoints for book $bookId")
+        return deletedCount
+    }
 }

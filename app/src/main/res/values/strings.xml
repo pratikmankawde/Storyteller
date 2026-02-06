@@ -15,4 +15,144 @@
     <string name="pdf_page_content_description">PDF page content</string>
     <string name="error_icon_description">Error icon</string>
     <string name="pdf_render_error">Unable to render PDF page</string>
+
+    <!-- SETTINGS-001: Settings Bottom Sheet -->
+    <string name="settings">Settings</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_audio">Audio</string>
+    <string name="settings_features">Features</string>
+    <string name="settings_about">About</string>
+
+    <!-- Display Settings -->
+    <string name="reading_theme">Reading Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_sepia">Sepia</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_oled">OLED</string>
+    <string name="font_size">Font Size</string>
+    <string name="line_height">Line Height</string>
+    <string name="font_family">Font Family</string>
+
+    <!-- Audio Settings -->
+    <string name="playback_speed">Playback Speed</string>
+    <string name="playback_theme">Playback Theme</string>
+    <string name="auto_play_next">Auto-play Next Chapter</string>
+    <string name="pause_screen_off">Pause on Screen Off</string>
+    <string name="background_playback">Background Playback</string>
+
+    <!-- Feature Settings -->
+    <string name="smart_casting">Smart Casting</string>
+    <string name="smart_casting_desc">Enhanced voice processing (High CPU)</string>
+    <string name="generative_visuals">Generative Visuals</string>
+    <string name="generative_visuals_desc">AI scene visualization (Slow)</string>
+    <string name="deep_analysis">Deep Analysis</string>
+    <string name="deep_analysis_desc">Background LLM analysis</string>
+    <string name="emotion_modifiers">Emotion Modifiers</string>
+    <string name="emotion_modifiers_desc">TTS emotion-based voice adjustments</string>
+    <string name="karaoke_highlight">Karaoke Highlight</string>
+    <string name="karaoke_highlight_desc">Text highlighting during playback</string>
+
+    <!-- About -->
+    <string name="app_version">Version %s</string>
+    <string name="run_benchmark">Run Benchmark</string>
+    <string name="about_dramebaz">Dramebaz brings stories to life with AI-powered narration and visualization.</string>
+
+    <!-- CHAP-001: Chapter Manager Dialog -->
+    <string name="chapter_manager_title">Manage Chapters</string>
+    <string name="chapters_selected">chapters selected</string>
+    <string name="chapters_selected_count">%d chapters selected</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="chapter_count_info">Tap a chapter to edit title</string>
+    <string name="chapter_count_format">%d chapters total</string>
+    <string name="chapter_stats_format">%1$,d words • %2$s</string>
+    <string name="move_up">Move Up</string>
+    <string name="move_down">Move Down</string>
+    <string name="more_actions">More Actions</string>
+    <string name="merge_with_previous">Merge with Previous</string>
+    <string name="split_in_half">Split in Half</string>
+    <string name="delete_chapter">Delete Chapter</string>
+    <string name="merge_chapters">Merge Chapters</string>
+    <string name="merge_chapters_message">Merge \"%1$s\" and \"%2$s\" into one chapter?</string>
+    <string name="merge">Merge</string>
+    <string name="cannot_merge">Cannot Merge</string>
+    <string name="no_previous_chapter">This is the first chapter. There is no previous chapter to merge with.</string>
+    <string name="split_chapter">Split Chapter</string>
+    <string name="split_chapter_message">Split \"%1$s\" into two chapters at the midpoint?</string>
+    <string name="split">Split</string>
+    <string name="cannot_split">Cannot Split</string>
+    <string name="chapter_too_short">This chapter is too short to split.</string>
+    <string name="delete_chapter_message">Delete \"%1$s\"? This action cannot be undone.</string>
+    <string name="delete">Delete</string>
+
+    <!-- CHAP-002: Batch Chapter Re-Analysis -->
+    <string name="reanalyze_selected">Re-Analyze</string>
+    <string name="delete_selected">Delete Selected</string>
+    <string name="reanalyzing_chapters">Re-analyzing chapters…</string>
+    <string name="reanalyzing_progress">Re-analyzing %1$d of %2$d</string>
+    <string name="reanalysis_complete">Re-analysis complete</string>
+    <string name="reanalysis_complete_message">%1$d chapters re-analyzed successfully.</string>
+    <string name="delete_selected_chapters">Delete Selected Chapters</string>
+    <string name="delete_selected_chapters_message">Delete %1$d selected chapters? This action cannot be undone.</string>
+    <string name="chapters_deleted">%1$d chapters deleted</string>
+
+    <!-- UI-006: Shimmer Loading Effect -->
+    <string name="analyzing_chapters">Analyzing chapters…</string>
+    <string name="analyzing_progress">%1$d of %2$d chapters</string>
+    <string name="preparing_analysis">Preparing analysis…</string>
+    <string name="extended_analysis">Running extended analysis…</string>
+
+    <!-- LLM Settings -->
+    <string name="settings_llm">LLM</string>
+    <string name="llm_status">Model Status</string>
+    <string name="llm_status_loading">Loading…</string>
+    <string name="llm_status_ready">Ready</string>
+    <string name="llm_status_not_loaded">Not Loaded</string>
+    <string name="llm_status_error">Error</string>
+    <string name="llm_backend_unknown">Backend: Unknown</string>
+    <string name="llm_model_selection">Model Selection</string>
+    <string name="llm_model_selection_desc">Choose which LLM model to use for analysis</string>
+    <string name="llm_model_auto">Auto</string>
+    <string name="llm_model_gemma">Gemma</string>
+    <string name="llm_model_qwen">Qwen</string>
+    <string name="llm_backend_selection">Backend</string>
+    <string name="llm_backend_selection_desc">GPU is faster, CPU is more battery efficient</string>
+    <string name="llm_backend_gpu">GPU</string>
+    <string name="llm_backend_cpu">CPU</string>
+    <string name="llm_available_models">Available Models</string>
+    <string name="llm_checking_models">Checking for model files…</string>
+    <string name="llm_model_file">Model File</string>
+    <string name="llm_model_file_desc">Select a specific model file from discovered models</string>
+    <string name="llm_select_model_file">Select model file</string>
+    <string name="llm_auto_select">Auto (first available)</string>
+    <string name="llm_model_found">✓ %s found</string>
+    <string name="llm_model_missing">✗ %s not found</string>
+    <string name="llm_apply_and_reload">Apply &amp; Reload Model</string>
+    <string name="llm_loading_model">Loading model…</string>
+    <string name="llm_reloading">Reloading LLM model…</string>
+    <string name="llm_reload_success">LLM model reloaded successfully</string>
+    <string name="llm_reload_failed">Failed to reload LLM model</string>
+    <string name="llm_model_loaded">Loaded: %s</string>
+    <string name="llm_tune_params">Tune Parameters</string>
+
+    <!-- Model Parameters Dialog -->
+    <string name="model_params_title">Model Parameters</string>
+    <string name="param_temperature">Temperature (creativity)</string>
+    <string name="param_max_tokens">Max Tokens</string>
+    <string name="param_top_k">Top-K</string>
+    <string name="param_top_p">Top-P (nucleus sampling)</string>
+    <string name="param_repeat_penalty">Repeat Penalty</string>
+    <string name="model_params_saved">Parameters saved</string>
+    <string name="model_params_save_failed">Failed to save parameters</string>
+    <string name="model_params_reset">Parameters reset to defaults</string>
+    <string name="reset_defaults">Reset</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- LIBRARY-001: Library Section Headers -->
+    <string name="expand_collapse">Expand or collapse section</string>
+    <string name="section_favourites">Favourites</string>
+    <string name="section_last_read">Last Read</string>
+    <string name="section_finished">Finished</string>
+    <string name="section_recently_added">Recently Added</string>
+    <string name="section_unread">Unread</string>
 </resources>

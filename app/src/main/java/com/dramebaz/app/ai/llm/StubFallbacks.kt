@@ -194,8 +194,8 @@ object StubFallbacks {
      * Regex-based fallback for Pass-2 dialog extraction.
      * Uses pattern matching to find quoted text and attribute to nearest character.
      */
-    fun extractDialogsFromText(pageText: String, characterNames: List<String>): List<Qwen3Model.ExtractedDialogEntry> {
-        val dialogs = mutableListOf<Qwen3Model.ExtractedDialogEntry>()
+    fun extractDialogsFromText(pageText: String, characterNames: List<String>): List<GgufEngine.ExtractedDialogEntry> {
+        val dialogs = mutableListOf<GgufEngine.ExtractedDialogEntry>()
 
         val quotePattern = Regex(""""([^"]+)"|'([^']+)'""")
         val matches = quotePattern.findAll(pageText)
@@ -226,7 +226,7 @@ object StubFallbacks {
                 val narratorText = pageText.substring(lastNarratorEnd, quoteStart).trim()
                     .replace(Regex("\\s+"), " ")
                 if (narratorText.length > 20) {
-                    dialogs.add(Qwen3Model.ExtractedDialogEntry(
+                    dialogs.add(GgufEngine.ExtractedDialogEntry(
                         speaker = "Narrator",
                         text = narratorText.take(500),
                         emotion = "neutral",
@@ -282,7 +282,7 @@ object StubFallbacks {
                 }
             }
 
-            dialogs.add(Qwen3Model.ExtractedDialogEntry(
+            dialogs.add(GgufEngine.ExtractedDialogEntry(
                 speaker = speaker,
                 text = quoteText,
                 emotion = "neutral",
@@ -295,7 +295,7 @@ object StubFallbacks {
             val narratorText = pageText.substring(lastNarratorEnd).trim()
                 .replace(Regex("\\s+"), " ")
             if (narratorText.length > 20) {
-                dialogs.add(Qwen3Model.ExtractedDialogEntry(
+                dialogs.add(GgufEngine.ExtractedDialogEntry(
                     speaker = "Narrator",
                     text = narratorText.take(500),
                     emotion = "neutral",
@@ -483,6 +483,150 @@ object StubFallbacks {
         }
     }
 
+    /**
+     * STORY-003: Remix a story based on instruction (stub fallback).
+     */
+    fun remixStory(instruction: String, sourceStory: String): String {
+        val normalizedInstruction = instruction.lowercase()
+        val transformationType = when {
+            normalizedInstruction.contains("scary") || normalizedInstruction.contains("horror") -> "horror"
+            normalizedInstruction.contains("comedy") || normalizedInstruction.contains("funny") -> "comedy"
+            normalizedInstruction.contains("villain") || normalizedInstruction.contains("antagonist") -> "villain_pov"
+            normalizedInstruction.contains("romantic") || normalizedInstruction.contains("romance") -> "romance"
+            else -> "general"
+        }
+
+        // Extract first paragraph or 500 chars as summary
+        val sourceSummary = sourceStory.take(500).let {
+            if (sourceStory.length > 500) "$it..." else it
+        }
+
+        return when (transformationType) {
+            "horror" -> """
+                Chapter 1: Dark Beginnings
+
+                The shadows seemed to creep closer as the story unfolded. What once seemed innocent now took a sinister turn.
+
+                Based on: $sourceSummary
+
+                Chapter 2: The Terror Unfolds
+
+                Fear gripped every heart. The horror had only just begun.
+
+                Chapter 3: The Nightmare Ends
+
+                When dawn finally broke, the survivors emerged forever changed by what they had witnessed.
+
+                The end.
+            """.trimIndent()
+            "comedy" -> """
+                Chapter 1: When Everything Went Wrong (Hilariously)
+
+                It all started with a simple misunderstanding. Who knew that "$instruction" could lead to such chaos?
+
+                Original premise: $sourceSummary
+
+                Chapter 2: The Hilarious Complications
+
+                One mishap led to another, each more absurd than the last.
+
+                Chapter 3: A Happy (and Funny) Ending
+
+                In the end, everyone laughed it off. What else could they do?
+
+                The end.
+            """.trimIndent()
+            "villain_pov" -> """
+                Chapter 1: My Side of the Story
+
+                You've heard their version. Now hear mine.
+
+                What they called villainy, I called survival. Based on: $sourceSummary
+
+                Chapter 2: The Misunderstood
+
+                Every action had a reason. Every choice, a justification.
+
+                Chapter 3: Victory (Or So I Thought)
+
+                In the end, history is written by the victors. But was I truly the villain?
+
+                The end.
+            """.trimIndent()
+            "romance" -> """
+                Chapter 1: When Hearts First Met
+
+                Love was the last thing on anyone's mind, until fate intervened.
+
+                The story began: $sourceSummary
+
+                Chapter 2: The Growing Affection
+
+                What started as friendship blossomed into something more.
+
+                Chapter 3: Happily Ever After
+
+                Against all odds, love prevailed. And they lived happily ever after.
+
+                The end.
+            """.trimIndent()
+            else -> """
+                Chapter 1: A New Perspective
+
+                The familiar story takes an unexpected turn: "$instruction"
+
+                Original: $sourceSummary
+
+                Chapter 2: The Transformation
+
+                Everything changed when the new elements were introduced.
+
+                Chapter 3: The Reimagined Conclusion
+
+                This is how the story could have ended, if only things were different.
+
+                The end.
+            """.trimIndent()
+        }
+    }
+
+    /**
+     * STORY-002: Generate a story from an image (stub fallback).
+     * Returns a placeholder story when LLM is unavailable.
+     */
+    fun generateStoryFromImage(imagePath: String, userPrompt: String): String {
+        val imageFileName = java.io.File(imagePath).nameWithoutExtension
+        val promptHint = if (userPrompt.isNotBlank()) " inspired by \"$userPrompt\"" else ""
+
+        return """
+            Chapter 1: The Image Speaks
+
+            In the quiet moments when we pause to truly see, stories emerge from stillness.
+            This tale was born from a single image$promptHint.
+
+            The colors spoke of mysteries untold, and the shapes whispered secrets
+            waiting to be discovered.
+
+            Chapter 2: The Journey Begins
+
+            And so began an adventure that would change everything. What seemed like
+            an ordinary scene held extraordinary possibilities.
+
+            The characters within stepped forth from imagination, ready to tell their
+            story to anyone willing to listen.
+
+            Chapter 3: The Revelation
+
+            In the end, the image revealed its deepest truth: that every picture
+            holds a thousand stories, and this was but one of them.
+
+            The end.
+
+            [Note: This is a placeholder story. The LLM model is unavailable to analyze
+            the image at: $imageFileName]
+        """.trimIndent()
+    }
+
     // ==================== Key Moments & Relationships ====================
 
     /**
@@ -534,6 +678,91 @@ object StubFallbacks {
             }
             gson.toJson(mapOf("characters" to list))
         } catch (_: Exception) { null }
+    }
+
+    // ==================== VIS-001: Scene Prompt Generation ====================
+
+    /**
+     * VIS-001: Generate a fallback scene prompt from text using heuristics.
+     */
+    fun generateScenePrompt(
+        sceneText: String,
+        mood: String? = null,
+        characters: List<String> = emptyList()
+    ): com.dramebaz.app.data.models.ScenePrompt {
+        val words = sceneText.lowercase()
+
+        // Detect mood from text if not provided
+        val detectedMood = mood ?: when {
+            words.contains("dark") || words.contains("fear") || words.contains("shadow") || words.contains("terror") -> "dark"
+            words.contains("bright") || words.contains("happy") || words.contains("sun") || words.contains("joy") -> "bright"
+            words.contains("sad") || words.contains("tear") || words.contains("grief") || words.contains("sorrow") -> "melancholy"
+            words.contains("angry") || words.contains("rage") || words.contains("fury") -> "tense"
+            words.contains("love") || words.contains("romance") || words.contains("kiss") -> "romantic"
+            words.contains("mystery") || words.contains("secret") || words.contains("hidden") -> "mysterious"
+            else -> "neutral"
+        }
+
+        // Detect time of day
+        val timeOfDay = when {
+            words.contains("morning") || words.contains("sunrise") || words.contains("dawn") -> "morning"
+            words.contains("afternoon") || words.contains("midday") || words.contains("noon") -> "afternoon"
+            words.contains("evening") || words.contains("sunset") || words.contains("dusk") -> "evening"
+            words.contains("night") || words.contains("midnight") || words.contains("moon") || words.contains("star") -> "night"
+            else -> "unknown"
+        }
+
+        // Detect setting/environment
+        val setting = when {
+            words.contains("forest") || words.contains("tree") || words.contains("wood") -> "forest environment"
+            words.contains("castle") || words.contains("palace") || words.contains("throne") -> "castle interior"
+            words.contains("city") || words.contains("street") || words.contains("building") -> "urban setting"
+            words.contains("ocean") || words.contains("sea") || words.contains("beach") || words.contains("wave") -> "ocean/beach"
+            words.contains("mountain") || words.contains("hill") || words.contains("peak") -> "mountainous terrain"
+            words.contains("room") || words.contains("house") || words.contains("home") -> "interior room"
+            words.contains("garden") || words.contains("flower") || words.contains("park") -> "garden/park"
+            else -> "scene setting"
+        }
+
+        // Create a prompt from the first few sentences
+        val sentences = sceneText.split(Regex("[.!?]")).filter { it.isNotBlank() }.take(3)
+        val basicPrompt = sentences.joinToString(". ") { it.trim() }
+
+        // Construct the full prompt
+        val promptParts = mutableListOf<String>()
+        promptParts.add("Scene: ${basicPrompt.take(200)}")
+        if (characters.isNotEmpty()) {
+            promptParts.add("Characters: ${characters.joinToString(", ")}")
+        }
+        promptParts.add(setting)
+        promptParts.add("$detectedMood atmosphere")
+        if (timeOfDay != "unknown") {
+            promptParts.add("$timeOfDay lighting")
+        }
+
+        return com.dramebaz.app.data.models.ScenePrompt(
+            prompt = promptParts.joinToString(", "),
+            negativePrompt = com.dramebaz.app.data.models.ScenePrompt.DEFAULT_NEGATIVE,
+            style = "detailed digital illustration",
+            mood = detectedMood,
+            setting = setting,
+            timeOfDay = timeOfDay,
+            characters = characters
+        )
+    }
+
+    // ==================== Raw Text Generation ====================
+
+    /**
+     * INS-002: Stub fallback for raw text generation.
+     * Returns an empty JSON structure when LLM is unavailable.
+     */
+    fun generateRawText(prompt: String): String {
+        // Check if this is a foreshadowing detection request
+        if (prompt.contains("foreshadowing", ignoreCase = true)) {
+            return """{"foreshadowing": []}"""
+        }
+        return "{}"
     }
 }
 

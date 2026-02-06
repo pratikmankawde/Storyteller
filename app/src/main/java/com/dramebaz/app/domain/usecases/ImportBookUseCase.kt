@@ -98,6 +98,10 @@ class ImportBookUseCase(private val bookRepository: BookRepository) {
 
         AppLogger.logPerformance(tag, "Import book '$title'", System.currentTimeMillis() - startTime)
 
+        // AUTO-ANALYSIS: Queue the imported book for automatic analysis
+        AnalysisQueueManager.enqueueBook(bookId)
+        AppLogger.i(tag, "Book $bookId queued for automatic analysis")
+
         return@withContext bookId
     }
 
