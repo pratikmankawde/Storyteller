@@ -36,20 +36,19 @@ class BatchedAnalysisPrompt : PromptDefinition<BatchedAnalysisInput, BatchedAnal
     override val systemPrompt: String = """You are a JSON extraction engine. Extract ONLY characters who SPEAK dialog. Ignore locations, objects, creatures, and non-speaking entities."""
 
     override fun buildUserPrompt(input: BatchedAnalysisInput): String {
-        return """Extract ONLY SPEAKING CHARACTERS from the story text below.
-
+        return """Extract Character names, their Dialogs(D), their Traits(T) and their inferred Voice/Speaking Profile(V) from the story text below.
 RULES:
-1. ONLY include characters who have quoted dialog (text inside quotation marks)
-2. DO NOT include locations, objects, creatures, ships, or entities that don't speak
-3. Each character appears EXACTLY ONCE - combine all their dialogs
+1. ONLY include characters who have quoted dialogs
+2. DO NOT include locations, objects, creatures or entities that don't speak
+3. In the output json, each discovered character must appears EXACTLY ONCE
 4. Read the ENTIRE text before outputting
 
-FORMAT: {"Name":{"D":["dialog1","dialog2"],"T":["trait1"],"V":"gender,age,accent"}}
+FORMAT: {"<Character-Name>":{"D":["dialog1","dialog2", ...],"T":["trait1", "trait2", ...],"V":"Gender,Age,Accent,Pitch,Speed"}, ... }
 
 KEYS:
-- D = ALL quoted dialogs spoken by that character
-- T = physical traits and personality
-- V = gender,age,accent (male|female, child|young|middle-aged|elderly, neutral)
+- D = Array of ALL quoted dialogs spoken by the keyed Character
+- T = Array of Character's physical traits and personality
+- V = Their [Gender,Age,Accent]. Options: (male|female, child|young|middle-aged|elderly, neutral|English|American|Asian...)
 
 TEXT:
 ${input.text}

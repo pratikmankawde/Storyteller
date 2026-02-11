@@ -1,6 +1,6 @@
 package com.dramebaz.app.ui.library
 
-import android.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.content.Context
 import android.view.LayoutInflater
 import android.widget.ArrayAdapter
@@ -100,7 +100,7 @@ object SeriesLinkingDialog {
         }
         layout.addView(orderInput)
 
-        AlertDialog.Builder(context)
+        MaterialAlertDialogBuilder(context)
             .setTitle("Link to Series")
             .setView(layout)
             .setPositiveButton("Link") { _, _ ->

@@ -87,6 +87,10 @@ class DramebazApplication : Application() {
         // SETTINGS-001: Load settings on app startup
         appScope.launch {
             settingsRepository.loadSettings()
+            // NARRATOR-003: Initialize global narrator speaker ID from settings
+            val narratorSettings = settingsRepository.narratorSettings.value
+            segmentAudioGenerator.setGlobalNarratorSpeakerId(narratorSettings.speakerId)
+            AppLogger.d(tag, "Global narrator speaker ID initialized to: ${narratorSettings.speakerId}")
         }
 
         // Seed demo books so they always appear in the library if the

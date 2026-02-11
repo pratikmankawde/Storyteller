@@ -5,7 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
@@ -239,7 +239,7 @@ class CharacterDetailDialog : BottomSheetDialogFragment() {
             }
         }.joinToString("\n\n")
 
-        AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle("$characterName's Dialogs (${dialogs.size})")
             .setMessage(formattedDialogs)
             .setPositiveButton("Close", null)

@@ -24,10 +24,9 @@
             app:cardCornerRadius="16dp"
             app:cardElevation="2dp">
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:padding="16dp">
 
                 <!-- UI-004: Book Cover for shared element transition -->
@@ -40,14 +39,31 @@
                     android:background="@color/surface_variant"
                     android:contentDescription="@string/book_cover"
                     app:srcCompat="@android:drawable/ic_menu_gallery"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
                     tools:ignore="ContentDescription" />
+
+                <!-- FAV-001: Favorite button in header -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_favorite"
+                    style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/toggle_favorite"
+                    app:icon="@drawable/ic_favorite_border"
+                    app:iconSize="24dp"
+                    app:iconTint="?attr/colorOnSurfaceVariant"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:layout_gravity="center_vertical">
+                    app:layout_constraintBottom_toBottomOf="@id/book_cover"
+                    app:layout_constraintEnd_toStartOf="@id/btn_favorite"
+                    app:layout_constraintStart_toEndOf="@id/book_cover"
+                    app:layout_constraintTop_toTopOf="@id/book_cover">
 
                     <TextView
                         android:id="@+id/title"
@@ -76,7 +92,7 @@
                         android:textAllCaps="true"
                         tools:text="PDF" />
                 </LinearLayout>
-            </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Action Cards Grid -->

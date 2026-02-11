@@ -10,6 +10,14 @@ class BookDetailViewModel(private val bookRepository: BookRepository) : ViewMode
     suspend fun firstChapterId(bookId: Long): Long? =
         bookRepository.chapters(bookId).first().minByOrNull { it.orderIndex }?.id
 
+    /**
+     * FAV-001: Toggle favorite status for a book.
+     * Returns the new favorite status.
+     */
+    suspend fun toggleFavorite(bookId: Long): Boolean {
+        return bookRepository.toggleFavorite(bookId)
+    }
+
     class Factory(private val bookRepository: BookRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =

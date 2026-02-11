@@ -3,6 +3,7 @@ package com.dramebaz.app.ui.library
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.view.ViewCompat
@@ -44,11 +45,13 @@ sealed class LibraryItem {
 
 /**
  * LIBRARY-001: Adapter for sectioned library with collapsible headers.
+ * FAV-001: Added onFavoriteClick callback for favorite toggle.
  */
 class LibrarySectionAdapter(
     private val onBookClick: (Book, ImageView) -> Unit,
     private val onBookLongClick: (Book) -> Boolean = { false },
-    private val onSectionToggle: (LibrarySection) -> Unit
+    private val onSectionToggle: (LibrarySection) -> Unit,
+    private val onFavoriteClick: (Book) -> Unit = {}
 ) : ListAdapter<LibraryItem, RecyclerView.ViewHolder>(LibraryItemDiff) {
 
     companion object {
@@ -115,6 +118,7 @@ class LibrarySectionAdapter(
         val analysisStatus: TextView = itemView.findViewById(R.id.analysis_status)
         val analysisProgress: ShimmerProgressBar = itemView.findViewById(R.id.analysis_progress)
         val shimmerOverlay: ShimmerView = itemView.findViewById(R.id.shimmer_overlay)
+        val btnFavorite: ImageButton = itemView.findViewById(R.id.btn_favorite)
 
         fun bind(item: LibraryItem.BookItem, position: Int) {
             val book = item.book
@@ -122,15 +126,17 @@ class LibrarySectionAdapter(
             metadata.text = book.format.uppercase()
 
             bindAnalysisState(book)
+            bindFavoriteState(book)
 
-	            // COVER-001: Load appropriate book cover (embedded or placeholder)
-	            BookCoverLoader.loadCoverInto(cover, book)
+            // COVER-001: Load appropriate book cover (embedded or placeholder)
+            BookCoverLoader.loadCoverInto(cover, book)
 
             val transitionName = "book_cover_${book.id}"
             ViewCompat.setTransitionName(cover, transitionName)
 
             itemView.setOnClickListener { onBookClick(book, cover) }
             itemView.setOnLongClickListener { onBookLongClick(book) }
+            btnFavorite.setOnClickListener { onFavoriteClick(book) }
 
             // Clear any pending animation to avoid RecyclerView recycling issues
             // Use clearAnimation() instead of animate().cancel() to avoid triggering
@@ -138,6 +144,11 @@ class LibrarySectionAdapter(
             itemView.clearAnimation()
             itemView.animate().setListener(null)
             itemView.alpha = 1f
+        }
+
+        private fun bindFavoriteState(book: Book) {
+            val iconRes = if (book.isFavorite) R.drawable.ic_favorite else R.drawable.ic_favorite_border
+            btnFavorite.setImageResource(iconRes)
         }
         
         private fun bindAnalysisState(book: Book) {

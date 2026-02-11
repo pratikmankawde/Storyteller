@@ -27,10 +27,27 @@ class SegmentAudioGenerator(
     private val bookDao: BookDao
 ) {
     private val tag = "SegmentAudioGenerator"
-    private val defaultNarratorSpeakerId = 0  // Fallback speaker for narrator if not in database
+
+    /**
+     * NARRATOR-003: Global fallback narrator speaker ID from app settings.
+     * This is used when a book doesn't have a per-book narrator setting.
+     */
+    @Volatile
+    private var globalNarratorSpeakerId = 0
 
     // Cache for narrator's speaker ID from database (kept for legacy/fallback)
     private var cachedNarratorSpeakerId: Int? = null
+
+    /**
+     * NARRATOR-003: Set the global narrator speaker ID from app settings.
+     * Called when app starts or when the global narrator setting is changed.
+     */
+    fun setGlobalNarratorSpeakerId(speakerId: Int) {
+        globalNarratorSpeakerId = speakerId
+        // Clear cache so next lookup uses the new global setting
+        cachedNarratorSpeakerId = null
+        AppLogger.d(tag, "Global narrator speaker ID set to: $speakerId")
+    }
 
     /**
      * Data class for a segment to be generated.
@@ -76,7 +93,7 @@ class SegmentAudioGenerator(
                 val existing = pageAudioStorage.getSegmentAudioFile(
                     bookId, chapterId, pageNumber,
                     segment.index, segment.characterName,
-                    segment.speakerId ?: defaultNarratorSpeakerId
+                    segment.speakerId ?: globalNarratorSpeakerId
                 )
                 if (existing != null) {
                     AppLogger.d(tag, "Segment $index already generated: ${existing.name}")
@@ -87,7 +104,7 @@ class SegmentAudioGenerator(
 
                 // Generate audio with character's speaker ID
                 // NARRATOR-002: Use per-book narrator settings for voice profile (speed/energy)
-                val speakerId = segment.speakerId ?: defaultNarratorSpeakerId
+                val speakerId = segment.speakerId ?: globalNarratorSpeakerId
                 val voiceProfile = if (segment.characterName == "Narrator") {
                     getNarratorVoiceProfile(bookId)
                 } else {
@@ -285,9 +302,9 @@ class SegmentAudioGenerator(
                 AppLogger.d(tag, "Found speakerId $speakerId for character '$characterName' in database")
                 speakerId
             } else if (characterName.equals("Narrator", ignoreCase = true)) {
-                // Narrator uses default speaker ID 0
-                AppLogger.d(tag, "Using default narrator speaker ID 0")
-                defaultNarratorSpeakerId
+                // NARRATOR-003: Narrator uses global setting as fallback
+                AppLogger.d(tag, "Using global narrator speaker ID $globalNarratorSpeakerId")
+                globalNarratorSpeakerId
             } else {
                 // Generate deterministic speaker ID from character name hash (1-903, avoiding 0 which is narrator)
                 val generatedId = generateSpeakerIdFromName(characterName)
@@ -308,8 +325,8 @@ class SegmentAudioGenerator(
     }
 
     /**
-     * NARRATOR-002: Get the narrator's speaker ID from Book entity (per-book settings).
-     * Falls back to character database (legacy) then default if not found.
+     * NARRATOR-002/003: Get the narrator's speaker ID from Book entity (per-book settings).
+     * Falls back to character database (legacy) then global setting if not found.
      */
     private suspend fun getNarratorSpeakerId(bookId: Long): Int {
         // First check Book entity (per-book settings)
@@ -319,9 +336,9 @@ class SegmentAudioGenerator(
         // Fallback to cached value
         cachedNarratorSpeakerId?.let { return it }
 
-        // Fallback to character database (legacy)
+        // Fallback to character database (legacy), then global setting
         val narrator = characterDao.getByBookIdAndName(bookId, "Narrator")
-        val speakerId = narrator?.speakerId ?: defaultNarratorSpeakerId
+        val speakerId = narrator?.speakerId ?: globalNarratorSpeakerId
         cachedNarratorSpeakerId = speakerId
         return speakerId
     }
@@ -358,7 +375,7 @@ class SegmentAudioGenerator(
                     val oldFile = File(pageAudioStorage.getSegmentAudioFile(
                         segment.bookId, segment.chapterId, segment.pageNumber,
                         segment.segmentIndex, segment.characterName,
-                        segment.speakerId ?: defaultNarratorSpeakerId
+                        segment.speakerId ?: globalNarratorSpeakerId
                     )?.parentFile, path)
                     if (oldFile.exists()) oldFile.delete()
                 }

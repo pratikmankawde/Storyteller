@@ -36,6 +36,22 @@
             app:layout_constraintDimensionRatio="2:3"
             tools:ignore="ContentDescription" />
 
+        <!-- FAV-001: Favorite button in top-right corner -->
+        <ImageButton
+            android:id="@+id/btn_favorite"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/circle_background"
+            android:backgroundTint="#80000000"
+            android:src="@drawable/ic_favorite_border"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="@string/toggle_favorite"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:ignore="ContentDescription" />
+
         <!-- Overlay content: title, metadata, analysis status, and progress -->
         <LinearLayout
             android:layout_width="0dp"

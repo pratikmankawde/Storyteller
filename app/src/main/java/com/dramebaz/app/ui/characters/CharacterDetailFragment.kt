@@ -6,7 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -230,7 +230,7 @@ class CharacterDetailFragment : Fragment() {
             }
         }.joinToString("\n\n")
 
-        AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle("$characterName's Dialogs (${dialogs.size})")
             .setMessage(formattedDialogs)
             .setPositiveButton("Close", null)

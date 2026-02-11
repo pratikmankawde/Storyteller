@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.text.SpannableString
 import android.text.Spanned
-import android.text.style.BackgroundColorSpan
 import android.text.style.StyleSpan
 import android.graphics.Typeface
 import android.util.TypedValue
@@ -61,17 +60,14 @@ data class NovelPage(
 }
 
 class NovelPageAdapter(
-    private val highlightColor: Int,
+    @Suppress("unused") private val highlightColor: Int,  // Kept for API compatibility, no longer used
     private val coroutineScope: CoroutineScope,
     private val onPageChanged: (Int) -> Unit = {}
 ) : ListAdapter<NovelPage, RecyclerView.ViewHolder>(PageDiffCallback()) {
 
     private val tag = "NovelPageAdapter"
 
-    private var currentHighlightedPage: Int = -1
-    private var currentHighlightedLine: Int = -1
-
-    // UI-001: Karaoke highlighting state
+    // UI-001: Karaoke highlighting state (uses colored underlines instead of background highlight)
     private var karaokePageIndex: Int = -1
     private var karaokeSegmentRange: KaraokeHighlighter.TextRange? = null
     private var karaokeCurrentWord: KaraokeHighlighter.WordSegment? = null
@@ -309,11 +305,8 @@ class NovelPageAdapter(
                         holder.pdfPageImage.visibility = View.VISIBLE
                         holder.loadingIndicator.visibility = View.GONE
                         holder.errorContainer.visibility = View.GONE
-
-                        // Apply highlighting if needed
-                        if (position == currentHighlightedPage) {
-                            applyPdfHighlight(holder, currentHighlightedLine, page.lines.size)
-                        }
+                        // Note: PDF highlighting has been removed - karaoke highlighting
+                        // only applies to text pages via the karaoke observer
                     } else {
                         showFallbackText(holder, page)
                     }
@@ -373,26 +366,6 @@ class NovelPageAdapter(
         holder.fallbackText.text = page.text
     }
 
-    private fun applyPdfHighlight(holder: PdfPageViewHolder, lineIndex: Int, totalLines: Int) {
-        if (lineIndex < 0 || totalLines <= 0) {
-            holder.highlightOverlay.visibility = View.GONE
-            return
-        }
-
-        // Calculate approximate position of the highlighted line on the PDF page
-        val imageHeight = holder.pdfPageImage.height
-        val lineHeight = imageHeight.toFloat() / totalLines
-        val lineTop = (lineIndex * lineHeight).toInt()
-
-        val params = holder.highlightOverlay.layoutParams as? android.widget.FrameLayout.LayoutParams
-        params?.let {
-            it.topMargin = lineTop
-            it.height = lineHeight.toInt().coerceAtLeast(20)
-            holder.highlightOverlay.layoutParams = it
-            holder.highlightOverlay.visibility = View.VISIBLE
-        }
-    }
-
     private fun bindTextPage(holder: TextPageViewHolder, page: NovelPage, position: Int) {
         // Show PDF page number if available, otherwise show sequential page number
         holder.pageNumber.text = if (page.pdfPageNumber != null) {
@@ -405,13 +378,9 @@ class NovelPageAdapter(
         applyReadingSettings(holder)
 
         // UI-001: Apply karaoke highlighting (word-by-word) if active for this page
+        // This uses colored underline spans for character-specific highlighting
         if (position == karaokePageIndex && karaokeSegmentRange != null) {
             val highlightedText = applyKaraokeSpans(page.text, karaokeSegmentRange!!, karaokeCurrentWord)
-            holder.pageText.text = highlightedText
-        }
-        // Apply line highlighting if this is the current page (fallback)
-        else if (position == currentHighlightedPage && currentHighlightedLine >= 0) {
-            val highlightedText = highlightLine(page.text, page.lines, currentHighlightedLine)
             holder.pageText.text = highlightedText
         } else {
             // BOLD-001: Apply character name bolding if enabled
@@ -522,41 +491,16 @@ class NovelPageAdapter(
     }
 
     /**
-     * Highlight a specific line in a page.
-     */
-    fun highlightLine(pageIndex: Int, lineIndex: Int) {
-        val oldPage = currentHighlightedPage
-        currentHighlightedPage = pageIndex
-        currentHighlightedLine = lineIndex
-
-        // Notify both old and new pages to update
-        if (oldPage >= 0 && oldPage < itemCount) {
-            notifyItemChanged(oldPage)
-        }
-        if (pageIndex >= 0 && pageIndex < itemCount) {
-            notifyItemChanged(pageIndex)
-        }
-
-        onPageChanged(pageIndex)
-    }
-
-    /**
-     * Clear all highlighting.
+     * Clear all karaoke highlighting.
+     * Called when playback stops or the reader is reset.
      */
     fun clearHighlighting() {
-        val oldPage = currentHighlightedPage
-        currentHighlightedPage = -1
-        currentHighlightedLine = -1
-        // UI-001: Clear karaoke highlighting too
         val oldKaraokePage = karaokePageIndex
         karaokePageIndex = -1
         karaokeSegmentRange = null
         karaokeCurrentWord = null
 
-        if (oldPage >= 0 && oldPage < itemCount) {
-            notifyItemChanged(oldPage)
-        }
-        if (oldKaraokePage >= 0 && oldKaraokePage < itemCount && oldKaraokePage != oldPage) {
+        if (oldKaraokePage >= 0 && oldKaraokePage < itemCount) {
             notifyItemChanged(oldKaraokePage)
         }
     }
@@ -599,36 +543,6 @@ class NovelPageAdapter(
                 notifyItemChanged(pageIndex)
             }
         }
-    }
-
-    private fun highlightLine(text: String, lines: List<String>, lineIndex: Int): SpannableString {
-        val spannable = SpannableString(text)
-
-        if (lineIndex >= 0 && lineIndex < lines.size) {
-            // Calculate the start position by summing up all previous lines
-            var startIndex = 0
-            for (i in 0 until lineIndex) {
-                startIndex += lines[i].length
-                if (i < lines.size - 1) {
-                    startIndex += 1 // Account for newline character
-                }
-            }
-
-            val targetLine = lines[lineIndex]
-            val endIndex = startIndex + targetLine.length
-
-            // Ensure indices are within bounds
-            if (startIndex >= 0 && endIndex <= text.length) {
-                spannable.setSpan(
-                    BackgroundColorSpan(highlightColor),
-                    startIndex,
-                    endIndex,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-        }
-
-        return spannable
     }
 
     /**

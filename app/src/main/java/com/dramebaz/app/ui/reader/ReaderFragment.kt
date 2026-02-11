@@ -377,8 +377,16 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 playerBottomSheet?.updatePlaybackState(false)
                 btnPlay?.text = "Play"
                 if (isNovelFormat) novelPageAdapter?.clearHighlighting()
-                // AUG-FIX: Removed lazy stub analysis for next chapter - use "Analyse Chapters" button instead
-                // This prevents overwriting real LLM analysis with stub data when chapter finishes.
+                playingPageIndex = -1
+                // AUG-044: Auto-continue to next page when current page finishes (same as AudioPlaybackService)
+                if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex + 1 < novelPages.size) {
+                    view?.post {
+                        goToPage(currentPageIndex + 1, smooth = true)
+                        playCurrentPage()
+                    }
+                } else {
+                    updateFabPlayCurrentPageVisibility()
+                }
             }
         }
 
@@ -627,7 +635,12 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         AppLogger.i(tag, "Split chapter (${chapterText.length} chars) into ${novelPages.size} screen pages (no PDF info)")
                     }
 
-                    novelPageAdapter?.submitList(novelPages)
+                    // AUG-044: Submit a copy of the list to ensure ListAdapter detects the change
+                    // ListAdapter uses DiffUtil which may not detect changes if same reference is passed
+                    novelPageAdapter?.submitList(novelPages.toList()) {
+                        // Callback when list is committed - log for debugging
+                        AppLogger.d(tag, "ViewPager2 list committed: ${novelPages.size} pages")
+                    }
                     if (novelPages.isNotEmpty()) {
                         AppLogger.d(tag, "First page: ${novelPages[0].lines.size} lines, ${novelPages[0].text.length} chars")
                         if (novelPages.size > 1) {
@@ -1025,7 +1038,9 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     }
 
     /**
-     * Update highlighting for novel page view - highlights the current line being read.
+     * Update page navigation for novel page view based on audio playback position.
+     * Note: Text highlighting is handled by setupKaraokeHighlightingObserver() via StateFlows.
+     * This method only handles page navigation to keep the current segment visible.
      */
     private fun updateNovelHighlighting(positionMs: Long) {
         if (textSegments.isEmpty() || novelPages.isEmpty()) return
@@ -1034,7 +1049,6 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         if (currentSegment != null) {
             // Find which page contains this segment using the startOffset
             var targetPageIndex = -1
-            var targetLineIndex = -1
 
             // Find the page that contains the current segment
             for (pageIndex in novelPages.indices) {
@@ -1045,52 +1059,14 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 // Check if the segment overlaps with this page
                 if (currentSegment.startIndex.toInt() < pageEndOffset && currentSegment.endIndex.toInt() > pageStartOffset) {
                     targetPageIndex = pageIndex
-
-                    // Find which line in the page contains the segment
-                    // Use the segment's start position relative to the page
-                    val segmentStartInPage: Int = currentSegment.startIndex.toInt() - pageStartOffset
-
-                    // Find the line that contains this position
-                    var cumulativeOffset: Int = 0
-                    for (lineIndex in page.lines.indices) {
-                        val line = page.lines[lineIndex]
-                        val lineLength: Int = line.length
-                        val lineEndOffset: Int = cumulativeOffset + lineLength
-
-                        // Check if segment start falls within this line
-                        if (segmentStartInPage >= cumulativeOffset && segmentStartInPage < lineEndOffset) {
-                            targetLineIndex = lineIndex
-                            break
-                        }
-
-                        // Move to next line (account for newline character)
-                        cumulativeOffset = lineEndOffset
-                        if (lineIndex < page.lines.size - 1) {
-                            cumulativeOffset = cumulativeOffset + 1  // Account for \n between lines
-                        }
-                    }
-
-                    // If we didn't find a line, use the first or last line as fallback
-                    if (targetLineIndex < 0 && page.lines.isNotEmpty()) {
-                        if (segmentStartInPage < 0) {
-                            targetLineIndex = 0
-                        } else {
-                            targetLineIndex = page.lines.size - 1
-                        }
-                    }
-
                     break
                 }
             }
 
-            // Update highlighting if we found a page and line
-            if (targetPageIndex >= 0 && targetLineIndex >= 0) {
-                novelPageAdapter?.highlightLine(targetPageIndex, targetLineIndex)
-
-                // Scroll to the page if needed (with smooth animation)
-                if (currentPageIndex != targetPageIndex) {
-                    goToPage(targetPageIndex, smooth = true)
-                }
+            // Scroll to the page if needed (with smooth animation)
+            // Text highlighting is handled by the karaoke observer
+            if (targetPageIndex >= 0 && currentPageIndex != targetPageIndex) {
+                goToPage(targetPageIndex, smooth = true)
             }
         }
     }
@@ -1632,48 +1608,50 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                     val estimatedSegments = maxOf(1, dialogs.size + 1)
                     showAudioGenProgress(i, estimatedSegments)
 
-                    val segmentFiles = app.segmentAudioGenerator.generatePageAudio(
-                        bookId = bookId,
-                        chapterId = chapterId,
-                        pageNumber = pageNumber,
-                        pageText = pageText,
-                        dialogs = dialogs,
-                        onSegmentGenerated = { current, total ->
-                            updateAudioGenProgress(current, total)
-                        }
-                    )
-
-                    hideAudioGenProgress()
-
-                    if (segmentFiles.isNotEmpty()) {
-                        // Stitch segments into a single page audio file
-                        val stitchedFile = app.pageAudioStorage.getAudioFilePath(bookId, chapterId, i)
-                        val result = com.dramebaz.app.audio.AudioStitcher.stitchWavFiles(segmentFiles, stitchedFile)
-
-                        if (result != null) {
-                            withContext(Dispatchers.Main) { preGeneratedAudio[i] = result }
-                            AppLogger.i(tag, "Pre-generated and stitched audio for page $i: ${result.absolutePath}")
-                        } else {
-                            AppLogger.w(tag, "Failed to stitch audio for page $i")
-                        }
-                    } else {
-                        // Fallback: generate single TTS for whole page (no dialogs found)
-                        AppLogger.d(tag, "No segments generated for page $i, using single TTS fallback")
-                        val result = app.ttsEngine.speak(pageText, null, null, null)
-                        result.onSuccess { audioFile ->
-                            audioFile?.let { file ->
-                                val persisted = app.pageAudioStorage.saveAudioFile(bookId, chapterId, i, file)
-                                withContext(Dispatchers.Main) { preGeneratedAudio[i] = persisted }
-                                AppLogger.i(tag, "Pre-generated fallback audio for page $i: ${persisted.absolutePath}")
+                    // AUG-044: Use try-finally to ensure progress is hidden even if generation fails
+                    try {
+                        val segmentFiles = app.segmentAudioGenerator.generatePageAudio(
+                            bookId = bookId,
+                            chapterId = chapterId,
+                            pageNumber = pageNumber,
+                            pageText = pageText,
+                            dialogs = dialogs,
+                            onSegmentGenerated = { current, total ->
+                                updateAudioGenProgress(current, total)
                             }
-                        }.onFailure { error ->
-                            AppLogger.e(tag, "Failed to pre-generate fallback audio for page $i", error)
+                        )
+
+                        if (segmentFiles.isNotEmpty()) {
+                            // Stitch segments into a single page audio file
+                            val stitchedFile = app.pageAudioStorage.getAudioFilePath(bookId, chapterId, i)
+                            val result = com.dramebaz.app.audio.AudioStitcher.stitchWavFiles(segmentFiles, stitchedFile)
+
+                            if (result != null) {
+                                withContext(Dispatchers.Main) { preGeneratedAudio[i] = result }
+                                AppLogger.i(tag, "Pre-generated and stitched audio for page $i: ${result.absolutePath}")
+                            } else {
+                                AppLogger.w(tag, "Failed to stitch audio for page $i")
+                            }
+                        } else {
+                            // Fallback: generate single TTS for whole page (no dialogs found)
+                            AppLogger.d(tag, "No segments generated for page $i, using single TTS fallback")
+                            val result = app.ttsEngine.speak(pageText, null, null, null)
+                            result.onSuccess { audioFile ->
+                                audioFile?.let { file ->
+                                    val persisted = app.pageAudioStorage.saveAudioFile(bookId, chapterId, i, file)
+                                    withContext(Dispatchers.Main) { preGeneratedAudio[i] = persisted }
+                                    AppLogger.i(tag, "Pre-generated fallback audio for page $i: ${persisted.absolutePath}")
+                                }
+                            }.onFailure { error ->
+                                AppLogger.e(tag, "Failed to pre-generate fallback audio for page $i", error)
+                            }
                         }
+                    } finally {
+                        hideAudioGenProgress()
                     }
                 }
             } catch (e: Exception) {
                 AppLogger.e(tag, "Error in preGenerateAudioForPages", e)
-                hideAudioGenProgress()
             }
         }
     }
@@ -1715,48 +1693,50 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 val estimatedSegments = maxOf(1, dialogs.size + 1)
                 showAudioGenProgress(i, estimatedSegments)
 
-                val segmentFiles = app.segmentAudioGenerator.generatePageAudio(
-                    bookId = bookId,
-                    chapterId = chapterId,
-                    pageNumber = pageNumber,
-                    pageText = pageText,
-                    dialogs = dialogs,
-                    onSegmentGenerated = { current, total ->
-                        updateAudioGenProgress(current, total)
-                    }
-                )
-
-                hideAudioGenProgress()
-
-                if (segmentFiles.isNotEmpty()) {
-                    // Stitch segments into a single page audio file
-                    val stitchedFile = app.pageAudioStorage.getAudioFilePath(bookId, chapterId, i)
-                    val result = com.dramebaz.app.audio.AudioStitcher.stitchWavFiles(segmentFiles, stitchedFile)
-
-                    if (result != null) {
-                        withContext(Dispatchers.Main) { preGeneratedAudio[i] = result }
-                        AppLogger.i(tag, "Pre-generated and stitched audio for page $i: ${result.absolutePath}")
-                    } else {
-                        AppLogger.w(tag, "Failed to stitch audio for page $i")
-                    }
-                } else {
-                    // Fallback: generate single TTS for whole page (no dialogs found)
-                    AppLogger.d(tag, "No segments generated for page $i, using single TTS fallback")
-                    val result = app.ttsEngine.speak(pageText, null, null, null)
-                    result.onSuccess { audioFile ->
-                        audioFile?.let { file ->
-                            val persisted = app.pageAudioStorage.saveAudioFile(bookId, chapterId, i, file)
-                            withContext(Dispatchers.Main) { preGeneratedAudio[i] = persisted }
-                            AppLogger.i(tag, "Pre-generated fallback audio for page $i: ${persisted.absolutePath}")
+                // AUG-044: Use try-finally to ensure progress is hidden even if generation fails
+                try {
+                    val segmentFiles = app.segmentAudioGenerator.generatePageAudio(
+                        bookId = bookId,
+                        chapterId = chapterId,
+                        pageNumber = pageNumber,
+                        pageText = pageText,
+                        dialogs = dialogs,
+                        onSegmentGenerated = { current, total ->
+                            updateAudioGenProgress(current, total)
                         }
-                    }.onFailure { error ->
-                        AppLogger.e(tag, "Failed to pre-generate fallback audio for page $i", error)
+                    )
+
+                    if (segmentFiles.isNotEmpty()) {
+                        // Stitch segments into a single page audio file
+                        val stitchedFile = app.pageAudioStorage.getAudioFilePath(bookId, chapterId, i)
+                        val result = com.dramebaz.app.audio.AudioStitcher.stitchWavFiles(segmentFiles, stitchedFile)
+
+                        if (result != null) {
+                            withContext(Dispatchers.Main) { preGeneratedAudio[i] = result }
+                            AppLogger.i(tag, "Pre-generated and stitched audio for page $i: ${result.absolutePath}")
+                        } else {
+                            AppLogger.w(tag, "Failed to stitch audio for page $i")
+                        }
+                    } else {
+                        // Fallback: generate single TTS for whole page (no dialogs found)
+                        AppLogger.d(tag, "No segments generated for page $i, using single TTS fallback")
+                        val result = app.ttsEngine.speak(pageText, null, null, null)
+                        result.onSuccess { audioFile ->
+                            audioFile?.let { file ->
+                                val persisted = app.pageAudioStorage.saveAudioFile(bookId, chapterId, i, file)
+                                withContext(Dispatchers.Main) { preGeneratedAudio[i] = persisted }
+                                AppLogger.i(tag, "Pre-generated fallback audio for page $i: ${persisted.absolutePath}")
+                            }
+                        }.onFailure { error ->
+                            AppLogger.e(tag, "Failed to pre-generate fallback audio for page $i", error)
+                        }
                     }
+                } finally {
+                    hideAudioGenProgress()
                 }
             }
         } catch (e: Exception) {
             AppLogger.e(tag, "Error in preGenerateAudioForPagesSync", e)
-            hideAudioGenProgress()
         }
     }
 
@@ -1837,7 +1817,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 return@launch
             }
 
-            // Generate audio on demand
+            // Generate audio on demand using character voices (same as pre-generation)
             val pageText = if (pageIndex < novelPages.size) novelPages[pageIndex].text else chapterText.take(2000)
             if (pageText.isBlank()) {
                 Toast.makeText(requireContext(), "No text on this page", Toast.LENGTH_SHORT).show()
@@ -1848,13 +1828,45 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             btnPlay?.isEnabled = false
 
             withContext(Dispatchers.IO) {
-                AppLogger.d(tag, "Generating audio for page $pageIndex: ${pageText.length} chars")
-                val result = app.ttsEngine.speak(pageText, null, null, null)
-                result.onSuccess { audioFile ->
-                    audioFile?.let { file ->
-                        val persisted = app.pageAudioStorage.saveAudioFile(bookId, chapterId, pageIndex, file)
+                try {
+                    AppLogger.d(tag, "Generating audio for page $pageIndex with character voices: ${pageText.length} chars")
+
+                    // AUG-044: Use SegmentAudioGenerator for character-specific voices (same as pre-generation)
+                    val pageNumber = pageIndex + 1  // 1-based page number
+                    val allDialogs = chapterAnalysis?.dialogs
+                    val dialogs = if (allDialogs != null) {
+                        app.segmentAudioGenerator.getDialogsForPage(pageText, allDialogs)
+                    } else {
+                        emptyList()
+                    }
+
+                    AppLogger.d(tag, "On-demand audio: analysis=${chapterAnalysis != null}, matchedDialogs=${dialogs.size}")
+
+                    val segmentFiles = app.segmentAudioGenerator.generatePageAudio(
+                        bookId = bookId,
+                        chapterId = chapterId,
+                        pageNumber = pageNumber,
+                        pageText = pageText,
+                        dialogs = dialogs,
+                        onSegmentGenerated = null  // No progress callback for on-demand
+                    )
+
+                    val audioFile: File? = if (segmentFiles.isNotEmpty()) {
+                        // Stitch segments into a single page audio file
+                        val stitchedFile = app.pageAudioStorage.getAudioFilePath(bookId, chapterId, pageIndex)
+                        com.dramebaz.app.audio.AudioStitcher.stitchWavFiles(segmentFiles, stitchedFile)
+                    } else {
+                        // Fallback: generate single TTS for whole page (no dialogs found)
+                        AppLogger.d(tag, "No segments generated, using single TTS fallback")
+                        val result = app.ttsEngine.speak(pageText, null, null, null)
+                        result.getOrNull()?.let { file ->
+                            app.pageAudioStorage.saveAudioFile(bookId, chapterId, pageIndex, file)
+                        }
+                    }
+
+                    if (audioFile != null) {
                         withContext(Dispatchers.Main) {
-                            preGeneratedAudio[pageIndex] = persisted
+                            preGeneratedAudio[pageIndex] = audioFile
                         }
                         withContext(Dispatchers.Main) main@ {
                             if (!isAdded) return@main
@@ -1866,7 +1878,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                                 requireContext().startService(serviceIntent)
                             }
                             playingPageIndex = pageIndex
-                            audioService?.playAudioFile(persisted, bookTitle, "$chapterTitle - Page ${pageIndex + 1}", null)
+                            audioService?.playAudioFile(audioFile, bookTitle, "$chapterTitle - Page ${pageIndex + 1}", null)
                             // SETTINGS-001: Apply saved playback speed
                             audioService?.setSpeed(app.settingsRepository.audioSettings.value.playbackSpeed)
                             btnPlay?.text = "Pause"
@@ -1876,7 +1888,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                                 preGenerateAudioForPages(pageIndex + 1, 1)
                             }
                         }
-                    } ?: run {
+                    } else {
                         withContext(Dispatchers.Main) {
                             btnPlay?.isEnabled = true
                             // AUG-039: Use ErrorDialog for failed audio generation
@@ -1887,14 +1899,15 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             )
                         }
                     }
-                }.onFailure { error ->
+                } catch (e: Exception) {
+                    AppLogger.e(tag, "Error generating on-demand audio", e)
                     withContext(Dispatchers.Main) {
                         btnPlay?.isEnabled = true
                         // AUG-039: Use ErrorDialog with retry for TTS errors
                         ErrorDialog.showWithRetry(
                             context = requireContext(),
                             title = "Voice Synthesis Error",
-                            message = "Failed to synthesize speech: ${error.message ?: "Unknown error"}",
+                            message = "Failed to synthesize speech: ${e.message ?: "Unknown error"}",
                             onRetry = { playCurrentPage() }
                         )
                     }
@@ -2037,6 +2050,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     private fun updateReadingProgressUI(currentPage: Int, totalPages: Int) {
         if (totalPages <= 0) return
         val progressPercent = ((currentPage + 1).toFloat() / totalPages * 100).toInt()
+        // AUG-044: Debug log to diagnose reading progress issues
+        AppLogger.d(tag, "updateReadingProgressUI: page=${currentPage+1}/$totalPages = $progressPercent%")
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
             if (!isAdded) return@launch
             readingProgressBar?.progress = progressPercent

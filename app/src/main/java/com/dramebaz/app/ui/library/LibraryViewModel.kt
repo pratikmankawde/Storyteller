@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val TAG = "LibraryViewModel"
@@ -56,6 +57,19 @@ class LibraryViewModel(
      * - Reading session (if it references this book)
      * - Database records (chapters, characters, bookmarks, etc. via CASCADE)
      */
+    /**
+     * FAV-001: Toggle favorite status for a book.
+     * Returns the new favorite status.
+     */
+    fun toggleFavorite(book: Book, onComplete: (Boolean) -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val newStatus = bookRepository.toggleFavorite(book.id)
+            withContext(Dispatchers.Main) {
+                onComplete(newStatus)
+            }
+        }
+    }
+
     fun deleteBook(book: Book) {
         viewModelScope.launch(Dispatchers.IO) {
             val bookId = book.id

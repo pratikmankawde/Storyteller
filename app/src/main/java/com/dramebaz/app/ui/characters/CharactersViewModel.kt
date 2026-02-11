@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
 import com.dramebaz.app.data.db.AppDatabase
+import com.dramebaz.app.data.db.Chapter
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 
@@ -12,6 +13,13 @@ class CharactersViewModel(private val db: AppDatabase) : ViewModel() {
 
     fun characters(bookId: Long): Flow<List<com.dramebaz.app.data.db.Character>> =
         db.characterDao().getByBookId(bookId)
+
+    /**
+     * CHARACTER-002: Observe chapter changes for real-time dialog count updates.
+     * Returns a Flow that emits when chapters are updated (e.g., after analysis).
+     */
+    fun observeChapterChanges(bookId: Long): Flow<List<Chapter>> =
+        db.chapterDao().getByBookId(bookId)
 
     /**
      * Get dialog counts by speaker name from all chapter analyses.

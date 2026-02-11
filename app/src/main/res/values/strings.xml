@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">Dramebaz</string>
     <string name="book_cover">Book cover</string>
+    <string name="toggle_favorite">Toggle favorite</string>
+    <string name="added_to_favorites">Added to favorites</string>
+    <string name="removed_from_favorites">Removed from favorites</string>
     <string name="empty_library">Your library is empty</string>
     <string name="empty_library_subtitle">Import a book to get started</string>
     <string name="import_book">Import Book</string>
@@ -39,6 +42,21 @@
     <string name="auto_play_next">Auto-play Next Chapter</string>
     <string name="pause_screen_off">Pause on Screen Off</string>
     <string name="background_playback">Background Playback</string>
+
+    <!-- Narrator Voice Settings -->
+    <string name="narrator_voice">Narrator Voice</string>
+    <string name="narrator_voice_desc">Default voice for narration in all books</string>
+    <string name="narrator_voice_note">Note: Changes will apply to newly imported books only.</string>
+    <string name="narrator_speaker_select">Select Speaker</string>
+    <string name="narrator_speaker_dialog_title">Select Narrator Speaker</string>
+    <string name="narrator_speaker_dialog_desc">Tap to select, use play button to preview voice</string>
+    <string name="narrator_speaker_preview">Preview voice</string>
+    <string name="narrator_speaker_format">%1$s, %2$d, %3$s</string>
+    <string name="narrator_speed">Narrator Speed</string>
+    <string name="narrator_preview_text">Hello, I am the Narrator. This is how I sound.</string>
+    <string name="narrator_preview_generating">Generating preview…</string>
+    <string name="narrator_preview_failed">Preview failed: %s</string>
+    <string name="selected">Selected</string>
 
     <!-- TTS Model Settings -->
     <string name="tts_model">TTS Voice Model</string>
@@ -174,4 +192,11 @@
     <string name="section_finished">Finished</string>
     <string name="section_recently_added">Recently Added</string>
     <string name="section_unread">Unread</string>
+
+    <!-- CHARACTER-002: Character Card Strings -->
+    <string name="character_avatar">Character avatar</string>
+    <string name="voice_warning">Voice warning</string>
+    <string name="voice_needs_attention">Voice needs attention</string>
+    <string name="dialog_count_format">%d dialogs</string>
+    <string name="dialog_count_singular">1 dialog</string>
 </resources>

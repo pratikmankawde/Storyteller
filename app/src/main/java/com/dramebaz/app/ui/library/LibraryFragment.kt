@@ -94,6 +94,7 @@ class LibraryFragment : Fragment() {
         val emptyState = view.findViewById<View>(R.id.empty_state)
 
         // LIBRARY-001: Create sectioned adapter (stored as property for callbacks)
+        // FAV-001: Added onFavoriteClick callback for favorite toggle
         sectionAdapter = LibrarySectionAdapter(
             onBookClick = { book, coverImageView ->
                 navigateToBookDetail(book, coverImageView)
@@ -104,6 +105,15 @@ class LibraryFragment : Fragment() {
             },
             onSectionToggle = { section ->
                 toggleSection(section, recycler)
+            },
+            onFavoriteClick = { book ->
+                vm.toggleFavorite(book) { isFavorite ->
+                    val message = if (isFavorite)
+                        getString(R.string.added_to_favorites)
+                    else
+                        getString(R.string.removed_from_favorites)
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                }
             }
         )
 

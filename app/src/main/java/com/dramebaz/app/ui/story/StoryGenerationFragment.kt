@@ -1,6 +1,6 @@
 package com.dramebaz.app.ui.story
 
-import android.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -288,7 +288,7 @@ class StoryGenerationFragment : Fragment() {
         }
 
         val bookTitles = availableBooks.map { it.title }.toTypedArray()
-        AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle("Select Source Book")
             .setItems(bookTitles) { _, which ->
                 val book = availableBooks[which]

@@ -61,22 +61,40 @@ class BookDetailFragment : Fragment() {
         val transitionName = "book_cover_$bookId"
         ViewCompat.setTransitionName(bookCover, transitionName)
 
+        // FAV-001: Set up favorite button
+        val btnFavorite = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_favorite)
+
         // AUG-030: Chapter summaries card
         val chapterSummariesCard = view.findViewById<MaterialCardView>(R.id.chapter_summaries_card)
         val chapterSummariesContainer = view.findViewById<LinearLayout>(R.id.chapter_summaries_container)
 
-	        viewLifecycleOwner.lifecycleScope.launch {
-	            val book = vm.getBook(bookId)
-	            book?.let {
-	                title.text = it.title
-	                format.text = it.format.uppercase()
-	                // COVER-001: Load appropriate book cover into detail view
-	                BookCoverLoader.loadCoverInto(bookCover, it)
-	            }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val book = vm.getBook(bookId)
+            book?.let {
+                title.text = it.title
+                format.text = it.format.uppercase()
+                // COVER-001: Load appropriate book cover into detail view
+                BookCoverLoader.loadCoverInto(bookCover, it)
+                // FAV-001: Update favorite button state
+                updateFavoriteButton(btnFavorite, it.isFavorite)
+            }
 
-	            // AUG-030: Load chapter summaries
-	            loadChapterSummaries(chapterSummariesCard, chapterSummariesContainer)
-	        }
+            // AUG-030: Load chapter summaries
+            loadChapterSummaries(chapterSummariesCard, chapterSummariesContainer)
+        }
+
+        // FAV-001: Set up favorite button click listener
+        btnFavorite.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val newStatus = vm.toggleFavorite(bookId)
+                updateFavoriteButton(btnFavorite, newStatus)
+                val message = if (newStatus)
+                    getString(R.string.added_to_favorites)
+                else
+                    getString(R.string.removed_from_favorites)
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // Setup action cards
         val actionsGrid = view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.actions_grid)
@@ -476,4 +494,12 @@ class BookDetailFragment : Fragment() {
     }
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
+
+    /**
+     * FAV-001: Update the favorite button icon based on favorite status.
+     */
+    private fun updateFavoriteButton(button: com.google.android.material.button.MaterialButton, isFavorite: Boolean) {
+        val iconRes = if (isFavorite) R.drawable.ic_favorite else R.drawable.ic_favorite_border
+        button.setIconResource(iconRes)
+    }
 }

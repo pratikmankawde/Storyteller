@@ -105,13 +105,27 @@ class CharactersFragment : Fragment() {
             applyFilters(adapter, emptyState, recycler)
         }
 
-        // Load dialog counts from chapter analysis
+        // CHARACTER-002: Load dialog counts and observe chapter analysis changes
         viewLifecycleOwner.lifecycleScope.launch {
+            // Initial load
             dialogCountsBySpeaker = withContext(Dispatchers.IO) {
                 vm.getDialogCountsBySpeaker(bookId)
             }
-            // Refresh adapter after dialog counts are loaded
             applyFilters(adapter, emptyState, recycler)
+        }
+
+        // CHARACTER-002: Observe chapter changes to refresh dialog counts in real-time
+        viewLifecycleOwner.lifecycleScope.launch {
+            vm.observeChapterChanges(bookId).collectLatest {
+                // Refresh dialog counts when chapters are updated (analysis progress)
+                val newCounts = withContext(Dispatchers.IO) {
+                    vm.getDialogCountsBySpeaker(bookId)
+                }
+                if (newCounts != dialogCountsBySpeaker) {
+                    dialogCountsBySpeaker = newCounts
+                    adapter.notifyDialogCountsChanged()
+                }
+            }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -180,6 +194,12 @@ class CharactersFragment : Fragment() {
     }
 }
 
+/**
+ * CHARACTER-002: Redesigned CharacterAdapter for new card layout
+ * - Supports 2:3 aspect ratio cards
+ * - Styled dialog count badge with background
+ * - Real-time dialog count updates from chapter analysis
+ */
 class CharacterAdapter(
     private val dialogCountsBySpeaker: () -> Map<String, Int>,
     private val onItemClick: (Character) -> Unit
@@ -192,54 +212,60 @@ class CharacterAdapter(
         onComplete?.invoke()
     }
 
+    /**
+     * Notify adapter that dialog counts have been updated.
+     * This triggers a rebind of all items to update dialog count badges.
+     */
+    fun notifyDialogCountsChanged() {
+        notifyItemRangeChanged(0, list.size, PAYLOAD_DIALOG_COUNT)
+    }
+
     class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val name: TextView = itemView.findViewById(R.id.character_name)
         val traits: TextView = itemView.findViewById(R.id.character_traits)
-        // AUG-031: Voice warning container (CHARACTER-001: now a container with icon and text)
+        // AUG-031: Voice warning container
         val voiceWarningContainer: View? = itemView.findViewById(R.id.voice_warning_container)
-        // Dialog count display
+        // Dialog count badge
         val dialogCount: TextView? = itemView.findViewById(R.id.dialog_count)
-        // CHARACTER-001: Main clickable card
-        val card: View? = itemView.findViewById(R.id.character_card)
+        // CHARACTER-002: Main clickable card (root is now the card)
+        val card: View = itemView.findViewById(R.id.character_card)
     }
 
     override fun getItemCount() = list.size
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.item_character_card, parent, false)
         return VH(v)
     }
+
     override fun onBindViewHolder(holder: VH, position: Int) {
         val c = list[position]
+        val context = holder.itemView.context
+
         holder.name.text = c.name
         holder.traits.text = c.traits.takeIf { it.isNotBlank() } ?: "No traits available"
 
-        // AUG-031: Show voice warning container if inconsistency detected (CHARACTER-001: updated for new layout)
-        val hasVoiceWarning = c.personalitySummary.contains("⚠️") || c.personalitySummary.contains("inconsistenc", ignoreCase = true)
+        // AUG-031: Show voice warning if inconsistency detected
+        val hasVoiceWarning = c.personalitySummary.contains("⚠️") ||
+            c.personalitySummary.contains("inconsistenc", ignoreCase = true)
         holder.voiceWarningContainer?.visibility = if (hasVoiceWarning) View.VISIBLE else View.GONE
 
-        // Display dialog count from chapter analysis (primary source)
-        val dialogCount = dialogCountsBySpeaker()[c.name.lowercase()] ?: getDialogCountFromJson(c.dialogsJson)
-        if (dialogCount > 0) {
-            holder.dialogCount?.text = "$dialogCount dialog${if (dialogCount > 1) "s" else ""}"
-            holder.dialogCount?.visibility = View.VISIBLE
-        } else {
-            holder.dialogCount?.visibility = View.GONE
-        }
+        // CHARACTER-002: Display dialog count with styled badge
+        bindDialogCount(holder, c, context)
 
-        // CHARACTER-001: Set up click listener on the card (or itemView as fallback)
-        val clickTarget = holder.card ?: holder.itemView
-        clickTarget.setOnClickListener {
+        // Set up click listener on the card
+        holder.card.setOnClickListener {
             onItemClick(c)
-            // Add click animation for all characters including Narrator
-            clickTarget.animate()
-                .scaleX(0.95f)
-                .scaleY(0.95f)
-                .setDuration(100)
+            // Add click animation
+            holder.card.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(80)
                 .withEndAction {
-                    clickTarget.animate()
+                    holder.card.animate()
                         .scaleX(1f)
                         .scaleY(1f)
-                        .setDuration(100)
+                        .setDuration(80)
                         .start()
                 }
                 .start()
@@ -247,13 +273,43 @@ class CharacterAdapter(
 
         // Fade-in animation for items
         holder.itemView.alpha = 0f
-        holder.itemView.translationY = 20f
+        holder.itemView.translationY = 16f
         holder.itemView.animate()
             .alpha(1f)
             .translationY(0f)
-            .setDuration(300)
-            .setStartDelay(position * 30L)
+            .setDuration(250)
+            .setStartDelay((position * 25L).coerceAtMost(200L))
             .start()
+    }
+
+    override fun onBindViewHolder(holder: VH, position: Int, payloads: MutableList<Any>) {
+        if (payloads.contains(PAYLOAD_DIALOG_COUNT)) {
+            // Only update dialog count (partial bind for efficiency)
+            val c = list[position]
+            bindDialogCount(holder, c, holder.itemView.context)
+        } else {
+            super.onBindViewHolder(holder, position, payloads)
+        }
+    }
+
+    /**
+     * Bind dialog count badge to the holder.
+     * Uses chapter analysis data as primary source, falls back to dialogsJson.
+     */
+    private fun bindDialogCount(holder: VH, character: Character, context: android.content.Context) {
+        val dialogCount = dialogCountsBySpeaker()[character.name.lowercase()]
+            ?: getDialogCountFromJson(character.dialogsJson)
+
+        if (dialogCount > 0) {
+            holder.dialogCount?.text = if (dialogCount == 1) {
+                context.getString(R.string.dialog_count_singular)
+            } else {
+                context.getString(R.string.dialog_count_format, dialogCount)
+            }
+            holder.dialogCount?.visibility = View.VISIBLE
+        } else {
+            holder.dialogCount?.visibility = View.GONE
+        }
     }
 
     /**
@@ -267,5 +323,9 @@ class CharacterAdapter(
         } catch (e: JsonSyntaxException) {
             0
         }
+    }
+
+    companion object {
+        private const val PAYLOAD_DIALOG_COUNT = "dialog_count"
     }
 }

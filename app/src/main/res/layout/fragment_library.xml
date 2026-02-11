@@ -27,7 +27,7 @@
                 android:layout_height="?attr/actionBarSize"
                 app:title="Storyteller"
                 app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
-                app:subtitleTextAppearance="@style/TextAppearance.Material3.LabelMedium"
+                app:subtitleTextAppearance="@style/TextAppearance.Material3.LabelSmall"
                 app:menu="@menu/library_menu"
                 app:layout_collapseMode="pin" />
 

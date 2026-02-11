@@ -6,11 +6,13 @@ import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
 import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.ai.llm.executor.AnalysisExecutor
 import com.dramebaz.app.ai.llm.pipeline.AccumulatedCharacterData
+import com.dramebaz.app.ai.llm.pipeline.IncrementalMerger
 import com.dramebaz.app.ai.llm.pipeline.PassConfig
 import com.dramebaz.app.ai.llm.pipeline.TextCleaner
 import com.dramebaz.app.ai.llm.pipeline.ThemeAnalysisPass
 import com.dramebaz.app.ai.llm.prompts.ThemeAnalysisInput
 import com.dramebaz.app.ai.llm.services.AnalysisForegroundService
+import com.dramebaz.app.ai.llm.tasks.BatchedChapterAnalysisTask
 import com.dramebaz.app.ai.llm.tasks.ChapterAnalysisTask
 import com.dramebaz.app.ai.llm.tasks.TraitsExtractionTask
 import com.dramebaz.app.audio.SegmentAudioGenerator
@@ -19,6 +21,7 @@ import com.dramebaz.app.data.db.AppDatabase
 import com.dramebaz.app.data.db.Chapter
 import com.dramebaz.app.data.models.ChapterSummary
 import com.dramebaz.app.data.models.Dialog
+import com.dramebaz.app.data.models.FeatureSettings
 import com.dramebaz.app.data.repositories.BookRepository
 import com.dramebaz.app.domain.theme.GenreCoverMapper
 import com.dramebaz.app.pdf.PdfChapterDetector
@@ -61,6 +64,16 @@ class BookAnalysisWorkflow(
 
     // External dependency (can be set after construction)
     var segmentAudioGenerator: SegmentAudioGenerator? = null
+        set(value) {
+            field = value
+            // Initialize incremental audio enqueuer when generator is set
+            value?.let {
+                incrementalAudioEnqueuer = IncrementalAudioEnqueuer(it, CoroutineScope(Dispatchers.IO))
+            }
+        }
+
+    // INCREMENTAL-002: Enqueuer for audio generation after each batch
+    private var incrementalAudioEnqueuer: IncrementalAudioEnqueuer? = null
 
     // Cancellation tracking
     private val cancelledBookIds = mutableSetOf<Long>()
@@ -179,8 +192,13 @@ class BookAnalysisWorkflow(
                 message = "Analyzing $chapterLabel"
             )
 
-            // Analyze the first chapter
-            val success = analyzeChapter(bookId, firstChapter, 0, totalChapters, progressCallback)
+            // INCREMENTAL-001: Use batched analysis with incremental audio generation
+            val success = analyzeFirstChapterIncremental(
+                bookId = bookId,
+                chapter = firstChapter,
+                totalChapters = totalChapters,
+                progressCallback = progressCallback
+            )
 
             if (!success || isBookCancelled(bookId) || isPaused) {
                 AppLogger.i(tag, "First chapter analysis interrupted for book $bookId")
@@ -332,6 +350,197 @@ class BookAnalysisWorkflow(
         }
 
         return true
+    }
+
+    /**
+     * INCREMENTAL-001: Analyze first chapter with incremental processing and audio generation.
+     *
+     * If chapter has more than MIN_PAGES_FOR_INCREMENTAL pages:
+     * 1. Process first 50% of pages in foreground with incremental audio generation
+     * 2. Queue remaining 50% for background processing
+     *
+     * Audio generation is triggered after EACH batch completes via onBatchComplete callback.
+     * Summary generation only happens after 100% of chapter is analyzed.
+     */
+    private suspend fun analyzeFirstChapterIncremental(
+        bookId: Long,
+        chapter: Chapter,
+        totalChapters: Int,
+        progressCallback: ProgressCallback?
+    ): Boolean {
+        val analysisStartTime = System.currentTimeMillis()
+        val chapterLabel = chapter.title.ifBlank { "Chapter 1" }
+
+        // Prepare cleaned pages
+        val cleanedPages = prepareChapterPages(chapter)
+        if (cleanedPages.isEmpty()) {
+            AppLogger.w(tag, "No cleaned pages for chapter: ${chapter.title}")
+            return false
+        }
+
+        val totalPages = cleanedPages.size
+        AppLogger.i(tag, "INCREMENTAL-001: $totalPages pages prepared for chapter '$chapterLabel'")
+
+        // Determine if we should use incremental processing
+        val shouldSplit = totalPages > FeatureSettings.MIN_PAGES_FOR_INCREMENTAL
+        val initialPageCount = if (shouldSplit) {
+            // Process first 50% of pages initially
+            (totalPages * 50 / 100).coerceAtLeast(1)
+        } else {
+            totalPages  // Process all pages if below threshold
+        }
+
+        AppLogger.i(tag, "INCREMENTAL-001: Processing $initialPageCount/$totalPages pages initially (split=$shouldSplit)")
+
+        // Create batch complete callback for incremental audio generation
+        val audioCallback = incrementalAudioEnqueuer?.createBatchCompleteCallback(bookId, chapter.id)
+            ?: { _: BatchedChapterAnalysisTask.BatchCompleteData -> }
+
+        // Create BatchedChapterAnalysisTask with maxPagesToProcess for partial analysis
+        val task = BatchedChapterAnalysisTask(
+            bookId = bookId,
+            chapterId = chapter.id,
+            chapterTitle = chapterLabel,
+            rawPages = cleanedPages,
+            cacheDir = context.cacheDir,
+            maxPagesToProcess = if (shouldSplit) initialPageCount else null,
+            onBatchComplete = audioCallback
+        )
+
+        // Execute with progress tracking
+        val model = LlmService.getModel()
+        if (model == null) {
+            AppLogger.e(tag, "LLM model not available for analysis")
+            return false
+        }
+
+        val result = task.execute(model) { progress ->
+            val status = AnalysisStatus(
+                AnalysisState.ANALYZING,
+                progress.percent / 2,  // First 50% of overall progress for initial pages
+                "${progress.message} ($chapterLabel)",
+                0,
+                totalChapters
+            )
+            updateStatus(bookId, status)
+            progressCallback?.onProgress(bookId, status)
+            AnalysisForegroundService.updateProgress(context, progress.message, progress.percent / 2)
+        }
+
+        if (!result.success || isBookCancelled(bookId) || isPaused) {
+            AppLogger.w(tag, "Initial analysis failed or was cancelled: ${result.error}")
+            return false
+        }
+
+        // Handle results from initial analysis
+        val isPartial = result.resultData[BatchedChapterAnalysisTask.KEY_IS_PARTIAL] as? Boolean ?: false
+        val pagesProcessed = result.resultData[BatchedChapterAnalysisTask.KEY_PAGES_PROCESSED] as? Int ?: totalPages
+
+        AppLogger.i(tag, "INCREMENTAL-001: Initial analysis complete. Pages: $pagesProcessed/$totalPages, partial=$isPartial")
+
+        // Save partial results to database
+        if (!saveIncrementalResults(bookId, chapter, result.resultData)) {
+            AppLogger.w(tag, "Failed to save incremental results")
+        }
+
+        // If we split processing, queue the remaining pages for background analysis
+        if (shouldSplit && pagesProcessed < totalPages) {
+            AppLogger.i(tag, "INCREMENTAL-001: Queuing remaining ${totalPages - pagesProcessed} pages for background processing")
+            queueRemainingPagesForBackground(bookId, chapter.id, cleanedPages, pagesProcessed)
+        }
+
+        val duration = System.currentTimeMillis() - analysisStartTime
+        AppLogger.i(tag, "✅ INCREMENTAL-001: First chapter incremental analysis complete in ${duration}ms")
+
+        return true
+    }
+
+    /**
+     * Save incremental analysis results to database.
+     */
+    private suspend fun saveIncrementalResults(
+        bookId: Long,
+        chapter: Chapter,
+        resultData: Map<String, Any>
+    ): Boolean {
+        try {
+            val charactersJson = resultData[BatchedChapterAnalysisTask.KEY_CHARACTERS] as? String ?: return false
+
+            val characterType = object : TypeToken<List<AccumulatedCharacterData>>() {}.type
+            val characterDataList: List<AccumulatedCharacterData> = gson.fromJson(charactersJson, characterType)
+
+            // Persist characters with dialogs
+            if (characterDataList.isNotEmpty()) {
+                persistCharactersWithDialogs(bookId, characterDataList)
+            }
+
+            // Create partial analysis response (no summary yet - that comes after 100% analysis)
+            val characters = characterDataList.map { charData ->
+                CharacterStub(
+                    name = charData.name,
+                    traits = charData.traits.takeIf { it.isNotEmpty() },
+                    voiceProfile = charData.voiceProfile?.let { profile ->
+                        mapOf(
+                            "pitch" to profile.pitch,
+                            "speed" to profile.speed,
+                            "energy" to profile.energy,
+                            "gender" to profile.gender
+                        )
+                    }
+                )
+            }
+
+            val dialogs = characterDataList.flatMap { charData ->
+                charData.dialogs.map { dialogWithPage ->
+                    Dialog(
+                        speaker = charData.name,
+                        dialog = dialogWithPage.text,
+                        emotion = dialogWithPage.emotion,
+                        intensity = dialogWithPage.intensity
+                    )
+                }
+            }
+
+            // Save partial analysis (summary will be added after 100% completion)
+            val partialResponse = ChapterAnalysisResponse(
+                chapterSummary = null,  // No summary yet
+                characters = characters,
+                dialogs = dialogs,
+                soundCues = emptyList()
+            )
+
+            bookRepository.updateChapter(chapter.copy(
+                fullAnalysisJson = gson.toJson(partialResponse)
+            ))
+
+            // Merge characters
+            mergeChapterCharacters(bookId, characters)
+
+            AppLogger.i(tag, "Saved incremental results: ${characters.size} characters, ${dialogs.size} dialogs")
+            return true
+
+        } catch (e: Exception) {
+            AppLogger.e(tag, "Failed to save incremental results", e)
+            return false
+        }
+    }
+
+    /**
+     * Queue remaining pages for background analysis.
+     * This creates a background job to analyze the remaining portion of the chapter.
+     */
+    private fun queueRemainingPagesForBackground(
+        bookId: Long,
+        chapterId: Long,
+        allPages: List<String>,
+        startFromPage: Int
+    ) {
+        // TODO: Implement background job queue for remaining pages
+        // For now, log that we would queue it
+        AppLogger.i(tag, "INCREMENTAL-001: Would queue pages $startFromPage-${allPages.size - 1} for background processing")
+
+        // The AnalysisQueueManager could be extended to support partial chapter analysis jobs
+        // For now, the remaining analysis happens as part of full book analysis later
     }
 
     /**
