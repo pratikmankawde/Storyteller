@@ -27,11 +27,15 @@ android {
                 arguments += "-DGGML_VULKAN_TRY=ON"
                 // Force Release build type for maximum optimization (not RelWithDebInfo)
                 arguments += "-DCMAKE_BUILD_TYPE=Release"
+                // Native Stable Audio test harness and JNI are enabled in this build.
+                // Requires prebuilt TensorFlow Lite & SentencePiece libs under app/libs/ai/native.
+                arguments += "-DSTABLE_AUDIO_ENABLED=ON"
             }
         }
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            // Only build for arm64-v8a (phone) - skip x86_64 to avoid network issues during build
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
@@ -100,9 +104,18 @@ dependencies {
     // Available versions: https://maven.google.com/web/index.html#com.google.ai.edge.litertlm:litertlm-android
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
 
+    // MediaPipe LLM Inference for .task format models (Gemma 3n, etc.)
+    // See: https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android
+    implementation("com.google.mediapipe:tasks-genai:0.10.27")
+
+    // TensorFlow Lite for Stable Audio Open Small inference
+    // Required for StableAudioEngine to run .tflite models
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
+    implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 

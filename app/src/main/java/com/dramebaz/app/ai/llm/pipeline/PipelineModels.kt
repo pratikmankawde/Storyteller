@@ -14,15 +14,26 @@ interface PipelineContext {
 }
 
 /**
+ * Callback for reporting sub-progress within a pipeline step.
+ * Invoked after each segment/page is processed.
+ */
+typealias StepProgressCallback = (currentSegment: Int, totalSegments: Int) -> Unit
+
+/**
  * A single step in the pipeline.
  * Each step transforms the context and returns the updated context.
  */
 interface PipelineStep<T : PipelineContext> {
     /** Name of this step for logging and progress */
     val name: String
-    
-    /** Execute this step */
-    suspend fun execute(model: LlmModel, context: T, config: PassConfig): T
+
+    /** Execute this step with optional segment-level progress callback */
+    suspend fun execute(
+        model: LlmModel,
+        context: T,
+        config: PassConfig,
+        onSegmentProgress: StepProgressCallback? = null
+    ): T
 }
 
 /**
@@ -108,29 +119,35 @@ data class DialogWithPage(
  */
 class CharacterExtractionStep : PipelineStep<ChapterAnalysisContext> {
     override val name: String = "Character Extraction"
-    
+
     override suspend fun execute(
         model: LlmModel,
         context: ChapterAnalysisContext,
-        config: PassConfig
+        config: PassConfig,
+        onSegmentProgress: StepProgressCallback?
     ): ChapterAnalysisContext {
         val pass = com.dramebaz.app.ai.llm.pipeline.passes.CharacterExtractionPassV2()
-        
+        val totalPages = context.cleanedPages.size
+
         for ((pageIndex, pageText) in context.cleanedPages.withIndex()) {
-            if (pageText.length < 50) continue
-            
+            if (pageText.length < 50) {
+                // Report progress even for skipped pages
+                onSegmentProgress?.invoke(pageIndex + 1, totalPages)
+                continue
+            }
+
             val input = com.dramebaz.app.ai.llm.prompts.CharacterExtractionPromptInput(
                 text = pageText,
                 pageNumber = pageIndex + 1
             )
-            
+
             val output = pass.execute(model, input, config)
-            
+
             // Accumulate characters
             for (name in output.characterNames) {
                 val normalizedName = name.trim()
                 if (normalizedName.length < 2) continue
-                
+
                 val key = normalizedName.lowercase()
                 val existing = context.characters[key]
                 if (existing != null) {
@@ -142,8 +159,11 @@ class CharacterExtractionStep : PipelineStep<ChapterAnalysisContext> {
                     )
                 }
             }
+
+            // Report progress after each segment is processed
+            onSegmentProgress?.invoke(pageIndex + 1, totalPages)
         }
-        
+
         return context.copy(pagesProcessed = context.cleanedPages.size)
     }
 }
@@ -154,44 +174,63 @@ class CharacterExtractionStep : PipelineStep<ChapterAnalysisContext> {
  */
 class DialogExtractionStep : PipelineStep<ChapterAnalysisContext> {
     override val name: String = "Dialog Extraction"
-    
+
     override suspend fun execute(
         model: LlmModel,
         context: ChapterAnalysisContext,
-        config: PassConfig
+        config: PassConfig,
+        onSegmentProgress: StepProgressCallback?
     ): ChapterAnalysisContext {
         val pass = com.dramebaz.app.ai.llm.pipeline.passes.DialogExtractionPassV2()
         var totalDialogs = 0
-        
+        val totalPages = context.cleanedPages.size
+
         for ((pageIndex, pageText) in context.cleanedPages.withIndex()) {
             val pageNum = pageIndex + 1
-            
+
             // Get characters appearing on this page
             val charactersOnPage = context.characters.values
                 .filter { it.pagesAppearing.contains(pageNum) }
                 .map { it.name }
-            
-            if (charactersOnPage.isEmpty()) continue
-            
+
+            if (charactersOnPage.isEmpty()) {
+                // Report progress even for skipped pages
+                onSegmentProgress?.invoke(pageNum, totalPages)
+                continue
+            }
+
             val input = com.dramebaz.app.ai.llm.prompts.DialogExtractionPromptInput(
                 text = pageText,
                 characterNames = charactersOnPage,
                 pageNumber = pageNum
             )
-            
+
             val output = pass.execute(model, input, config)
-            
+
+            // Log extracted dialogs for debugging
+            com.dramebaz.app.utils.AppLogger.d("DialogExtractionStep", "Page $pageNum: extracted ${output.dialogs.size} dialogs, characters on page: $charactersOnPage")
+            com.dramebaz.app.utils.AppLogger.d("DialogExtractionStep", "Available character keys: ${context.characters.keys}")
+
             // Add dialogs to characters
             for (dialog in output.dialogs) {
                 val charKey = dialog.speaker.lowercase()
-                context.characters[charKey]?.dialogs?.add(DialogWithPage(
-                    pageNumber = pageNum,
-                    text = dialog.text,
-                    emotion = dialog.emotion,
-                    intensity = dialog.intensity
-                ))
-                totalDialogs++
+                val character = context.characters[charKey]
+                if (character != null) {
+                    character.dialogs.add(DialogWithPage(
+                        pageNumber = pageNum,
+                        text = dialog.text,
+                        emotion = dialog.emotion,
+                        intensity = dialog.intensity
+                    ))
+                    totalDialogs++
+                    com.dramebaz.app.utils.AppLogger.d("DialogExtractionStep", "Added dialog to '$charKey': \"${dialog.text.take(50)}...\"")
+                } else {
+                    com.dramebaz.app.utils.AppLogger.w("DialogExtractionStep", "No character found for speaker '${dialog.speaker}' (key='$charKey')")
+                }
             }
+
+            // Report progress after each segment is processed
+            onSegmentProgress?.invoke(pageNum, totalPages)
         }
 
         return context.copy(totalDialogs = totalDialogs)
@@ -210,7 +249,8 @@ class VoiceProfileStep(
     override suspend fun execute(
         model: LlmModel,
         context: ChapterAnalysisContext,
-        config: PassConfig
+        config: PassConfig,
+        onSegmentProgress: StepProgressCallback?
     ): ChapterAnalysisContext {
         val pass = com.dramebaz.app.ai.llm.pipeline.passes.VoiceProfilePassV2()
         val speakerMatcher = com.dramebaz.app.ai.tts.SpeakerMatcher
@@ -220,8 +260,9 @@ class VoiceProfileStep(
             .toList()
 
         val batches = charactersToProcess.chunked(batchSize)
+        val totalBatches = batches.size
 
-        for (batch in batches) {
+        for ((batchIndex, batch) in batches.withIndex()) {
             val characterNames = batch.map { it.name }
 
             // Build dialog context
@@ -254,6 +295,9 @@ class VoiceProfileStep(
                     )
                 }
             }
+
+            // Report progress after each batch is processed
+            onSegmentProgress?.invoke(batchIndex + 1, totalBatches)
         }
 
         return context

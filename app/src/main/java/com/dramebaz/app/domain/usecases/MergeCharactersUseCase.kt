@@ -1,7 +1,6 @@
 package com.dramebaz.app.domain.usecases
 
 import android.content.Context
-import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.utils.AppLogger
 import com.dramebaz.app.ai.tts.SpeakerMatcher
 import com.dramebaz.app.data.db.Character
@@ -24,138 +23,23 @@ class MergeCharactersUseCase(
 
     suspend fun mergeAndSave(bookId: Long, perChapterCharacterJsonList: List<String>) = withContext(Dispatchers.IO) {
         try {
-            // Try LLM-based merging first if context available
-            if (context != null) {
-                val llmResult = tryMergeWithLLM(perChapterCharacterJsonList)
-                if (llmResult != null) {
-                    saveMergedCharacters(bookId, llmResult)
-                    return@withContext
-                }
-            }
-
-            // Fall back to stub merging
-            AppLogger.d(tag, "Using stub merging (LLM not available)")
-            stubMergeAndSave(bookId, perChapterCharacterJsonList)
+            // Use programmatic merging - LLM is overkill for data aggregation
+            AppLogger.d(tag, "Merging ${perChapterCharacterJsonList.size} chapter character lists")
+            programmaticMergeAndSave(bookId, perChapterCharacterJsonList)
         } catch (e: Exception) {
             AppLogger.e(tag, "Error in mergeAndSave", e)
-            // Fallback to stub
-            stubMergeAndSave(bookId, perChapterCharacterJsonList)
         }
     }
 
-    private suspend fun tryMergeWithLLM(perChapterCharacterJsonList: List<String>): String? {
-        if (context == null) return null
+    /**
+     * Programmatic character merging - combines character data from multiple chapters
+     * by merging traits, averaging voice profiles, and collecting key moments/relationships.
+     */
+    private suspend fun programmaticMergeAndSave(bookId: Long, perChapterCharacterJsonList: List<String>) {
+        // Get existing characters to preserve dialogsJson
+        val existingChars = characterDao.getByBookIdDirect(bookId)
+        val existingByName = existingChars.associateBy { it.name.lowercase() }
 
-        return try {
-            // Build prompt per Section 2.3
-            val characterJsonSnippets = perChapterCharacterJsonList.joinToString("\n\n")
-
-            val prompt = """SYSTEM:
-You are a character analysis engine. You receive multiple JSON snippets describing the same characters across different chapters. Your task is to merge them into a single global character profile per character.
-
-Rules:
-1. Merge traits, removing duplicates.
-2. Summarize personality in 2-3 sentences.
-3. Merge voice_profile by averaging numeric fields.
-4. Track key moments and relationships.
-5. Output ONLY valid JSON.
-
-USER:
-Here are per-chapter character entries:
-
-$characterJsonSnippets
-
-Produce a merged global character list."""
-
-            // Use LLM to merge - try using generateStory for structured output
-            val response = try {
-                // Try to get structured JSON response
-                // Use extendedAnalysisJson as it can handle structured prompts
-                LlmService.extendedAnalysisJson(prompt)
-            } catch (e: Exception) {
-                AppLogger.w(tag, "Error calling Qwen for merging", e)
-                null
-            }
-
-            if (response != null && !response.contains("stub") && response.contains("characters")) {
-                // Extract JSON from response
-                val json = extractJsonFromResponse(response)
-                // Validate it's proper JSON
-                try {
-                    gson.fromJson(json, com.google.gson.JsonObject::class.java)
-                    json
-                } catch (e: Exception) {
-                    AppLogger.w(tag, "Invalid JSON from LLM, using stub", e)
-                    null
-                }
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            AppLogger.w(tag, "LLM merging failed, using stub", e)
-            null
-        }
-    }
-
-    private fun extractJsonFromResponse(response: String): String {
-        var json = response.trim()
-        // Remove markdown code blocks if present
-        if (json.startsWith("```json")) {
-            json = json.removePrefix("```json").trim()
-        }
-        if (json.startsWith("```")) {
-            json = json.removePrefix("```").trim()
-        }
-        if (json.endsWith("```")) {
-            json = json.removeSuffix("```").trim()
-        }
-        // Find first { and last }
-        val start = json.indexOf('{')
-        val end = json.lastIndexOf('}')
-        if (start >= 0 && end > start) {
-            json = json.substring(start, end + 1)
-        }
-        return json
-    }
-
-    private suspend fun saveMergedCharacters(bookId: Long, mergedJson: String) {
-        try {
-            characterDao.deleteByBookId(bookId)
-            val obj = gson.fromJson(mergedJson, JsonObject::class.java)
-            val charactersArray = obj.getAsJsonArray("characters") ?: return
-
-            for (i in 0 until charactersArray.size()) {
-                val charObj = charactersArray[i].asJsonObject
-                val name = charObj.get("name")?.asString ?: "unknown"
-                val traits = charObj.getAsJsonArray("traits")?.map { it.asString }?.joinToString(",") ?: ""
-                val personalitySummary = charObj.get("personality_summary")?.asString ?: ""
-                val voiceProfile = charObj.get("voice_profile")?.asJsonObject
-                val voiceProfileJson = if (voiceProfile != null) gson.toJson(voiceProfile) else null
-                val keyMoments = charObj.getAsJsonArray("key_moments")?.map { it.asString }?.joinToString("|") ?: ""
-                val relationships = charObj.getAsJsonArray("relationships")?.map { it.asString }?.joinToString("|") ?: ""
-                val suggestedSpeakerId = SpeakerMatcher.suggestSpeakerId(traits, personalitySummary, name)
-
-                characterDao.insert(
-                    Character(
-                        bookId = bookId,
-                        name = name,
-                        traits = traits,
-                        personalitySummary = personalitySummary,
-                        voiceProfileJson = voiceProfileJson,
-                        keyMoments = keyMoments,
-                        relationships = relationships,
-                        speakerId = suggestedSpeakerId
-                    )
-                )
-            }
-        } catch (e: Exception) {
-            AppLogger.e(tag, "Error saving merged characters", e)
-            throw e
-        }
-    }
-
-    private suspend fun stubMergeAndSave(bookId: Long, perChapterCharacterJsonList: List<String>) {
-        characterDao.deleteByBookId(bookId)
         val byName = mutableMapOf<String, MutableList<JsonObject>>()
         for (json in perChapterCharacterJsonList) {
             try {
@@ -172,19 +56,39 @@ Produce a merged global character list."""
 
         for ((name, list) in byName) {
             val merged = mergeOne(name, list, allCharacterNames)
-            val suggestedSpeakerId = SpeakerMatcher.suggestSpeakerId(merged.traits, merged.summary, name)
-            characterDao.insert(
-                Character(
-                    bookId = bookId,
-                    name = name,
-                    traits = merged.traits,
-                    personalitySummary = merged.summary,
-                    voiceProfileJson = merged.voiceProfileJson,
-                    keyMoments = merged.keyMomentsJson,
-                    relationships = merged.relationshipsJson,
-                    speakerId = suggestedSpeakerId
+            val existing = existingByName[name.lowercase()]
+
+            if (existing != null) {
+                // Update existing character, preserving dialogsJson and user-set speakerId
+                val suggestedSpeakerId = existing.speakerId ?: SpeakerMatcher.suggestSpeakerId(merged.traits, merged.summary, name)
+                characterDao.update(
+                    existing.copy(
+                        traits = if (merged.traits.isNotBlank()) merged.traits else existing.traits,
+                        personalitySummary = if (merged.summary.isNotBlank()) merged.summary else existing.personalitySummary,
+                        voiceProfileJson = merged.voiceProfileJson.takeIf { it != "{\"pitch\":1.0,\"speed\":1.0,\"energy\":1.0}" } ?: existing.voiceProfileJson,
+                        keyMoments = if (merged.keyMomentsJson != "[]") merged.keyMomentsJson else existing.keyMoments,
+                        relationships = if (merged.relationshipsJson != "[]") merged.relationshipsJson else existing.relationships,
+                        speakerId = suggestedSpeakerId
+                        // dialogsJson is preserved from existing
+                    )
                 )
-            )
+            } else {
+                // Insert new character - try to get dialogsJson from existing if available
+                val suggestedSpeakerId = SpeakerMatcher.suggestSpeakerId(merged.traits, merged.summary, name)
+                characterDao.insert(
+                    Character(
+                        bookId = bookId,
+                        name = name,
+                        traits = merged.traits,
+                        personalitySummary = merged.summary,
+                        voiceProfileJson = merged.voiceProfileJson,
+                        keyMoments = merged.keyMomentsJson,
+                        relationships = merged.relationshipsJson,
+                        speakerId = suggestedSpeakerId,
+                        dialogsJson = existingByName[name.lowercase()]?.dialogsJson
+                    )
+                )
+            }
         }
     }
 

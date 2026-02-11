@@ -5,9 +5,15 @@ import com.google.gson.annotations.SerializedName
 /**
  * T2.1: Dialog with emotion, intensity, prosody.
  * AUG-032: Added confidence field for attribution confidence scoring.
+ *
+ * Note: The @SerializedName annotation with alternates allows parsing JSON that uses either
+ * "dialog" or "text" as the field name. This handles both legacy JSON formats and the
+ * ExtractedDialog format which uses "text" field.
  */
 data class Dialog(
     val speaker: String = "unknown",
+    /** Dialog text - can be deserialized from either "dialog" or "text" JSON field */
+    @SerializedName(value = "dialog", alternate = ["text"])
     val dialog: String = "",
     val emotion: String = "neutral",
     val intensity: Float = 0.5f,

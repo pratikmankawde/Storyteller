@@ -1,0 +1,51 @@
+---
+description: Update tests when API signatures or feature implementations change
+alwaysApply: true
+---
+
+# Update Tests on API/Feature Changes
+
+## Rule
+
+When modifying code that has existing tests, you must update the corresponding tests to reflect the changes:
+
+1. **API Signature Changes**: If you modify method signatures (parameters, return types, visibility), update all tests that call those methods
+2. **Feature Implementation Changes**: If you change how a feature works internally, update tests to verify the new behavior
+3. **New Features**: When adding new public methods or features, add corresponding test cases
+4. **Removed Features**: When removing methods or features, remove or update obsolete tests
+
+## Scope
+
+This applies to:
+- Unit tests in `app/src/test/java/`
+- Instrumented tests in `app/src/androidTest/java/`
+- Integration tests for multi-component features
+
+## When to Apply
+
+- After refactoring existing code with tests
+- After changing method signatures in tested classes
+- After modifying business logic in use cases, repositories, or services
+- After changing data models that affect serialization/deserialization
+
+## Implementation
+
+1. Identify affected test files by searching for references to modified classes/methods
+2. Update test assertions to match new behavior
+3. Update mock setups if method signatures changed
+4. Add new test cases for new code paths
+5. Run tests to verify they pass: `./gradlew test` (unit) and `./gradlew connectedAndroidTest` (instrumented)
+6. Fix any failing tests before considering the task complete
+
+## Examples
+
+- If you change `LlmService.analyzeChapter()` parameters, update `ChapterAnalysisTest.kt`
+- If you refactor `PlaybackEngine` to use new audio pipeline, update `PlaybackPipelineTest.kt`
+- If you add a new `GenerationParams` field, update `LlmModelTest.kt` to test it
+
+## Exceptions
+
+- Documentation-only changes
+- Changes to private implementation details that don't affect public API
+- Temporary/experimental code marked with TODO
+

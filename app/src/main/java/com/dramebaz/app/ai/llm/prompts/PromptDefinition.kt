@@ -134,10 +134,5 @@ data class TokenBudget(
         )
     }
     
-    init {
-        require(totalTokens <= DEFAULT_TOTAL_BUDGET) {
-            "Total tokens ($totalTokens) exceeds budget ($DEFAULT_TOTAL_BUDGET)"
-        }
-    }
 }
 

@@ -26,31 +26,40 @@ import kotlinx.coroutines.withContext
 
 /**
  * Android Foreground Service for running analysis tasks.
- * 
+ *
  * This service provides:
  * - Wake lock to prevent CPU sleep during long tasks
  * - Persistent notification with progress
  * - Progress broadcasts for UI updates
  * - Completion broadcasts with results
- * 
+ *
+ * Two modes of operation:
+ * 1. Task execution mode: start(context, task, model) - executes a task with LLM
+ * 2. Simple mode: startSimple(context) - just wake lock + notification for external processing
+ *
  * NOT tied to specific models, pipelines, or passes.
- * 
+ *
  * Use for tasks with estimatedDurationSeconds >= 60.
  */
 class AnalysisForegroundService : Service() {
-    
+
     companion object {
         private const val TAG = "AnalysisForegroundService"
         private const val CHANNEL_ID = "analysis_channel"
         private const val NOTIFICATION_ID = 3001
         private const val WAKE_LOCK_TAG = "Storyteller::AnalysisService"
-        private const val WAKE_LOCK_TIMEOUT_MS = 30L * 60L * 1000L  // 30 minutes
-        
+        private const val WAKE_LOCK_TIMEOUT_MS = 60L * 60L * 1000L  // 60 minutes (increased for long book analysis)
+
         // Broadcast actions
         const val ACTION_PROGRESS = "com.dramebaz.app.ANALYSIS_PROGRESS"
         const val ACTION_COMPLETE = "com.dramebaz.app.ANALYSIS_COMPLETE"
         const val ACTION_CANCEL = "com.dramebaz.app.ANALYSIS_CANCEL"
-        
+
+        // Internal actions for simple mode
+        private const val ACTION_START_SIMPLE = "com.dramebaz.app.ANALYSIS_START_SIMPLE"
+        private const val ACTION_STOP = "com.dramebaz.app.ANALYSIS_STOP"
+        private const val ACTION_UPDATE_PROGRESS = "com.dramebaz.app.ANALYSIS_UPDATE_PROGRESS"
+
         // Broadcast extras
         const val EXTRA_TASK_ID = "task_id"
         const val EXTRA_PROGRESS_MESSAGE = "progress_message"
@@ -58,23 +67,36 @@ class AnalysisForegroundService : Service() {
         const val EXTRA_SUCCESS = "success"
         const val EXTRA_RESULT_DATA = "result_data"
         const val EXTRA_ERROR_MESSAGE = "error_message"
-        
+
         // Pending task to be executed (set before starting service)
         @Volatile
         private var pendingTask: AnalysisTask? = null
-        
+
         @Volatile
         private var currentTaskId: String? = null
-        
+
         @Volatile
         private var llmModel: LlmModel? = null
-        
+
+        @Volatile
+        private var isSimpleMode = false
+
+        @Volatile
+        private var isRunning = false
+
         /**
-         * Start the service with a task.
+         * Check if the service is currently running.
+         */
+        fun isServiceRunning(): Boolean = isRunning
+
+        /**
+         * Start the service with a task (task execution mode).
+         * The service will execute the task and broadcast progress/completion.
          */
         fun start(context: Context, task: AnalysisTask, model: LlmModel) {
             pendingTask = task
             llmModel = model
+            isSimpleMode = false
             val intent = Intent(context, AnalysisForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -82,17 +104,86 @@ class AnalysisForegroundService : Service() {
                 context.startService(intent)
             }
         }
-        
+
         /**
-         * Cancel the currently running task.
+         * Start the service in simple mode (wake lock + notification only).
+         * Use this when you want to manage task execution externally but need
+         * the wake lock and notification to keep the app alive.
+         *
+         * Call updateProgress() to update the notification.
+         * Call stop() when done.
+         */
+        fun startSimple(context: Context, initialMessage: String = "Processing...") {
+            if (isRunning) {
+                AppLogger.d(TAG, "Service already running")
+                return
+            }
+            // Set isRunning immediately to prevent race condition with updateProgress()
+            // This ensures updateProgress() calls don't get ignored while service is starting
+            isRunning = true
+            isSimpleMode = true
+            AppLogger.d(TAG, "startSimple: Setting isRunning=true, starting service...")
+            val intent = Intent(context, AnalysisForegroundService::class.java).apply {
+                action = ACTION_START_SIMPLE
+                putExtra(EXTRA_PROGRESS_MESSAGE, initialMessage)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+
+        /**
+         * Stop the service (for simple mode).
+         * In task execution mode, the service stops automatically when the task completes.
+         */
+        fun stop(context: Context) {
+            if (!isRunning) {
+                AppLogger.d(TAG, "Service not running, nothing to stop")
+                return
+            }
+            val intent = Intent(context, AnalysisForegroundService::class.java).apply {
+                action = ACTION_STOP
+            }
+            context.startService(intent)
+            isRunning = false
+            isSimpleMode = false
+        }
+
+        /**
+         * Update the notification progress (for simple mode).
+         * @param message The message to display
+         * @param progress Progress percentage (0-100)
+         */
+        fun updateProgress(context: Context, message: String, progress: Int) {
+            if (!isRunning) {
+                AppLogger.d(TAG, "updateProgress ignored - service not running (message: $message, progress: $progress)")
+                return
+            }
+            AppLogger.d(TAG, "updateProgress: $message ($progress%)")
+            val intent = Intent(context, AnalysisForegroundService::class.java).apply {
+                action = ACTION_UPDATE_PROGRESS
+                putExtra(EXTRA_PROGRESS_MESSAGE, message)
+                putExtra(EXTRA_PROGRESS_PERCENT, progress)
+            }
+            context.startService(intent)
+        }
+
+        /**
+         * Cancel the currently running task (for task execution mode).
          */
         fun cancel(context: Context) {
+            if (!isRunning) {
+                AppLogger.d(TAG, "cancel ignored - service not running")
+                return
+            }
             val intent = Intent(context, AnalysisForegroundService::class.java).apply {
                 action = ACTION_CANCEL
             }
             context.startService(intent)
         }
-        
+
         /**
          * Get the currently running task ID.
          */
@@ -131,6 +222,8 @@ class AnalysisForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        AppLogger.d(TAG, "onStartCommand: action=${intent?.action}")
+
         when (intent?.action) {
             ACTION_CANCEL -> {
                 AppLogger.i(TAG, "Cancellation requested")
@@ -139,22 +232,56 @@ class AnalysisForegroundService : Service() {
                 stopAnalysis()
                 return START_NOT_STICKY
             }
+
+            ACTION_START_SIMPLE -> {
+                // Simple mode: just wake lock + notification, no task execution
+                // Note: isRunning is set to true in startSimple() to avoid race condition
+                // So we check if we've already started the foreground notification using wakeLock
+                if (wakeLock == null) {
+                    isRunning = true
+                    isSimpleMode = true
+                    currentMessage = intent.getStringExtra(EXTRA_PROGRESS_MESSAGE) ?: "Processing..."
+                    currentProgress = 0
+                    acquireWakeLock()
+                    startForeground(NOTIFICATION_ID, buildNotification("Analysis", currentMessage))
+                    AppLogger.i(TAG, "✅ Foreground service started (simple mode)")
+                } else {
+                    AppLogger.d(TAG, "Foreground service already running (simple mode)")
+                }
+                return START_STICKY
+            }
+
+            ACTION_STOP -> {
+                AppLogger.i(TAG, "Stop requested")
+                stopAnalysis()
+                return START_NOT_STICKY
+            }
+
+            ACTION_UPDATE_PROGRESS -> {
+                currentMessage = intent.getStringExtra(EXTRA_PROGRESS_MESSAGE) ?: currentMessage
+                currentProgress = intent.getIntExtra(EXTRA_PROGRESS_PERCENT, currentProgress)
+                updateNotification("Analysis", currentMessage)
+                return if (isSimpleMode) START_STICKY else START_NOT_STICKY
+            }
         }
-        
+
+        // Task execution mode (default when no action specified)
         val task = pendingTask
         val model = llmModel
         pendingTask = null
-        
+
         if (task == null || model == null) {
             AppLogger.e(TAG, "No pending task or model")
             stopSelf()
             return START_NOT_STICKY
         }
-        
+
+        isRunning = true
+        isSimpleMode = false
         currentTaskId = task.taskId
         acquireWakeLock()
         startForeground(NOTIFICATION_ID, buildNotification(task.displayName, "Starting..."))
-        
+
         analysisJob = serviceScope.launch {
             runTask(task, model)
         }
@@ -295,8 +422,11 @@ class AnalysisForegroundService : Service() {
     }
 
     private fun stopAnalysis() {
+        AppLogger.i(TAG, "Stopping analysis service")
         currentTaskId = null
         Companion.llmModel = null
+        isRunning = false
+        isSimpleMode = false
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -304,6 +434,11 @@ class AnalysisForegroundService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
+        // In simple mode, don't stop when app is swiped away - let the caller decide
+        if (isSimpleMode) {
+            AppLogger.i(TAG, "App swiped away but continuing in simple mode")
+            return
+        }
         analysisJob?.cancel()
         sendCompleteBroadcast(success = false, errorMessage = "App closed")
         stopAnalysis()
@@ -311,9 +446,12 @@ class AnalysisForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        AppLogger.i(TAG, "Service destroyed")
         analysisJob?.cancel()
         serviceScope.cancel()
         releaseWakeLock()
+        isRunning = false
+        isSimpleMode = false
     }
 }
 

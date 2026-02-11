@@ -1,12 +1,60 @@
 package com.dramebaz.app.ai.tts
 
-import kotlin.math.min
+import android.content.Context
+import com.dramebaz.app.utils.AppLogger
 
 /**
- * Matches a character (with traits extracted by Qwen from chapters) to a LibriTTS TTS speaker ID (0–903)
+ * Matches a character (with traits extracted by Qwen from chapters) to a TTS speaker ID
  * by scoring each speaker's gender, age bucket, and accent/region against the character's traits.
+ *
+ * Now model-aware: uses the appropriate speaker catalog (LibriTTS, VCTK, etc.) based on
+ * the currently selected TTS model.
  */
 object SpeakerMatcher {
+
+    private const val TAG = "SpeakerMatcher"
+
+    /** Currently active model ID for speaker matching. Set by TTS initialization. */
+    @Volatile
+    var activeModelId: String? = null
+
+    /** Application context for accessing TtsModelRegistry when activeModelId is not set. */
+    @Volatile
+    private var appContext: Context? = null
+
+    /**
+     * Initialize SpeakerMatcher with application context.
+     * This allows it to query TtsModelRegistry for the selected model
+     * even before TTS is fully initialized.
+     */
+    fun initialize(context: Context) {
+        appContext = context.applicationContext
+        AppLogger.d(TAG, "SpeakerMatcher initialized with context")
+
+        // Try to set activeModelId from registry if not already set
+        if (activeModelId == null) {
+            tryLoadModelIdFromRegistry()
+        }
+    }
+
+    /**
+     * Try to load the selected model ID from TtsModelRegistry.
+     * Called during initialization and when activeModelId is null.
+     */
+    private fun tryLoadModelIdFromRegistry() {
+        val ctx = appContext ?: return
+        try {
+            val registry = TtsModelRegistry(ctx)
+            registry.init()
+            val selectedModel = registry.getSelectedModel()
+            if (selectedModel != null) {
+                activeModelId = selectedModel.id
+                AppLogger.d(TAG, "Loaded activeModelId from registry: ${selectedModel.id}")
+            }
+        } catch (e: Exception) {
+            AppLogger.w(TAG, "Failed to load model ID from registry: ${e.message}")
+        }
+    }
 
     /** Normalized traits string (comma-separated) to list of lowercased tokens. */
     fun parseTraits(traits: String?): List<String> {
@@ -15,19 +63,42 @@ object SpeakerMatcher {
     }
 
     /**
-     * Picks a suggested LibriTTS speaker ID (0–903) for a character based on traits and optional name.
+     * Get the active speaker catalog based on the current TTS model.
+     * If activeModelId is not set, tries to load it from TtsModelRegistry.
+     */
+    fun getActiveCatalog(): SpeakerCatalog {
+        // If activeModelId is null, try to load from registry
+        if (activeModelId == null) {
+            tryLoadModelIdFromRegistry()
+        }
+        return SpeakerCatalog.forModel(activeModelId)
+    }
+
+    /**
+     * Picks a suggested speaker ID for a character based on traits and optional name.
+     * Uses the active TTS model's speaker catalog.
      * Prefer gender match, then accent/age keywords. Returns null if no preference (caller can use default).
      * When multiple speakers have the same score, uses character name hash for deterministic selection.
+     *
+     * @param traits Character traits string (comma-separated)
+     * @param personalitySummary Character personality summary
+     * @param name Character name
+     * @param catalog Optional catalog override; defaults to active model's catalog
      */
-    fun suggestSpeakerId(traits: String?, personalitySummary: String?, name: String?): Int? {
+    fun suggestSpeakerId(
+        traits: String?,
+        personalitySummary: String?,
+        name: String?,
+        catalog: SpeakerCatalog = getActiveCatalog()
+    ): Int? {
         val traitTokens = parseTraits(traits).toMutableList()
         personalitySummary?.split(Regex("\\s+"))?.map { it.trim().lowercase() }?.filter { it.length > 2 }?.let { traitTokens.addAll(it) }
         name?.lowercase()?.let { traitTokens.add(it) }
         if (traitTokens.isEmpty()) return null
 
-        val scores = IntArray(LibrittsSpeakerCatalog.SPEAKER_COUNT) { 0 }
-        for (sid in LibrittsSpeakerCatalog.MIN_SPEAKER_ID..LibrittsSpeakerCatalog.MAX_SPEAKER_ID) {
-            val s = LibrittsSpeakerCatalog.getTraits(sid) ?: continue
+        val scores = IntArray(catalog.speakerCount) { 0 }
+        for (sid in catalog.minSpeakerId..catalog.maxSpeakerId) {
+            val s = catalog.getTraits(sid) ?: continue
             var score = 0
             for (t in traitTokens) {
                 when {
@@ -78,21 +149,31 @@ object SpeakerMatcher {
     /**
      * Same as [suggestSpeakerId] but accepts a list of trait strings (e.g. from CharacterStub.traits).
      */
-    fun suggestSpeakerIdFromTraitList(traits: List<String>?, personalitySummary: String?, name: String?): Int? {
+    fun suggestSpeakerIdFromTraitList(
+        traits: List<String>?,
+        personalitySummary: String?,
+        name: String?,
+        catalog: SpeakerCatalog = getActiveCatalog()
+    ): Int? {
         val combined = traits?.joinToString(",") ?: ""
-        return suggestSpeakerId(combined, personalitySummary, name)
+        return suggestSpeakerId(combined, personalitySummary, name, catalog)
     }
 
     /**
      * Returns all speakers sorted by how well their traits match the character's (LLM-extracted) traits.
      * Best matches first, so the UI can show "similar to character" speakers at the top.
      */
-    fun speakersSortedByMatch(traits: String?, personalitySummary: String?, name: String?): List<LibrittsSpeakerCatalog.SpeakerTraits> {
+    fun speakersSortedByMatch(
+        traits: String?,
+        personalitySummary: String?,
+        name: String?,
+        catalog: SpeakerCatalog = getActiveCatalog()
+    ): List<SpeakerCatalog.SpeakerTraits> {
         val traitTokens = parseTraits(traits).toMutableList()
         personalitySummary?.split(Regex("\\s+"))?.map { it.trim().lowercase() }?.filter { it.length > 2 }?.let { traitTokens.addAll(it) }
         name?.lowercase()?.let { traitTokens.add(it) }
 
-        val scored = LibrittsSpeakerCatalog.allSpeakers().map { s ->
+        val scored = catalog.allSpeakers().map { s ->
             s to calculateMatchScore(s, traitTokens)
         }
         return scored.sortedByDescending { it.second }.map { it.first }
@@ -105,19 +186,21 @@ object SpeakerMatcher {
      * @param personalitySummary Character personality summary
      * @param name Character name
      * @param topN Number of top matches to return (default 30)
+     * @param catalog Speaker catalog to use; defaults to active model's catalog
      * @return List of top matching speakers with their scores
      */
     fun getSimilarSpeakers(
         traits: String?,
         personalitySummary: String?,
         name: String?,
-        topN: Int = 30
+        topN: Int = 30,
+        catalog: SpeakerCatalog = getActiveCatalog()
     ): List<ScoredSpeaker> {
         val traitTokens = parseTraits(traits).toMutableList()
         personalitySummary?.split(Regex("\\s+"))?.map { it.trim().lowercase() }?.filter { it.length > 2 }?.let { traitTokens.addAll(it) }
         name?.lowercase()?.let { traitTokens.add(it) }
 
-        val scored = LibrittsSpeakerCatalog.allSpeakers().map { s ->
+        val scored = catalog.allSpeakers().map { s ->
             ScoredSpeaker(s, calculateMatchScore(s, traitTokens))
         }
         return scored.sortedByDescending { it.score }.take(topN)
@@ -127,14 +210,14 @@ object SpeakerMatcher {
      * Data class for speaker with match score.
      */
     data class ScoredSpeaker(
-        val speaker: LibrittsSpeakerCatalog.SpeakerTraits,
+        val speaker: SpeakerCatalog.SpeakerTraits,
         val score: Int
     )
 
     /**
      * Calculate match score for a speaker against trait tokens.
      */
-    private fun calculateMatchScore(s: LibrittsSpeakerCatalog.SpeakerTraits, traitTokens: List<String>): Int {
+    private fun calculateMatchScore(s: SpeakerCatalog.SpeakerTraits, traitTokens: List<String>): Int {
         var score = 0
         for (t in traitTokens) {
             when {
@@ -184,7 +267,7 @@ object SpeakerMatcher {
     /**
      * AUG-014: Filter speakers by gender.
      */
-    fun filterByGender(speakers: List<LibrittsSpeakerCatalog.SpeakerTraits>, gender: String?): List<LibrittsSpeakerCatalog.SpeakerTraits> {
+    fun filterByGender(speakers: List<SpeakerCatalog.SpeakerTraits>, gender: String?): List<SpeakerCatalog.SpeakerTraits> {
         if (gender.isNullOrBlank()) return speakers
         return when (gender.lowercase()) {
             "f", "female", "woman" -> speakers.filter { it.isFemale }
@@ -196,7 +279,7 @@ object SpeakerMatcher {
     /**
      * AUG-014: Filter speakers by pitch level.
      */
-    fun filterByPitch(speakers: List<LibrittsSpeakerCatalog.SpeakerTraits>, pitchLevel: LibrittsSpeakerCatalog.PitchLevel?): List<LibrittsSpeakerCatalog.SpeakerTraits> {
+    fun filterByPitch(speakers: List<SpeakerCatalog.SpeakerTraits>, pitchLevel: SpeakerCatalog.PitchLevel?): List<SpeakerCatalog.SpeakerTraits> {
         if (pitchLevel == null) return speakers
         return speakers.filter { it.pitchLevel == pitchLevel }
     }

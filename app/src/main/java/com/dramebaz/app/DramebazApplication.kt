@@ -57,13 +57,15 @@ class DramebazApplication : Application() {
     val ttsEngine: SherpaTtsEngine by lazy { SherpaTtsEngine(this) }
     /** Persistent storage for generated page audio (book/chapter/page) so it can be reused. */
     val pageAudioStorage: PageAudioStorage by lazy { PageAudioStorage(this) }
-    /** AUG-043: Per-segment audio generator for character-specific TTS. */
+    /** AUG-043: Per-segment audio generator for character-specific TTS.
+     *  NARRATOR-002: Now uses bookDao for per-book narrator voice settings. */
     val segmentAudioGenerator: SegmentAudioGenerator by lazy {
         SegmentAudioGenerator(
             ttsEngine,
             pageAudioStorage,
             db.characterDao(),
-            db.characterPageMappingDao()
+            db.characterPageMappingDao(),
+            db.bookDao()
         )
     }
 

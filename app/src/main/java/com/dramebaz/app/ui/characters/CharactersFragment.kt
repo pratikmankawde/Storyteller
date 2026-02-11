@@ -9,13 +9,13 @@ import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.DiffUtil
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.data.db.Character
+import com.dramebaz.app.ui.reader.VoiceSelectorDialog
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.gson.Gson
@@ -66,9 +66,14 @@ class CharactersFragment : Fragment() {
         val adapter = CharacterAdapter(
             dialogCountsBySpeaker = { dialogCountsBySpeaker },
             onItemClick = { c ->
-                // Narrator card is not clickable (id = -1)
-                if (c.id > 0) {
-                    findNavController().navigate(R.id.characterDetailFragment, Bundle().apply { putLong("characterId", c.id) })
+                if (c.id == VoiceSelectorDialog.NARRATOR_ID) {
+                    // NARRATOR-001: Open voice selector for Narrator
+                    val dialog = VoiceSelectorDialog.newInstanceForNarrator(bookId)
+                    dialog.show(childFragmentManager, "NarratorVoiceSelector")
+                } else if (c.id > 0) {
+                    // Show character detail as bottom sheet dialog (similar to Narrator's voice selector)
+                    val dialog = CharacterDetailDialog.newInstance(c.id, bookId)
+                    dialog.show(childFragmentManager, "CharacterDetail")
                 }
             }
         )
@@ -105,6 +110,8 @@ class CharactersFragment : Fragment() {
             dialogCountsBySpeaker = withContext(Dispatchers.IO) {
                 vm.getDialogCountsBySpeaker(bookId)
             }
+            // Refresh adapter after dialog counts are loaded
+            applyFilters(adapter, emptyState, recycler)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -117,16 +124,17 @@ class CharactersFragment : Fragment() {
 
     /**
      * Create a pseudo-character for Narrator to display in the list.
+     * NARRATOR-001: Uses narrator settings from SettingsRepository.
      */
     private fun createNarratorCharacter(): Character {
-        val narratorDialogCount = dialogCountsBySpeaker["narrator"] ?: 0
+        val narratorSettings = app.settingsRepository.narratorSettings.value
         return Character(
-            id = -1,  // Special ID for Narrator (not in database)
+            id = VoiceSelectorDialog.NARRATOR_ID,  // Special ID for Narrator (not in database)
             bookId = bookId,
             name = "Narrator",
-            traits = "Story narrator",
+            traits = "Story narrator • Tap to change voice",
             personalitySummary = "The voice that tells the story",
-            speakerId = 0  // Default narrator speaker ID
+            speakerId = narratorSettings.speakerId
         )
     }
 
@@ -187,10 +195,12 @@ class CharacterAdapter(
     class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val name: TextView = itemView.findViewById(R.id.character_name)
         val traits: TextView = itemView.findViewById(R.id.character_traits)
-        // AUG-031: Voice warning icon
-        val voiceWarningIcon: View? = itemView.findViewById(R.id.voice_warning_icon)
+        // AUG-031: Voice warning container (CHARACTER-001: now a container with icon and text)
+        val voiceWarningContainer: View? = itemView.findViewById(R.id.voice_warning_container)
         // Dialog count display
         val dialogCount: TextView? = itemView.findViewById(R.id.dialog_count)
+        // CHARACTER-001: Main clickable card
+        val card: View? = itemView.findViewById(R.id.character_card)
     }
 
     override fun getItemCount() = list.size
@@ -203,9 +213,9 @@ class CharacterAdapter(
         holder.name.text = c.name
         holder.traits.text = c.traits.takeIf { it.isNotBlank() } ?: "No traits available"
 
-        // AUG-031: Show voice warning icon if inconsistency detected
+        // AUG-031: Show voice warning container if inconsistency detected (CHARACTER-001: updated for new layout)
         val hasVoiceWarning = c.personalitySummary.contains("⚠️") || c.personalitySummary.contains("inconsistenc", ignoreCase = true)
-        holder.voiceWarningIcon?.visibility = if (hasVoiceWarning) View.VISIBLE else View.GONE
+        holder.voiceWarningContainer?.visibility = if (hasVoiceWarning) View.VISIBLE else View.GONE
 
         // Display dialog count from chapter analysis (primary source)
         val dialogCount = dialogCountsBySpeaker()[c.name.lowercase()] ?: getDialogCountFromJson(c.dialogsJson)
@@ -216,24 +226,23 @@ class CharacterAdapter(
             holder.dialogCount?.visibility = View.GONE
         }
 
-        // Set up click listener with ripple effect (skip for Narrator pseudo-character)
-        holder.itemView.setOnClickListener {
+        // CHARACTER-001: Set up click listener on the card (or itemView as fallback)
+        val clickTarget = holder.card ?: holder.itemView
+        clickTarget.setOnClickListener {
             onItemClick(c)
-            // Add click animation only for real characters
-            if (c.id > 0) {
-                holder.itemView.animate()
-                    .scaleX(0.95f)
-                    .scaleY(0.95f)
-                    .setDuration(100)
-                    .withEndAction {
-                        holder.itemView.animate()
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setDuration(100)
-                            .start()
-                    }
-                    .start()
-            }
+            // Add click animation for all characters including Narrator
+            clickTarget.animate()
+                .scaleX(0.95f)
+                .scaleY(0.95f)
+                .setDuration(100)
+                .withEndAction {
+                    clickTarget.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(100)
+                        .start()
+                }
+                .start()
         }
 
         // Fade-in animation for items

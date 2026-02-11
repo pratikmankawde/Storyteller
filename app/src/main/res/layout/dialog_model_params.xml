@@ -44,13 +44,21 @@
                 android:gravity="end" />
         </LinearLayout>
 
-        <!-- Max Tokens -->
+        <!-- Max Tokens (Context Budget) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/param_max_tokens"
             android:textSize="14sp"
             android:textColor="@color/text_primary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/param_max_tokens_hint"
+            android:textSize="11sp"
+            android:textColor="@color/text_tertiary"
+            android:layout_marginBottom="4dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -64,9 +72,9 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:valueFrom="64"
-                android:valueTo="8192"
-                android:stepSize="64" />
+                android:valueFrom="0"
+                android:valueTo="5"
+                android:stepSize="1" />
 
             <TextView
                 android:id="@+id/text_max_tokens_value"

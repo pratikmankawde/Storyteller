@@ -57,119 +57,189 @@ object VctkSpeakerCatalog {
         }
     }
 
-    private val catalog: List<SpeakerTraits> = buildList {
-        // 0-based index = VITS speaker_id. Data from NeuML vctk-vits-onnx README (SPEAKER 1-based → our 0-based).
-        // AUG-016: Pitch levels assigned based on age/gender: Young females=HIGH, older females=MEDIUM/LOW, young males=MEDIUM, older males=LOW
-        add(SpeakerTraits(0, "F", 23, "English", "Southern England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(1, "M", 22, "English", "Surrey", PitchLevel.MEDIUM))
-        add(SpeakerTraits(2, "M", 38, "English", "Cumbria", PitchLevel.LOW))
-        add(SpeakerTraits(3, "F", 22, "English", "Southern England", PitchLevel.HIGH))
-        add(SpeakerTraits(4, "F", 23, "English", "Southern England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(5, "F", 22, "English", "Stockton-on-tees", PitchLevel.HIGH))
-        add(SpeakerTraits(6, "F", 23, "English", "Southern England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(7, "M", 23, "English", "Southern England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(8, "F", 23, "English", "Staffordshire", PitchLevel.MEDIUM))
-        add(SpeakerTraits(9, "F", 22, "Scottish", "West Dumfries", PitchLevel.HIGH))
-        add(SpeakerTraits(10, "F", 23, "English", "Manchester", PitchLevel.MEDIUM))
-        add(SpeakerTraits(11, "M", 22, "Scottish", "Fife", PitchLevel.MEDIUM))
-        add(SpeakerTraits(12, "F", 22, "Northern Irish", "Belfast", PitchLevel.HIGH))
-        add(SpeakerTraits(13, "F", 22, "English", "SW England", PitchLevel.HIGH))
-        add(SpeakerTraits(14, "F", 21, "English", "Southern England", PitchLevel.HIGH))
-        add(SpeakerTraits(15, "M", 21, "Scottish", "Perth", PitchLevel.MEDIUM))
-        add(SpeakerTraits(16, "M", 22, "English", "London", PitchLevel.MEDIUM))
-        add(SpeakerTraits(17, "F", 22, "English", "Manchester", PitchLevel.HIGH))
-        add(SpeakerTraits(18, "M", 25, "Irish", "Dublin", PitchLevel.MEDIUM))
-        add(SpeakerTraits(19, "M", 22, "Scottish", "Selkirk", PitchLevel.MEDIUM))
-        add(SpeakerTraits(20, "M", 22, "Scottish", "Argyll", PitchLevel.MEDIUM))
-        add(SpeakerTraits(21, "F", 23, "Indian", "", PitchLevel.MEDIUM))
-        add(SpeakerTraits(22, "F", 22, "Scottish", "Aberdeen", PitchLevel.HIGH))
-        add(SpeakerTraits(23, "F", 22, "English", "SE England", PitchLevel.HIGH))
-        add(SpeakerTraits(24, "M", 26, "Indian", "", PitchLevel.LOW))
-        add(SpeakerTraits(25, "M", 22, "Scottish", "Edinburgh", PitchLevel.MEDIUM))
-        add(SpeakerTraits(26, "F", 22, "Welsh", "Cardiff", PitchLevel.HIGH))
-        add(SpeakerTraits(27, "M", 21, "English", "Surrey", PitchLevel.MEDIUM))
-        add(SpeakerTraits(28, "M", 19, "Scottish", "Galloway", PitchLevel.MEDIUM))
-        add(SpeakerTraits(29, "M", 24, "English", "Birmingham", PitchLevel.MEDIUM))
-        add(SpeakerTraits(30, "F", 24, "English", "Southern England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(31, "M", 22, "English", "Southern England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(32, "M", 23, "English", "Nottingham", PitchLevel.MEDIUM))
-        add(SpeakerTraits(33, "M", 21, "Scottish", "Orkney", PitchLevel.MEDIUM))
-        add(SpeakerTraits(34, "F", 26, "Northern Irish", "Belfast", PitchLevel.MEDIUM))
-        add(SpeakerTraits(35, "F", 23, "Scottish", "Edinburgh", PitchLevel.MEDIUM))
-        add(SpeakerTraits(36, "M", 22, "Scottish", "Aberdeen", PitchLevel.MEDIUM))
-        add(SpeakerTraits(37, "F", 23, "Scottish", "West Lothian", PitchLevel.MEDIUM))
-        add(SpeakerTraits(38, "F", 23, "Scottish", "Ross", PitchLevel.MEDIUM))
-        add(SpeakerTraits(39, "F", 22, "Irish", "Athlone", PitchLevel.HIGH))
-        add(SpeakerTraits(40, "F", 23, "English", "Yorkshire", PitchLevel.MEDIUM))
-        add(SpeakerTraits(41, "F", 23, "English", "Southern England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(42, "F", 20, "English", "Newcastle", PitchLevel.HIGH))
-        add(SpeakerTraits(43, "M", 21, "English", "Yorkshire", PitchLevel.MEDIUM))
-        add(SpeakerTraits(44, "M", 19, "Scottish", "Fife", PitchLevel.MEDIUM))
-        add(SpeakerTraits(45, "M", 23, "Scottish", "Edinburgh", PitchLevel.MEDIUM))
-        add(SpeakerTraits(46, "M", 23, "English", "Suffolk", PitchLevel.MEDIUM))
-        add(SpeakerTraits(47, "M", 22, "English", "Essex", PitchLevel.MEDIUM))
-        add(SpeakerTraits(48, "M", 23, "Scottish", "Midlothian", PitchLevel.MEDIUM))
-        add(SpeakerTraits(49, "F", 24, "English", "Oxford", PitchLevel.MEDIUM))
-        add(SpeakerTraits(50, "F", 23, "English", "NE England", PitchLevel.MEDIUM))
-        add(SpeakerTraits(51, "M", 22, "English", "Cheshire", PitchLevel.MEDIUM))
-        add(SpeakerTraits(52, "M", 23, "English", "Leicester", PitchLevel.MEDIUM))
-        add(SpeakerTraits(53, "M", null, "Unknown", "", PitchLevel.MEDIUM))  // REF 280
-        add(SpeakerTraits(54, "M", 29, "Scottish", "Edinburgh", PitchLevel.LOW))
-        add(SpeakerTraits(55, "F", 23, "English", "Newcastle", PitchLevel.MEDIUM))
-        add(SpeakerTraits(56, "F", 24, "Irish", "Cork", PitchLevel.MEDIUM))
-        add(SpeakerTraits(57, "M", 20, "Scottish", "Fife", PitchLevel.MEDIUM))
-        add(SpeakerTraits(58, "M", 21, "Scottish", "Edinburgh", PitchLevel.MEDIUM))
-        add(SpeakerTraits(59, "M", 23, "English", "Newcastle", PitchLevel.MEDIUM))
-        add(SpeakerTraits(60, "M", 23, "English", "York", PitchLevel.MEDIUM))
-        add(SpeakerTraits(61, "F", 22, "Irish", "Dublin", PitchLevel.HIGH))
-        add(SpeakerTraits(62, "M", 23, "Northern Irish", "Belfast", PitchLevel.MEDIUM))
-        add(SpeakerTraits(63, "F", 22, "Northern Irish", "Belfast", PitchLevel.HIGH))
-        add(SpeakerTraits(64, "F", 33, "American", "San Francisco", PitchLevel.LOW))
-        add(SpeakerTraits(65, "F", 23, "Irish", "Dublin", PitchLevel.MEDIUM))
-        add(SpeakerTraits(66, "F", 20, "American", "New York", PitchLevel.HIGH))
-        add(SpeakerTraits(67, "M", 19, "Irish", "Tipperary", PitchLevel.MEDIUM))
-        add(SpeakerTraits(68, "F", 25, "American", "California", PitchLevel.MEDIUM))
-        add(SpeakerTraits(69, "F", 23, "American", "California", PitchLevel.MEDIUM))
-        add(SpeakerTraits(70, "F", 23, "American", "North Carolina", PitchLevel.MEDIUM))
-        add(SpeakerTraits(71, "M", 20, "Canadian", "Montreal", PitchLevel.MEDIUM))
-        add(SpeakerTraits(72, "F", 24, "Canadian", "Toronto", PitchLevel.MEDIUM))
-        add(SpeakerTraits(73, "M", 22, "Northern Irish", "Belfast", PitchLevel.MEDIUM))
-        add(SpeakerTraits(74, "F", 19, "American", "Philadelphia", PitchLevel.HIGH))
-        add(SpeakerTraits(75, "F", 21, "American", "New York", PitchLevel.HIGH))
-        add(SpeakerTraits(76, "F", 23, "Canadian", "Ontario", PitchLevel.MEDIUM))
-        add(SpeakerTraits(77, "F", 18, "American", "Alabama", PitchLevel.HIGH))
-        add(SpeakerTraits(78, "F", 21, "American", "Tennessee", PitchLevel.HIGH))
-        add(SpeakerTraits(79, "M", 21, "American", "Iowa", PitchLevel.MEDIUM))
-        add(SpeakerTraits(80, "F", 19, "Canadian", "Hamilton", PitchLevel.HIGH))
-        add(SpeakerTraits(81, "F", 24, "Irish", "County Down", PitchLevel.MEDIUM))
-        add(SpeakerTraits(82, "F", 26, "South African", "Cape Town", PitchLevel.MEDIUM))
-        add(SpeakerTraits(83, "M", 20, "Canadian", "Alberta", PitchLevel.MEDIUM))
-        add(SpeakerTraits(84, "F", 23, "Canadian", "Hamilton", PitchLevel.MEDIUM))
-        add(SpeakerTraits(85, "F", 32, "American", "Napa", PitchLevel.LOW))
-        add(SpeakerTraits(86, "F", 19, "South African", "Pretoria", PitchLevel.HIGH))
-        add(SpeakerTraits(87, "M", 26, "Australian", "Sydney", PitchLevel.LOW))
-        add(SpeakerTraits(88, "F", 23, "American", "", PitchLevel.MEDIUM))
-        add(SpeakerTraits(89, "F", 26, "American", "", PitchLevel.MEDIUM))
-        add(SpeakerTraits(90, "F", 19, "American", "Indiana", PitchLevel.HIGH))
-        add(SpeakerTraits(91, "M", 18, "American", "Chicago", PitchLevel.MEDIUM))
-        add(SpeakerTraits(92, "F", 25, "New Zealand", "English", PitchLevel.MEDIUM))
-        add(SpeakerTraits(93, "F", 18, "South African", "Johannesburg", PitchLevel.HIGH))
-        add(SpeakerTraits(94, "F", 21, "American", "Pennsylvania", PitchLevel.HIGH))
-        add(SpeakerTraits(95, "F", 18, "Irish", "Dublin", PitchLevel.HIGH))
-        add(SpeakerTraits(96, "F", 26, "American", "Ohio", PitchLevel.MEDIUM))
-        add(SpeakerTraits(97, "F", 27, "Canadian", "Alberta", PitchLevel.LOW))
-        add(SpeakerTraits(98, "M", 22, "American", "Florida", PitchLevel.MEDIUM))
-        add(SpeakerTraits(99, "M", 26, "South African", "Johannesburg", PitchLevel.LOW))
-        add(SpeakerTraits(100, "F", 21, "Northern Irish", "Derry", PitchLevel.HIGH))
-        add(SpeakerTraits(101, "M", 19, "American", "New Jersey", PitchLevel.MEDIUM))
-        add(SpeakerTraits(102, "F", 19, "American", "New Jersey", PitchLevel.HIGH))
-        add(SpeakerTraits(103, "F", 29, "American", "", PitchLevel.LOW))
-        add(SpeakerTraits(104, "M", 22, "Canadian", "Toronto", PitchLevel.MEDIUM))
-        add(SpeakerTraits(105, "M", 23, "Irish", "Donegal", PitchLevel.MEDIUM))
-        add(SpeakerTraits(106, "M", 28, "Australian", "English", PitchLevel.LOW))
-        // Indices 107–108: catalog has 107 entries in source; VCTK has 109 speakers. Add two generic entries.
-        add(SpeakerTraits(107, "F", 22, "English", "Southern England", PitchLevel.HIGH))
-        add(SpeakerTraits(108, "M", 24, "American", "California", PitchLevel.MEDIUM))
+    /**
+     * Mapping from Piper model speaker ID to VCTK corpus speaker ID (pXXX).
+     * This is derived from the Piper en_GB-vctk-medium.onnx.json speaker_id_map.
+     * The Piper model does NOT use sequential ordering - speaker ID 0 is p239, not p225!
+     */
+    private val piperSpeakerIdMap: Map<Int, String> = mapOf(
+        0 to "p239", 1 to "p236", 2 to "p264", 3 to "p250", 4 to "p259",
+        5 to "p247", 6 to "p261", 7 to "p263", 8 to "p283", 9 to "p286",
+        10 to "p274", 11 to "p276", 12 to "p270", 13 to "p281", 14 to "p277",
+        15 to "p231", 16 to "p271", 17 to "p238", 18 to "p257", 19 to "p273",
+        20 to "p284", 21 to "p329", 22 to "p361", 23 to "p287", 24 to "p360",
+        25 to "p374", 26 to "p376", 27 to "p310", 28 to "p304", 29 to "p334",
+        30 to "p340", 31 to "p323", 32 to "p347", 33 to "p330", 34 to "p308",
+        35 to "p314", 36 to "p317", 37 to "p339", 38 to "p311", 39 to "p294",
+        40 to "p305", 41 to "p266", 42 to "p335", 43 to "p318", 44 to "p351",
+        45 to "p333", 46 to "p313", 47 to "p316", 48 to "p244", 49 to "p307",
+        50 to "p363", 51 to "p336", 52 to "p297", 53 to "p312", 54 to "p267",
+        55 to "p275", 56 to "p295", 57 to "p258", 58 to "p288", 59 to "p301",
+        60 to "p232", 61 to "p292", 62 to "p272", 63 to "p280", 64 to "p278",
+        65 to "p341", 66 to "p268", 67 to "p298", 68 to "p299", 69 to "p279",
+        70 to "p285", 71 to "p326", 72 to "p300", 73 to "s5", 74 to "p230",
+        75 to "p345", 76 to "p254", 77 to "p269", 78 to "p293", 79 to "p252",
+        80 to "p262", 81 to "p243", 82 to "p227", 83 to "p343", 84 to "p255",
+        85 to "p229", 86 to "p240", 87 to "p248", 88 to "p253", 89 to "p233",
+        90 to "p228", 91 to "p282", 92 to "p251", 93 to "p246", 94 to "p234",
+        95 to "p226", 96 to "p260", 97 to "p245", 98 to "p241", 99 to "p303",
+        100 to "p265", 101 to "p306", 102 to "p237", 103 to "p249", 104 to "p256",
+        105 to "p302", 106 to "p364", 107 to "p225", 108 to "p362"
+    )
+
+    /**
+     * VCTK corpus speaker metadata: maps pXXX speaker ID to (Gender, Age, Accent, Region).
+     * Data from CSTR VCTK Corpus and NeuML vctk-vits-onnx README.
+     */
+    private val vctkSpeakerData: Map<String, SpeakerData> = mapOf(
+        "p225" to SpeakerData("F", 23, "English", "Southern England"),
+        "p226" to SpeakerData("M", 22, "English", "Surrey"),
+        "p227" to SpeakerData("M", 38, "English", "Cumbria"),
+        "p228" to SpeakerData("F", 22, "English", "Southern England"),
+        "p229" to SpeakerData("F", 23, "English", "Southern England"),
+        "p230" to SpeakerData("F", 22, "English", "Stockton-on-tees"),
+        "p231" to SpeakerData("F", 23, "English", "Southern England"),
+        "p232" to SpeakerData("M", 23, "English", "Southern England"),
+        "p233" to SpeakerData("F", 23, "English", "Staffordshire"),
+        "p234" to SpeakerData("F", 22, "Scottish", "West Dumfries"),
+        "p236" to SpeakerData("F", 23, "English", "Manchester"),
+        "p237" to SpeakerData("M", 22, "Scottish", "Fife"),
+        "p238" to SpeakerData("F", 22, "Northern Irish", "Belfast"),
+        "p239" to SpeakerData("F", 22, "English", "SW England"),
+        "p240" to SpeakerData("F", 21, "English", "Southern England"),
+        "p241" to SpeakerData("M", 21, "Scottish", "Perth"),
+        "p243" to SpeakerData("M", 22, "English", "London"),
+        "p244" to SpeakerData("F", 22, "English", "Manchester"),
+        "p245" to SpeakerData("M", 25, "Irish", "Dublin"),
+        "p246" to SpeakerData("M", 22, "Scottish", "Selkirk"),
+        "p247" to SpeakerData("M", 22, "Scottish", "Argyll"),
+        "p248" to SpeakerData("F", 23, "Indian", ""),
+        "p249" to SpeakerData("F", 22, "Scottish", "Aberdeen"),
+        "p250" to SpeakerData("F", 22, "English", "SE England"),
+        "p251" to SpeakerData("M", 26, "Indian", ""),
+        "p252" to SpeakerData("M", 22, "Scottish", "Edinburgh"),
+        "p253" to SpeakerData("F", 22, "Welsh", "Cardiff"),
+        "p254" to SpeakerData("M", 21, "English", "Surrey"),
+        "p255" to SpeakerData("M", 19, "Scottish", "Galloway"),
+        "p256" to SpeakerData("M", 24, "English", "Birmingham"),
+        "p257" to SpeakerData("F", 24, "English", "Southern England"),
+        "p258" to SpeakerData("M", 22, "English", "Southern England"),
+        "p259" to SpeakerData("M", 23, "English", "Nottingham"),
+        "p260" to SpeakerData("M", 21, "Scottish", "Orkney"),
+        "p261" to SpeakerData("F", 26, "Northern Irish", "Belfast"),
+        "p262" to SpeakerData("F", 23, "Scottish", "Edinburgh"),
+        "p263" to SpeakerData("M", 22, "Scottish", "Aberdeen"),
+        "p264" to SpeakerData("F", 23, "Scottish", "West Lothian"),
+        "p265" to SpeakerData("F", 23, "Scottish", "Ross"),
+        "p266" to SpeakerData("F", 22, "Irish", "Athlone"),
+        "p267" to SpeakerData("F", 23, "English", "Yorkshire"),
+        "p268" to SpeakerData("F", 23, "English", "Southern England"),
+        "p269" to SpeakerData("F", 20, "English", "Newcastle"),
+        "p270" to SpeakerData("M", 21, "English", "Yorkshire"),
+        "p271" to SpeakerData("M", 19, "Scottish", "Fife"),
+        "p272" to SpeakerData("M", 23, "Scottish", "Edinburgh"),
+        "p273" to SpeakerData("M", 23, "English", "Suffolk"),
+        "p274" to SpeakerData("M", 22, "English", "Essex"),
+        "p275" to SpeakerData("M", 23, "Scottish", "Midlothian"),
+        "p276" to SpeakerData("F", 24, "English", "Oxford"),
+        "p277" to SpeakerData("F", 23, "English", "NE England"),
+        "p278" to SpeakerData("M", 22, "English", "Cheshire"),
+        "p279" to SpeakerData("M", 23, "English", "Leicester"),
+        "p280" to SpeakerData("M", null, "Unknown", ""),  // Unknown speaker
+        "p281" to SpeakerData("M", 29, "Scottish", "Edinburgh"),
+        "p282" to SpeakerData("F", 23, "English", "Newcastle"),
+        "p283" to SpeakerData("F", 24, "Irish", "Cork"),
+        "p284" to SpeakerData("M", 20, "Scottish", "Fife"),
+        "p285" to SpeakerData("M", 21, "Scottish", "Edinburgh"),
+        "p286" to SpeakerData("M", 23, "English", "Newcastle"),
+        "p287" to SpeakerData("M", 23, "English", "York"),
+        "p288" to SpeakerData("F", 22, "Irish", "Dublin"),
+        "p292" to SpeakerData("M", 23, "Northern Irish", "Belfast"),
+        "p293" to SpeakerData("F", 22, "Northern Irish", "Belfast"),
+        "p294" to SpeakerData("F", 33, "American", "San Francisco"),
+        "p295" to SpeakerData("F", 23, "Irish", "Dublin"),
+        "p297" to SpeakerData("F", 20, "American", "New York"),
+        "p298" to SpeakerData("M", 19, "Irish", "Tipperary"),
+        "p299" to SpeakerData("F", 25, "American", "California"),
+        "p300" to SpeakerData("F", 23, "American", "California"),
+        "p301" to SpeakerData("F", 23, "American", "North Carolina"),
+        "p302" to SpeakerData("M", 20, "Canadian", "Montreal"),
+        "p303" to SpeakerData("F", 24, "Canadian", "Toronto"),
+        "p304" to SpeakerData("M", 22, "Northern Irish", "Belfast"),
+        "p305" to SpeakerData("F", 19, "American", "Philadelphia"),
+        "p306" to SpeakerData("F", 21, "American", "New York"),
+        "p307" to SpeakerData("F", 23, "Canadian", "Ontario"),
+        "p308" to SpeakerData("F", 18, "American", "Alabama"),
+        "p310" to SpeakerData("F", 21, "American", "Tennessee"),
+        "p311" to SpeakerData("M", 21, "American", "Iowa"),
+        "p312" to SpeakerData("F", 19, "Canadian", "Hamilton"),
+        "p313" to SpeakerData("F", 24, "Irish", "County Down"),
+        "p314" to SpeakerData("F", 26, "South African", "Cape Town"),
+        "p316" to SpeakerData("M", 20, "Canadian", "Alberta"),
+        "p317" to SpeakerData("F", 23, "Canadian", "Hamilton"),
+        "p318" to SpeakerData("F", 32, "American", "Napa"),
+        "p323" to SpeakerData("F", 19, "South African", "Pretoria"),
+        "p326" to SpeakerData("M", 26, "Australian", "Sydney"),
+        "p329" to SpeakerData("F", 23, "American", ""),
+        "p330" to SpeakerData("F", 26, "American", ""),
+        "p333" to SpeakerData("F", 19, "American", "Indiana"),
+        "p334" to SpeakerData("M", 18, "American", "Chicago"),
+        "p335" to SpeakerData("F", 25, "New Zealand", ""),
+        "p336" to SpeakerData("F", 18, "South African", "Johannesburg"),
+        "p339" to SpeakerData("F", 21, "American", "Pennsylvania"),
+        "p340" to SpeakerData("F", 18, "Irish", "Dublin"),
+        "p341" to SpeakerData("F", 26, "American", "Ohio"),
+        "p343" to SpeakerData("F", 27, "Canadian", "Alberta"),
+        "p345" to SpeakerData("M", 22, "American", "Florida"),
+        "p347" to SpeakerData("M", 26, "South African", "Johannesburg"),
+        "p351" to SpeakerData("F", 21, "Northern Irish", "Derry"),
+        "p360" to SpeakerData("M", 19, "American", "New Jersey"),
+        "p361" to SpeakerData("F", 19, "American", "New Jersey"),
+        "p362" to SpeakerData("F", 29, "American", ""),
+        "p363" to SpeakerData("M", 22, "Canadian", "Toronto"),
+        "p364" to SpeakerData("M", 23, "Irish", "Donegal"),
+        "p374" to SpeakerData("M", 28, "Australian", ""),
+        "p376" to SpeakerData("F", 22, "Welsh", "Cardiff"),  // Note: duplicate entry, using p376 data
+        "s5" to SpeakerData("M", null, "Unknown", "")  // Unknown speaker s5
+    )
+
+    /** Helper data class for VCTK speaker data */
+    private data class SpeakerData(
+        val gender: String,
+        val age: Int?,
+        val accent: String,
+        val region: String
+    )
+
+    private val catalog: List<SpeakerTraits> = buildCatalog()
+
+    /**
+     * Builds the catalog using the correct Piper model speaker_id_map.
+     * Model speaker ID → VCTK speaker ID (pXXX) → VCTK corpus metadata.
+     */
+    private fun buildCatalog(): List<SpeakerTraits> {
+        return (MIN_SPEAKER_ID..MAX_SPEAKER_ID).map { speakerId ->
+            val vctkId = piperSpeakerIdMap[speakerId] ?: "p225"
+            val data = vctkSpeakerData[vctkId] ?: SpeakerData("M", null, "Unknown", "")
+
+            // AUG-016: Pitch levels assigned based on age/gender
+            val pitchLevel = when {
+                data.gender == "F" && (data.age ?: 25) < 22 -> PitchLevel.HIGH
+                data.gender == "F" && (data.age ?: 25) > 28 -> PitchLevel.LOW
+                data.gender == "F" -> PitchLevel.MEDIUM
+                data.gender == "M" && (data.age ?: 25) > 30 -> PitchLevel.LOW
+                else -> PitchLevel.MEDIUM
+            }
+
+            SpeakerTraits(
+                speakerId = speakerId,
+                gender = data.gender,
+                ageYears = data.age,
+                accent = data.accent,
+                region = data.region,
+                pitchLevel = pitchLevel
+            )
+        }
     }
 
     fun getTraits(speakerId: Int): SpeakerTraits? =

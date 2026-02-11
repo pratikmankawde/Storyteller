@@ -43,7 +43,22 @@
             android:name=".ui.test.TestActivity"
             android:exported="true"
             android:theme="@style/Theme.Dramebaz"
-            android:label="Test Activities" />
+	            android:label="Test Activities" />
+	        <activity
+	            android:name=".ui.test.StableAudioTestActivity"
+	            android:exported="true"
+	            android:theme="@style/Theme.Dramebaz"
+	            android:label="Stable Audio Test" />
+	        <activity
+	            android:name=".ui.test.LlmBenchmarkActivity"
+	            android:exported="true"
+	            android:theme="@style/Theme.Dramebaz"
+	            android:label="LLM Benchmark" />
+	        <activity
+	            android:name=".ui.test.PdfViewerTestActivity"
+	            android:exported="true"
+	            android:theme="@style/Theme.Dramebaz"
+	            android:label="PDF Viewer Test" />
 
         <service
             android:name=".playback.service.AudioPlaybackService"
@@ -56,23 +71,14 @@
             android:name=".ai.llm.ChapterAnalysisService"
             android:exported="false" />
 
-        <!-- BookAnalysisForegroundService for background book analysis
+        <!-- AnalysisForegroundService for analysis tasks with wake lock.
              Allows book analysis to continue even when app is minimized (like a music player).
              Uses wake lock to prevent CPU sleep during LLM inference.
              stopWithTask="false" so analysis continues even if user swipes app away. -->
         <service
-            android:name=".domain.usecases.BookAnalysisForegroundService"
-            android:exported="false"
-            android:stopWithTask="false"
-            android:foregroundServiceType="dataSync" />
-
-        <!-- AnalysisForegroundService for generic task execution with wake lock.
-             Part of the new modular analysis executor architecture.
-             Used by AnalysisExecutor for tasks with estimatedDurationSeconds >= 60. -->
-        <service
             android:name=".ai.llm.services.AnalysisForegroundService"
             android:exported="false"
-            android:stopWithTask="true"
+            android:stopWithTask="false"
             android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

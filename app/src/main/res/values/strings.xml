@@ -40,6 +40,21 @@
     <string name="pause_screen_off">Pause on Screen Off</string>
     <string name="background_playback">Background Playback</string>
 
+    <!-- TTS Model Settings -->
+    <string name="tts_model">TTS Voice Model</string>
+    <string name="tts_model_current">Current Model</string>
+    <string name="tts_model_not_loaded">Not loaded</string>
+    <string name="tts_model_browse">Browse Folder</string>
+    <string name="tts_model_type">Type: %s</string>
+    <string name="tts_model_speakers">Speakers: %d</string>
+    <string name="tts_model_sample_rate">Sample Rate: %d Hz</string>
+    <string name="tts_model_loading">Loading model…</string>
+    <string name="tts_model_loaded">Model loaded successfully</string>
+    <string name="tts_model_load_failed">Failed to load model</string>
+    <string name="tts_model_not_found">No TTS model found in folder</string>
+    <string name="tts_model_detected">Detected: %s (%s)</string>
+    <string name="tts_select_folder">Select TTS Model Folder</string>
+
     <!-- Feature Settings -->
     <string name="smart_casting">Smart Casting</string>
     <string name="smart_casting_desc">Enhanced voice processing (High CPU)</string>
@@ -51,6 +66,9 @@
     <string name="emotion_modifiers_desc">TTS emotion-based voice adjustments</string>
     <string name="karaoke_highlight">Karaoke Highlight</string>
     <string name="karaoke_highlight_desc">Text highlighting during playback</string>
+    <string name="incremental_analysis">Incremental Analysis</string>
+    <string name="incremental_analysis_desc">Initial page % to analyze in foreground (rest in background)</string>
+    <string name="incremental_analysis_value">%d%%</string>
 
     <!-- About -->
     <string name="app_version">Version %s</string>
@@ -137,7 +155,8 @@
     <!-- Model Parameters Dialog -->
     <string name="model_params_title">Model Parameters</string>
     <string name="param_temperature">Temperature (creativity)</string>
-    <string name="param_max_tokens">Max Tokens</string>
+    <string name="param_max_tokens">Context Budget (Max Tokens)</string>
+    <string name="param_max_tokens_hint">Higher = more context but slower. ✓ = recommended for your device</string>
     <string name="param_top_k">Top-K</string>
     <string name="param_top_p">Top-P (nucleus sampling)</string>
     <string name="param_repeat_penalty">Repeat Penalty</string>

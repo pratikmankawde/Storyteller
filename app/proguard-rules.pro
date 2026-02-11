@@ -18,3 +18,18 @@
 # PDFBox optional JPX/JPEG2000 (Gemalto) - not bundled; R8 must not fail on missing class
 -dontwarn com.gemalto.jp2.JP2Decoder
 -dontwarn com.tom_roush.pdfbox.filter.JPXFilter
+
+# MediaPipe LLM Inference - keep classes and suppress warnings for compile-time annotations
+-keep class com.google.mediapipe.** { *; }
+-dontwarn com.google.auto.value.AutoValue$Builder
+-dontwarn com.google.auto.value.AutoValue
+-dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull
+-dontwarn com.google.protobuf.Internal$ProtoNonnullApi
+-dontwarn com.google.protobuf.ProtoField
+-dontwarn com.google.protobuf.ProtoPresenceBits
+-dontwarn com.google.protobuf.ProtoPresenceCheckedField
+-dontwarn com.google.mediapipe.framework.image.BitmapExtractor
+-dontwarn com.google.mediapipe.framework.image.ByteBufferExtractor
+-dontwarn com.google.mediapipe.framework.image.MPImage
+-dontwarn com.google.mediapipe.framework.image.MPImageProperties
+-dontwarn com.google.mediapipe.framework.image.MediaImageExtractor

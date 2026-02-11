@@ -2,13 +2,15 @@ package com.dramebaz.app.ai.llm.models
 
 import android.content.Context
 import com.dramebaz.app.ai.llm.GgufEngine
+import com.dramebaz.app.ai.llm.ModelCapabilities
+import java.io.File
 
 /**
  * LlmModel implementation that wraps GgufEngine.
  * Uses the Adapter Pattern to make GgufEngine conform to the LlmModel interface.
  *
  * This is a pure inference wrapper - all pass-specific logic (prompts, parsing) belongs
- * in the workflow classes (ThreePassWorkflow).
+ * in the workflow/service layer.
  *
  * This adapter works with any GGUF format model via llama.cpp JNI, including:
  * - Qwen models (.gguf)
@@ -19,9 +21,13 @@ import com.dramebaz.app.ai.llm.GgufEngine
  * @param context Android context
  * @param modelPath Optional explicit model file path. If null, uses Downloads folder discovery.
  */
-class GgufEngineImpl(context: Context, modelPath: String? = null) : LlmModel {
+class GgufEngineImpl(context: Context, private val modelPath: String? = null) : LlmModel {
 
     private val ggufEngine = GgufEngine(context, modelPath)
+    private var defaultParams = GenerationParams.DEFAULT
+    private var sessionParams = SessionParams.DEFAULT
+
+    // ==================== Lifecycle ====================
 
     override suspend fun loadModel(): Boolean {
         return ggufEngine.loadModel()
@@ -35,6 +41,44 @@ class GgufEngineImpl(context: Context, modelPath: String? = null) : LlmModel {
         ggufEngine.release()
     }
 
+    // ==================== Configuration ====================
+
+    override fun getDefaultParams(): GenerationParams = defaultParams
+
+    override fun updateDefaultParams(params: GenerationParams) {
+        defaultParams = params.validated()
+    }
+
+    // ==================== Session Parameters ====================
+
+    override fun getSessionParams(): SessionParams = sessionParams
+
+    override fun updateSessionParams(params: SessionParams): Boolean {
+        sessionParams = params.validated()
+        // GGUF/llama.cpp session params require model reload to take effect
+        // Return true to indicate params were stored; caller should reload model
+        return true
+    }
+
+    override fun getSessionParamsSupport(): SessionParamsSupport = SessionParamsSupport.GGUF_FULL
+
+    // ==================== Core Inference ====================
+
+    override suspend fun generateResponse(
+        systemPrompt: String,
+        userPrompt: String,
+        params: GenerationParams
+    ): String {
+        return ggufEngine.generateWithPrompts(
+            systemPrompt,
+            userPrompt,
+            params.maxTokens,
+            params.temperature
+        )
+    }
+
+    // ==================== Metadata & Capabilities ====================
+
     override fun getExecutionProvider(): String {
         return ggufEngine.getExecutionProvider()
     }
@@ -43,25 +87,34 @@ class GgufEngineImpl(context: Context, modelPath: String? = null) : LlmModel {
         return ggufEngine.isUsingGpu()
     }
 
-    // ==================== Core Inference Method ====================
-
-    override suspend fun generateResponse(
-        systemPrompt: String,
-        userPrompt: String,
-        maxTokens: Int,
-        temperature: Float
-    ): String {
-        return ggufEngine.generateWithPrompts(systemPrompt, userPrompt, maxTokens, temperature)
+    override fun getModelCapabilities(): ModelCapabilities {
+        val displayName = if (modelPath != null) {
+            ModelNameUtils.deriveDisplayName(modelPath)
+        } else {
+            ModelNameUtils.getDefaultName("gguf")
+        }
+        return ModelCapabilities(
+            modelName = displayName,
+            supportsImage = false,
+            supportsAudio = false,
+            supportsStreaming = true,  // llama.cpp supports streaming
+            maxContextLength = 8192,    // Typical GGUF model context
+            recommendedMaxTokens = 2048
+        )
     }
 
-    // ==================== Legacy Access ====================
-    // Get underlying engine for backward compatibility during migration
-
-    /**
-     * Get the underlying GgufEngine for access to additional methods.
-     * @deprecated Use generateResponse() instead. This is kept for backward compatibility
-     * during migration to workflow-based architecture.
-     */
-    fun getUnderlyingEngine(): GgufEngine = ggufEngine
+    override fun getModelInfo(): ModelInfo {
+        val displayName = if (modelPath != null) {
+            ModelNameUtils.deriveDisplayName(modelPath)
+        } else {
+            ModelNameUtils.getDefaultName("gguf")
+        }
+        return ModelInfo(
+            name = displayName,
+            format = ModelFormat.GGUF,
+            filePath = modelPath,
+            sizeBytes = modelPath?.let { File(it).length() }
+        )
+    }
 }
 

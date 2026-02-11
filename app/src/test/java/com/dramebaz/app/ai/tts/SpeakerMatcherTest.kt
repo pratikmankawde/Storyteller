@@ -117,7 +117,7 @@ class SpeakerMatcherTest {
 
     @Test
     fun `filterByGender filters female speakers correctly`() {
-        val allSpeakers = LibrittsSpeakerCatalog.allSpeakers()
+        val allSpeakers = LibrittsSpeakerCatalogAdapter.allSpeakers()
         val females = SpeakerMatcher.filterByGender(allSpeakers, "female")
 
         assertTrue(females.isNotEmpty())
@@ -126,7 +126,7 @@ class SpeakerMatcherTest {
 
     @Test
     fun `filterByGender filters male speakers correctly`() {
-        val allSpeakers = LibrittsSpeakerCatalog.allSpeakers()
+        val allSpeakers = LibrittsSpeakerCatalogAdapter.allSpeakers()
         val males = SpeakerMatcher.filterByGender(allSpeakers, "male")
 
         assertTrue(males.isNotEmpty())
@@ -135,7 +135,7 @@ class SpeakerMatcherTest {
 
     @Test
     fun `filterByGender returns all speakers for null gender`() {
-        val allSpeakers = LibrittsSpeakerCatalog.allSpeakers()
+        val allSpeakers = LibrittsSpeakerCatalogAdapter.allSpeakers()
         val result = SpeakerMatcher.filterByGender(allSpeakers, null)
 
         assertEquals(allSpeakers.size, result.size)
@@ -143,16 +143,16 @@ class SpeakerMatcherTest {
 
     @Test
     fun `filterByPitch filters by pitch level correctly`() {
-        val allSpeakers = LibrittsSpeakerCatalog.allSpeakers()
-        val highPitch = SpeakerMatcher.filterByPitch(allSpeakers, LibrittsSpeakerCatalog.PitchLevel.HIGH)
+        val allSpeakers = LibrittsSpeakerCatalogAdapter.allSpeakers()
+        val highPitch = SpeakerMatcher.filterByPitch(allSpeakers, SpeakerCatalog.PitchLevel.HIGH)
 
         assertTrue(highPitch.isNotEmpty())
-        assertTrue(highPitch.all { it.pitchLevel == LibrittsSpeakerCatalog.PitchLevel.HIGH })
+        assertTrue(highPitch.all { it.pitchLevel == SpeakerCatalog.PitchLevel.HIGH })
     }
 
     @Test
     fun `filterByPitch returns all speakers for null pitch level`() {
-        val allSpeakers = LibrittsSpeakerCatalog.allSpeakers()
+        val allSpeakers = LibrittsSpeakerCatalogAdapter.allSpeakers()
         val result = SpeakerMatcher.filterByPitch(allSpeakers, null)
 
         assertEquals(allSpeakers.size, result.size)

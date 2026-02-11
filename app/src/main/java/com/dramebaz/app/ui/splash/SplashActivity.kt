@@ -140,9 +140,13 @@ class SplashActivity : AppCompatActivity() {
                 AppLogger.i("SplashActivity", "LLM loaded: $llmLoaded, Execution provider: $gpuStatus, GPU: $isGpu")
 
                 // Resume any incomplete book analysis from previous session
+                // and start processing queued jobs (demo books seeded during Application.onCreate)
                 if (llmLoaded) {
                     withContext(Dispatchers.Main) { updateStatus("Resuming analysis...") }
                     AnalysisQueueManager.resumeIncompleteAnalysis()
+                    // Start processing - this is safe because we're in a visible activity
+                    // This also processes any jobs queued during Application.onCreate
+                    AnalysisQueueManager.startProcessing()
                 }
             } catch (e: Exception) {
                 // Continue to main; LLM will use stub fallback

@@ -22,7 +22,7 @@ class CharactersViewModel(private val db: AppDatabase) : ViewModel() {
         val dialogCounts = mutableMapOf<String, Int>()
 
         for (chapter in chapters) {
-            val analysisJson = chapter.fullAnalysisJson ?: chapter.summaryJson ?: continue
+            val analysisJson = chapter.fullAnalysisJson ?: continue
             try {
                 val analysis = gson.fromJson(analysisJson, ChapterAnalysisResponse::class.java)
                 analysis.dialogs?.forEach { dialog ->

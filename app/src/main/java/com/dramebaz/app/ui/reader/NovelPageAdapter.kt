@@ -24,6 +24,8 @@ import com.dramebaz.app.data.models.FontFamily
 import com.dramebaz.app.data.models.ReadingSettings
 import com.dramebaz.app.data.models.ReadingTheme
 import com.dramebaz.app.pdf.PdfPageRenderer
+import com.dramebaz.app.playback.engine.CharacterColorPalette
+import com.dramebaz.app.playback.engine.ColoredUnderlineSpanCompat
 import com.dramebaz.app.playback.engine.KaraokeHighlighter
 import com.dramebaz.app.ui.theme.FontManager
 import com.dramebaz.app.utils.AppLogger
@@ -76,6 +78,12 @@ class NovelPageAdapter(
     private var karaokeSegmentColor: Int = 0
     private var karaokeWordColor: Int = 0
 
+    // UI-001: Payload for partial karaoke updates to avoid flickering
+    private data class KaraokePayload(
+        val segmentRange: KaraokeHighlighter.TextRange,
+        val currentWord: KaraokeHighlighter.WordSegment?
+    )
+
     // PDF renderer for native PDF page display
     private var pdfRenderer: PdfPageRenderer? = null
 
@@ -89,6 +97,9 @@ class NovelPageAdapter(
     // Context for loading custom fonts
     private lateinit var context: android.content.Context
 
+    // BOLD-001: Character names for bolding on reading pages
+    private var characterNames: Set<String> = emptySet()
+
     companion object {
         private const val VIEW_TYPE_TEXT = 0
         private const val VIEW_TYPE_PDF = 1
@@ -101,9 +112,25 @@ class NovelPageAdapter(
     fun updateReadingSettings(settings: ReadingSettings) {
         if (currentReadingSettings != settings) {
             currentReadingSettings = settings
-            AppLogger.d(tag, "Reading settings updated: fontSize=${settings.fontSize}, lineHeight=${settings.lineHeight}, theme=${settings.theme}, fontFamily=${settings.fontFamily}")
+            AppLogger.d(tag, "Reading settings updated: fontSize=${settings.fontSize}, lineHeight=${settings.lineHeight}, theme=${settings.theme}, fontFamily=${settings.fontFamily}, boldCharacterNames=${settings.boldCharacterNames}")
             // Notify all items to rebind with new settings
             notifyItemRangeChanged(0, itemCount)
+        }
+    }
+
+    /**
+     * BOLD-001: Set the character names for this book.
+     * Character names will be displayed in bold when boldCharacterNames setting is enabled.
+     */
+    fun setCharacterNames(names: List<String>) {
+        val newNames = names.map { it.trim() }.filter { it.isNotBlank() }.toSet()
+        if (characterNames != newNames) {
+            characterNames = newNames
+            AppLogger.d(tag, "BOLD-001: Character names set: ${characterNames.size} names")
+            // Refresh if bolding is enabled
+            if (currentReadingSettings.boldCharacterNames) {
+                notifyItemRangeChanged(0, itemCount)
+            }
         }
     }
 
@@ -200,6 +227,35 @@ class NovelPageAdapter(
             is PdfPageViewHolder -> bindPdfPage(holder, page, position)
             is TextPageViewHolder -> bindTextPage(holder, page, position)
         }
+    }
+
+    /**
+     * UI-001: Handle partial updates for karaoke highlighting to avoid flickering.
+     * When payload is a KaraokePayload, only update the text spans without rebinding everything.
+     */
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isEmpty()) {
+            // No payload, do full bind
+            onBindViewHolder(holder, position)
+            return
+        }
+
+        // Handle karaoke payload for partial update
+        if (holder is TextPageViewHolder) {
+            val page = getItem(position)
+            for (payload in payloads) {
+                if (payload is KaraokePayload) {
+                    // Only update the text with new spans - no other changes
+                    val highlightedText = applyKaraokeSpans(page.text, payload.segmentRange, payload.currentWord)
+                    holder.pageText.text = highlightedText
+                    AppLogger.d(tag, "UI-001: Partial karaoke update for page $position, word=${payload.currentWord?.word}")
+                    return
+                }
+            }
+        }
+
+        // Unknown payload, fall back to full bind
+        onBindViewHolder(holder, position)
     }
 
     override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
@@ -358,8 +414,52 @@ class NovelPageAdapter(
             val highlightedText = highlightLine(page.text, page.lines, currentHighlightedLine)
             holder.pageText.text = highlightedText
         } else {
-            holder.pageText.text = page.text
+            // BOLD-001: Apply character name bolding if enabled
+            if (currentReadingSettings.boldCharacterNames && characterNames.isNotEmpty()) {
+                val boldedText = applyCharacterNameBolding(page.text)
+                holder.pageText.text = boldedText
+            } else {
+                holder.pageText.text = page.text
+            }
         }
+    }
+
+    /**
+     * BOLD-001: Apply bold styling to character names in text.
+     * Finds all occurrences of character names (case-insensitive, whole words) and applies bold span.
+     */
+    private fun applyCharacterNameBolding(text: String): SpannableString {
+        val spannable = SpannableString(text)
+        val textLower = text.lowercase()
+
+        for (name in characterNames) {
+            if (name.isBlank()) continue
+            val nameLower = name.lowercase()
+            var startIndex = 0
+
+            while (true) {
+                val foundIndex = textLower.indexOf(nameLower, startIndex)
+                if (foundIndex == -1) break
+
+                // Check for whole word boundaries
+                val beforeOk = foundIndex == 0 || !text[foundIndex - 1].isLetterOrDigit()
+                val afterIndex = foundIndex + name.length
+                val afterOk = afterIndex >= text.length || !text[afterIndex].isLetterOrDigit()
+
+                if (beforeOk && afterOk) {
+                    spannable.setSpan(
+                        StyleSpan(Typeface.BOLD),
+                        foundIndex,
+                        afterIndex,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+
+                startIndex = foundIndex + 1
+            }
+        }
+
+        return spannable
     }
 
     /**
@@ -384,6 +484,7 @@ class NovelPageAdapter(
 
     /**
      * UI-001: Apply karaoke highlighting spans to text.
+     * Uses underline with character-specific colors instead of background highlight.
      */
     private fun applyKaraokeSpans(
         text: String,
@@ -392,25 +493,22 @@ class NovelPageAdapter(
     ): SpannableString {
         val spannable = SpannableString(text)
 
-        // Highlight the entire segment with light background
+        // Get the underline color for the current speaker from CharacterColorPalette
+        val underlineColor = CharacterColorPalette.getColorForCharacter(segmentRange.speaker)
+
+        // Underline the entire segment with character-specific color
         if (!segmentRange.isEmpty && segmentRange.end <= text.length) {
             spannable.setSpan(
-                BackgroundColorSpan(karaokeSegmentColor),
+                ColoredUnderlineSpanCompat(underlineColor, 4f),
                 segmentRange.start,
                 segmentRange.end,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }
 
-        // Highlight the current word with bold and stronger background
+        // Highlight the current word with bold
         currentWord?.let { word ->
             if (word.endIndex <= text.length && word.startIndex >= 0) {
-                spannable.setSpan(
-                    BackgroundColorSpan(karaokeWordColor),
-                    word.startIndex,
-                    word.endIndex,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
                 spannable.setSpan(
                     StyleSpan(Typeface.BOLD),
                     word.startIndex,
@@ -465,6 +563,7 @@ class NovelPageAdapter(
 
     /**
      * UI-001: Apply karaoke highlighting (word-by-word sync) to a specific page.
+     * Uses payload-based updates to avoid flickering from full rebind.
      */
     fun applyKaraokeHighlighting(
         pageIndex: Int,
@@ -474,18 +573,31 @@ class NovelPageAdapter(
         wordHighlightColor: Int
     ) {
         val oldPage = karaokePageIndex
+        val isSamePage = oldPage == pageIndex
+
         karaokePageIndex = pageIndex
         karaokeSegmentRange = segmentRange
         karaokeCurrentWord = currentWord
         karaokeSegmentColor = segmentHighlightColor
         karaokeWordColor = wordHighlightColor
 
-        // Notify both old and new pages if different
+        // Create payload for partial update
+        val payload = KaraokePayload(segmentRange, currentWord)
+
+        // Clear old page if we moved to a different page
         if (oldPage >= 0 && oldPage < itemCount && oldPage != pageIndex) {
+            // Full rebind to clear highlighting on old page
             notifyItemChanged(oldPage)
         }
+
         if (pageIndex >= 0 && pageIndex < itemCount) {
-            notifyItemChanged(pageIndex)
+            if (isSamePage) {
+                // Same page - use payload for partial update (no flickering)
+                notifyItemChanged(pageIndex, payload)
+            } else {
+                // Different page - full rebind needed for initial setup
+                notifyItemChanged(pageIndex)
+            }
         }
     }
 

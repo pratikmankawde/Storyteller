@@ -13,11 +13,10 @@ import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.data.db.ReadingSessionDao
 import com.dramebaz.app.data.repositories.BookRepository
 import com.dramebaz.app.domain.usecases.AnalysisQueueManager
-import com.dramebaz.app.domain.usecases.GemmaCharacterAnalysisUseCase
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
-import com.dramebaz.app.domain.usecases.ThreePassCharacterAnalysisUseCase
 import com.dramebaz.app.domain.exceptions.ImportException
 import com.dramebaz.app.ai.llm.services.AnalysisForegroundService
+import com.dramebaz.app.ai.llm.tasks.ChapterAnalysisTask
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -37,8 +36,6 @@ class LibraryViewModel(
     private val importUseCase: ImportBookUseCase,
     private val pageAudioStorage: PageAudioStorage,
     private val readingSessionDao: ReadingSessionDao,
-    private val gemmaAnalysisUseCase: GemmaCharacterAnalysisUseCase,
-    private val threePassAnalysisUseCase: ThreePassCharacterAnalysisUseCase,
     private val appContext: Context
 ) : ViewModel() {
 
@@ -74,9 +71,8 @@ class LibraryViewModel(
             AppLogger.d(TAG, "Deleted $audioDeleted audio files for book $bookId")
 
             // 2. Delete analysis checkpoints
-            val gemmaDeleted = gemmaAnalysisUseCase.deleteCheckpointsForBook(bookId)
-            val threePassDeleted = threePassAnalysisUseCase.deleteCheckpointsForBook(bookId)
-            AppLogger.d(TAG, "Deleted checkpoints: gemma=$gemmaDeleted, 3-pass=$threePassDeleted")
+            val checkpointsDeleted = ChapterAnalysisTask.deleteCheckpointsForBook(appContext, bookId)
+            AppLogger.d(TAG, "Deleted $checkpointsDeleted analysis checkpoints")
 
             // 3. Clear reading session if it references this book
             val session = readingSessionDao.get()
@@ -173,21 +169,11 @@ class LibraryViewModel(
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             val importUseCase = ImportBookUseCase(app.bookRepository)
-            val gemmaUseCase = GemmaCharacterAnalysisUseCase(
-                characterDao = app.db.characterDao(),
-                context = app
-            )
-            val threePassUseCase = ThreePassCharacterAnalysisUseCase(
-                characterDao = app.db.characterDao(),
-                context = app
-            )
             return LibraryViewModel(
                 bookRepository = app.bookRepository,
                 importUseCase = importUseCase,
                 pageAudioStorage = app.pageAudioStorage,
                 readingSessionDao = app.db.readingSessionDao(),
-                gemmaAnalysisUseCase = gemmaUseCase,
-                threePassAnalysisUseCase = threePassUseCase,
                 appContext = app.applicationContext
             ) as T
         }

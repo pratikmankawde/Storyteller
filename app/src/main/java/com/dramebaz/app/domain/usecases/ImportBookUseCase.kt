@@ -98,9 +98,10 @@ class ImportBookUseCase(private val bookRepository: BookRepository) {
 
         AppLogger.logPerformance(tag, "Import book '$title'", System.currentTimeMillis() - startTime)
 
-        // AUTO-ANALYSIS: Queue the imported book for automatic analysis
-        AnalysisQueueManager.enqueueBook(bookId)
-        AppLogger.i(tag, "Book $bookId queued for automatic analysis")
+        // AUTO-ANALYSIS: Queue only the first chapter for automatic analysis on import
+        // Rest of chapters are analyzed later via lookahead (at 80% reading progress) or manual trigger
+        AnalysisQueueManager.enqueueFirstChapter(bookId)
+        AppLogger.i(tag, "Book $bookId queued for first-chapter analysis")
 
         return@withContext bookId
     }

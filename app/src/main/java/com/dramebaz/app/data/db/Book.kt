@@ -70,7 +70,23 @@ data class Book(
     /** Whether this book has been finished/completed */
     val isFinished: Boolean = false,
     /** Reading progress (0.0 to 1.0) */
-    val readingProgress: Float = 0f
+    val readingProgress: Float = 0f,
+
+    // ============ NARRATOR-002: Per-book narrator voice settings ============
+    /** Speaker ID for narrator voice (model-dependent), null means use default */
+    val narratorSpeakerId: Int? = null,
+    /** Narrator speech speed (0.5-2.0), null means use default 0.9 */
+    val narratorSpeed: Float? = null,
+	    /** Narrator speech energy/intensity (0.5-1.5), null means use default 1.0 */
+	    val narratorEnergy: Float? = null,
+
+	    // ============ COVER-001: Book cover & genre metadata ============
+	    /** Optional path to an embedded cover image extracted from the book file (if available). */
+	    val embeddedCoverPath: String? = null,
+	    /** Optional path to a genre-based placeholder cover image in assets when no embedded cover exists. */
+	    val placeholderCoverPath: String? = null,
+	    /** Detected primary genre for this book (e.g., fantasy, scifi, romance). */
+	    val detectedGenre: String? = null
 ) {
     /** Get the analysis state as enum */
     fun getAnalysisState(): AnalysisState = try {

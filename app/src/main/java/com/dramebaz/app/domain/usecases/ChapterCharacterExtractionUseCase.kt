@@ -1,6 +1,7 @@
 package com.dramebaz.app.domain.usecases
 
 import com.dramebaz.app.ai.llm.LlmService
+import com.dramebaz.app.ai.llm.models.LlmModelFactory
 import com.dramebaz.app.ai.tts.SpeakerMatcher
 import com.dramebaz.app.data.db.Character
 import com.dramebaz.app.data.db.CharacterDao
@@ -27,7 +28,7 @@ import kotlinx.coroutines.sync.withPermit
  * AUG-033: Optimized with dynamic concurrency based on available RAM, request queuing, and performance metrics.
  *
  * Note: For detailed 3-pass character analysis with dialog extraction and voice profiles,
- * use [ThreePassCharacterAnalysisUseCase] which is invoked by the "Analyse Chapters" button.
+ * use [ChapterAnalysisTask] which is invoked by the "Analyse Chapters" button.
  */
 class ChapterCharacterExtractionUseCase(private val characterDao: CharacterDao) {
 
@@ -89,7 +90,8 @@ class ChapterCharacterExtractionUseCase(private val characterDao: CharacterDao) 
         var usedSinglePass = false
         var singlePassVoiceProfiles: MutableMap<String, String>? = null
 
-        if (LlmService.isUsingLlama()) {
+        // Try single-pass analysis for GGUF models (which support deeper analysis)
+        if (LlmService.getLoadedModelType() == LlmModelFactory.ModelType.GGUF) {
             try {
                 AppLogger.d(tag, "Chapter ${chapterIndex + 1}: single-pass analyzeChapter (${combinedText.length} chars)")
                 val resp = LlmService.analyzeChapter(combinedText)

@@ -11,6 +11,7 @@ import android.text.style.StyleSpan
 import android.graphics.Typeface
 import android.view.animation.AccelerateDecelerateInterpolator
 import com.dramebaz.app.utils.AppLogger
+import com.dramebaz.app.playback.engine.ColoredUnderlineSpanCompat
 
 /**
  * UI-001: Karaoke Text Highlighting.
@@ -112,6 +113,8 @@ object KaraokeHighlighter {
     /**
      * Create a SpannableString with word-level highlighting.
      * Highlights both the current segment (light) and current word (bold).
+     *
+     * @deprecated Use highlightWordWithUnderline instead for character-colored underlines
      */
     fun highlightWord(
         fullText: String,
@@ -120,27 +123,46 @@ object KaraokeHighlighter {
         segmentHighlightColor: Int,
         wordHighlightColor: Int
     ): SpannableString {
+        // Delegate to the new underline-based highlighting with character colors
+        return highlightWordWithUnderline(
+            fullText = fullText,
+            segmentRange = segmentRange,
+            currentWord = currentWord
+        )
+    }
+
+    /**
+     * Create a SpannableString with underline-based highlighting.
+     * Uses character-specific colors from CharacterColorPalette.
+     * The current word is shown bold with colored underline based on speaker.
+     *
+     * @param fullText The complete text to display
+     * @param segmentRange The current segment being spoken (includes speaker info)
+     * @param currentWord The current word being spoken (for bold emphasis)
+     */
+    fun highlightWordWithUnderline(
+        fullText: String,
+        segmentRange: TextRange,
+        currentWord: WordSegment?
+    ): SpannableString {
         val spannable = SpannableString(fullText)
-        
-        // Highlight the entire segment with light background
+
+        // Get the underline color for the current speaker
+        val underlineColor = CharacterColorPalette.getColorForCharacter(segmentRange.speaker)
+
+        // Underline the entire segment with character-specific color
         if (!segmentRange.isEmpty && segmentRange.end <= fullText.length) {
             spannable.setSpan(
-                BackgroundColorSpan(segmentHighlightColor),
+                ColoredUnderlineSpanCompat(underlineColor, 4f),
                 segmentRange.start,
                 segmentRange.end,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }
-        
-        // Highlight the current word with bold and stronger background
+
+        // Highlight the current word with bold
         currentWord?.let { word ->
-            if (word.endIndex <= fullText.length) {
-                spannable.setSpan(
-                    BackgroundColorSpan(wordHighlightColor),
-                    word.startIndex,
-                    word.endIndex,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
+            if (word.endIndex <= fullText.length && word.startIndex >= 0) {
                 spannable.setSpan(
                     StyleSpan(Typeface.BOLD),
                     word.startIndex,
@@ -149,7 +171,7 @@ object KaraokeHighlighter {
                 )
             }
         }
-        
+
         return spannable
     }
     

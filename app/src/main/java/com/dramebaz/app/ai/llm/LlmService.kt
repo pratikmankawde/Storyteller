@@ -1,8 +1,14 @@
 package com.dramebaz.app.ai.llm
 
 import android.content.Context
+import com.dramebaz.app.ai.llm.models.ExtractedDialog
+import com.dramebaz.app.ai.llm.models.GenerationParams
 import com.dramebaz.app.ai.llm.models.LlmModel
 import com.dramebaz.app.ai.llm.models.LlmModelFactory
+import com.dramebaz.app.ai.llm.models.LlmModelHolder
+import com.dramebaz.app.ai.llm.models.ModelFormat
+import com.dramebaz.app.ai.llm.models.SessionParams
+import com.dramebaz.app.ai.llm.models.SessionParamsSupport
 import com.dramebaz.app.ai.llm.prompts.AnalysisPrompts
 import com.dramebaz.app.ai.llm.prompts.ExtractionPrompts
 import com.dramebaz.app.ai.llm.prompts.StoryPrompts
@@ -31,6 +37,12 @@ import kotlinx.coroutines.withTimeout
  *
  * Design Pattern: Facade Pattern - provides a simplified interface to the LLM subsystem.
  *
+ * Architecture:
+ * - Uses LlmModelFactory to create the appropriate model (GGUF, LiteRT-LM, or MediaPipe)
+ * - All model implementations conform to the LlmModel interface (Strategy Pattern)
+ * - Uses only polymorphic interface methods - no type-checking for specific implementations
+ * - Uses StubFallbacks for fallback when LLM is unavailable
+ *
  * Usage:
  * ```
  * // Initialize once at app startup
@@ -39,20 +51,14 @@ import kotlinx.coroutines.withTimeout
  * // Use for analysis
  * val result = LlmService.analyzeChapter(text)
  * ```
- *
- * Architecture:
- * - Uses LlmModelFactory to create the appropriate model (GGUF or LiteRT-LM)
- * - Uses StubFallbacks for fallback when LLM is unavailable
- * - Uses GgufEngine directly for 3-pass character analysis workflows
  */
 object LlmService {
     private const val TAG = "LlmService"
-    private const val LLM_TIMEOUT_MS = 600_000L  // 10 minutes timeout for slow LiteRT-LM models
+    private const val LLM_TIMEOUT_MS = 600_000L  // 10 minutes timeout for slow models
     private const val MAX_INPUT_CHARS = 10_000
 
     private var appContext: Context? = null
     private var llmModel: LlmModel? = null
-    private var ggufEngine: GgufEngine? = null  // Direct reference for 3-pass workflow
     private val initMutex = Mutex()
     private var initialized = false
     private val gson = Gson()
@@ -69,7 +75,7 @@ object LlmService {
 
     /**
      * Ensure LLM is initialized (lazy init on first use).
-     * Priority: LiteRT-LM > GGUF (determined by LlmModelFactory)
+     * Uses the singleton LlmModelHolder to prevent multiple model instances in GPU memory.
      */
     suspend fun ensureInitialized(): Boolean = initMutex.withLock {
         if (initialized) return@withLock llmModel?.isModelLoaded() == true
@@ -79,19 +85,13 @@ object LlmService {
 
         return@withLock withContext(Dispatchers.IO) {
             try {
-                // Use factory to create the default model (LiteRT-LM preferred, then GGUF)
-                llmModel = LlmModelFactory.createDefaultModel(ctx)
-                val loaded = llmModel?.loadModel() ?: false
+                // Use the singleton model holder to get/load the shared model
+                llmModel = LlmModelHolder.getOrLoadModel(ctx)
+                val loaded = llmModel?.isModelLoaded() == true
                 if (loaded) {
-                    AppLogger.i(TAG, "✅ LLM model loaded successfully: ${llmModel?.getExecutionProvider()}")
-                    // If GGUF is available, also load it for 3-pass workflow compatibility
-                    if (LlmModelFactory.isGgufModelAvailable(ctx)) {
-                        ggufEngine = GgufEngine(ctx)
-                        ggufEngine?.loadModel()
-                        AppLogger.i(TAG, "GgufEngine also loaded for 3-pass workflow")
-                    }
+                    AppLogger.i(TAG, "✅ Using shared LLM model: ${llmModel?.getExecutionProvider()}")
                 } else {
-                    AppLogger.w(TAG, "⚠️ Default model failed to load")
+                    AppLogger.w(TAG, "⚠️ Shared model not loaded")
                 }
                 loaded
             } catch (e: Exception) {
@@ -112,6 +112,7 @@ object LlmService {
     /**
      * Initialize LLM with saved settings.
      * This should be called on app startup to load the user's preferred model.
+     * Uses the singleton model holder to prevent multiple model instances.
      *
      * @param context Android context
      * @param settings Saved LLM settings (model type, backend, and model path)
@@ -130,77 +131,18 @@ object LlmService {
 
         return@withLock withContext(Dispatchers.IO) {
             try {
-                // If a specific model path is saved, use it directly
-                if (!settings.selectedModelPath.isNullOrEmpty()) {
-                    val file = java.io.File(settings.selectedModelPath)
-                    if (file.exists()) {
-                        AppLogger.i(TAG, "Loading saved model path: ${settings.selectedModelPath}")
-                        llmModel = LlmModelFactory.createModelFromPath(
-                            context,
-                            settings.selectedModelPath,
-                            settings.preferredBackend
-                        )
-                        val loaded = llmModel?.loadModel() ?: false
-                        if (loaded) {
-                            AppLogger.i(TAG, "✅ Saved model loaded successfully: ${llmModel?.getExecutionProvider()}")
-                            // Also load GGUF for 3-pass workflow if available
-                            if (!settings.selectedModelPath.endsWith(".gguf", ignoreCase = true) &&
-                                LlmModelFactory.isGgufModelAvailable(context)) {
-                                ggufEngine = GgufEngine(context)
-                                ggufEngine?.loadModel()
-                                AppLogger.i(TAG, "GgufEngine also loaded for 3-pass workflow")
-                            }
-                            return@withContext true
-                        } else {
-                            AppLogger.w(TAG, "Saved model failed to load, falling back to default")
-                        }
-                    } else {
-                        AppLogger.w(TAG, "Saved model file not found: ${settings.selectedModelPath}, falling back to default")
-                    }
-                }
+                // Use the singleton model holder with backend preference and saved model path
+                llmModel = LlmModelHolder.getOrLoadModelWithBackend(
+                    context,
+                    settings.preferredBackend,
+                    settings.selectedModelPath
+                )
+                val loaded = llmModel?.isModelLoaded() == true
 
-                // Fall back to default model selection based on model type preference
-                val modelType = when (settings.selectedModelType) {
-                    LlmModelType.AUTO -> {
-                        if (LlmModelFactory.isLiteRtLmModelAvailable(context)) {
-                            LlmModelFactory.ModelType.LITERTLM
-                        } else if (LlmModelFactory.isGgufModelAvailable(context)) {
-                            LlmModelFactory.ModelType.GGUF
-                        } else {
-                            null
-                        }
-                    }
-                    LlmModelType.LITERTLM -> {
-                        if (LlmModelFactory.isLiteRtLmModelAvailable(context)) {
-                            LlmModelFactory.ModelType.LITERTLM
-                        } else null
-                    }
-                    LlmModelType.GGUF -> {
-                        if (LlmModelFactory.isGgufModelAvailable(context)) {
-                            LlmModelFactory.ModelType.GGUF
-                        } else null
-                    }
-                }
-
-                if (modelType == null) {
-                    AppLogger.w(TAG, "No model available for settings, trying default")
-                    llmModel = LlmModelFactory.createDefaultModel(context)
-                } else {
-                    llmModel = LlmModelFactory.createModelWithBackend(context, modelType, settings.preferredBackend)
-                }
-
-                val loaded = llmModel?.loadModel() ?: false
                 if (loaded) {
-                    AppLogger.i(TAG, "✅ LLM model loaded successfully: ${llmModel?.getExecutionProvider()}")
-                    // Also load GGUF for 3-pass workflow if available
-                    if (LlmModelFactory.isGgufModelAvailable(context) &&
-                        modelType != LlmModelFactory.ModelType.GGUF) {
-                        ggufEngine = GgufEngine(context)
-                        ggufEngine?.loadModel()
-                        AppLogger.i(TAG, "GgufEngine also loaded for 3-pass workflow")
-                    }
+                    AppLogger.i(TAG, "✅ Using shared model: ${llmModel?.getExecutionProvider()}")
                 } else {
-                    AppLogger.w(TAG, "⚠️ Model failed to load")
+                    AppLogger.w(TAG, "⚠️ Shared model not loaded")
                 }
                 loaded
             } catch (e: Exception) {
@@ -212,12 +154,21 @@ object LlmService {
 
     /**
      * Release LLM resources.
+     * The shared model is managed by LlmModelHolder.
      */
     fun release() {
-        ggufEngine?.release()
-        ggufEngine = null
-        llmModel?.release()
+        // Don't release llmModel directly - it's managed by LlmModelHolder
         llmModel = null
+        initialized = false
+    }
+
+    /**
+     * Fully release all resources including the shared model.
+     * Call this when the app is closing or switching models.
+     */
+    fun releaseAll() {
+        llmModel = null
+        LlmModelHolder.release()
         initialized = false
     }
 
@@ -266,59 +217,38 @@ object LlmService {
     /**
      * Check if the model is ready for analysis.
      */
-    fun isReady(): Boolean = ggufEngine?.isModelLoaded() == true || llmModel?.isModelLoaded() == true
+    fun isReady(): Boolean = llmModel?.isModelLoaded() == true
 
     /**
      * Check if running in full LLM mode (not stub fallback).
      */
     fun isUsingLlm(): Boolean = isReady()
 
-    /** Alias for backward compatibility with GGUF/llama.cpp */
-    fun isUsingLlama(): Boolean = ggufEngine?.isModelLoaded() == true
-
     /**
      * Returns the execution provider: "GPU (Vulkan)" or "CPU" or "unknown"
      */
-    fun getExecutionProvider(): String = ggufEngine?.getExecutionProvider()
-        ?: llmModel?.getExecutionProvider()
-        ?: "unknown"
+    fun getExecutionProvider(): String = llmModel?.getExecutionProvider() ?: "unknown"
 
     /**
      * Returns true if using GPU for inference.
      */
-    fun isUsingGpu(): Boolean = ggufEngine?.isUsingGpu() == true || llmModel?.isUsingGpu() == true
+    fun isUsingGpu(): Boolean = llmModel?.isUsingGpu() == true
 
     /**
-     * Get the type of the currently loaded model.
-     * Used to select the appropriate analysis pipeline.
+     * Get the format/type of the currently loaded model using polymorphic interface.
+     * No type-checking required - uses ModelInfo from the model itself.
      *
-     * @return ModelType.LITERTLM if a LiteRT-LM model is loaded,
-     *         ModelType.GGUF if a GGUF model is loaded,
-     *         null if no model is loaded
+     * @return ModelType based on ModelInfo.format, or null if no model is loaded
      */
     fun getLoadedModelType(): LlmModelFactory.ModelType? {
-        // Check LiteRT-LM first (preferred)
-        if (llmModel is com.dramebaz.app.ai.llm.models.LiteRtLmEngineImpl) {
-            return LlmModelFactory.ModelType.LITERTLM
+        val modelInfo = llmModel?.getModelInfo() ?: return null
+        return when (modelInfo.format) {
+            ModelFormat.LITERTLM -> LlmModelFactory.ModelType.LITERTLM
+            ModelFormat.GGUF -> LlmModelFactory.ModelType.GGUF
+            ModelFormat.MEDIAPIPE -> LlmModelFactory.ModelType.MEDIAPIPE
+            ModelFormat.UNKNOWN -> null
         }
-        // Check GGUF
-        if (llmModel is com.dramebaz.app.ai.llm.models.GgufEngineImpl || ggufEngine?.isModelLoaded() == true) {
-            return LlmModelFactory.ModelType.GGUF
-        }
-        return null
     }
-
-    /**
-     * Check if the loaded model is a LiteRT-LM model.
-     * Used to determine which analysis pipeline to use.
-     */
-    fun isUsingLiteRtLm(): Boolean = llmModel is com.dramebaz.app.ai.llm.models.LiteRtLmEngineImpl
-
-    /**
-     * Check if the loaded model is a GGUF model.
-     * Used to determine which analysis pipeline to use.
-     */
-    fun isUsingGguf(): Boolean = llmModel is com.dramebaz.app.ai.llm.models.GgufEngineImpl || ggufEngine?.isModelLoaded() == true
 
     /**
      * Get the underlying LlmModel instance for use with modular passes.
@@ -333,48 +263,67 @@ object LlmService {
      * Get the capabilities of the currently loaded LLM model.
      * Used by UI to enable/disable features like image-to-story generation.
      *
-     * @return ModelCapabilities with image/audio support flags, or UNKNOWN if no model loaded
+     * Uses polymorphism via LlmModel.getModelCapabilities() - no type-checking required.
+     * This follows the Open/Closed Principle: adding new engine types doesn't require
+     * modifying this method.
+     *
+     * @return ModelCapabilities with model name and feature support flags, or UNKNOWN if no model loaded
      */
     fun getModelCapabilities(): ModelCapabilities {
-        // Check if using LiteRT-LM model with capabilities
-        val liteRtLmImpl = llmModel as? com.dramebaz.app.ai.llm.models.LiteRtLmEngineImpl
-        if (liteRtLmImpl != null) {
-            return liteRtLmImpl.getModelCapabilities()
-        }
+        // Polymorphic call - each LlmModel implementation provides its own capabilities
+        return llmModel?.getModelCapabilities() ?: ModelCapabilities.UNKNOWN
+    }
 
-        // GGUF models don't support vision/audio by default
-        if (ggufEngine?.isModelLoaded() == true) {
-            return ModelCapabilities(
-                modelName = "GGUF Model",
-                supportsImage = false,
-                supportsAudio = false
-            )
-        }
+    // ==================== Session Parameters ====================
 
-        return ModelCapabilities.UNKNOWN
+    /**
+     * Get current session parameters for the loaded model.
+     * Session parameters persist across multiple inference calls.
+     *
+     * @return Current session parameters, or defaults if no model is loaded
+     */
+    fun getSessionParams(): SessionParams {
+        return llmModel?.getSessionParams() ?: SessionParams.DEFAULT
+    }
+
+    /**
+     * Update session parameters for the loaded model.
+     * Some engines may require model reload for changes to take effect.
+     *
+     * @param params New session parameters
+     * @return true if parameters were applied successfully, false if no model loaded
+     */
+    fun updateSessionParams(params: SessionParams): Boolean {
+        return llmModel?.updateSessionParams(params) ?: false
+    }
+
+    /**
+     * Get information about which session parameters the current engine supports.
+     * Use this to enable/disable UI controls based on engine capabilities.
+     *
+     * @return Support information for session parameters, or NONE if no model loaded
+     */
+    fun getSessionParamsSupport(): SessionParamsSupport {
+        return llmModel?.getSessionParamsSupport() ?: SessionParamsSupport.NONE
     }
 
     /**
      * Retry loading the model. Call this if user wants to retry after failure.
-     * Uses factory default priority: LiteRT-LM > GGUF
+     * Uses singleton model holder.
      */
     suspend fun retryLoadModel(context: Context): Boolean = initMutex.withLock {
-        release()
+        releaseAll()  // Use releaseAll to release the shared model
         initialized = false
         return@withLock withContext(Dispatchers.IO) {
-            llmModel = LlmModelFactory.createDefaultModel(context)
-            val loaded = llmModel?.loadModel() ?: false
-            if (loaded && LlmModelFactory.isGgufModelAvailable(context)) {
-                ggufEngine = GgufEngine(context)
-                ggufEngine?.loadModel()
-            }
-            loaded
+            llmModel = LlmModelHolder.getOrLoadModel(context)
+            llmModel?.isModelLoaded() == true
         }
     }
 
     /**
      * Reload the model with specific settings (model type and backend).
      * Called when user changes LLM settings.
+     * Uses the singleton model holder to prevent multiple model instances.
      *
      * @param context Android context
      * @param settings LLM settings with model type and backend preference
@@ -383,94 +332,39 @@ object LlmService {
     suspend fun reloadWithSettings(context: Context, settings: LlmSettings): Boolean = initMutex.withLock {
         AppLogger.i(TAG, "Reloading LLM with settings: model=${settings.selectedModelType}, backend=${settings.preferredBackend}, path=${settings.selectedModelPath}")
 
-        // Release existing models
-        release()
-        initialized = true  // Prevent re-init during reload
+        // Notify all components that a model switch is starting
+        LlmModelHolder.beginModelSwitch()
 
-        return@withLock withContext(Dispatchers.IO) {
-            try {
-                // If a specific model path is provided, use it directly
-                if (!settings.selectedModelPath.isNullOrEmpty()) {
-                    AppLogger.i(TAG, "Using specific model path: ${settings.selectedModelPath}")
-                    llmModel = LlmModelFactory.createModelFromPath(
+        try {
+            // Release all models including shared model (user is explicitly switching)
+            releaseAll()
+            initialized = true  // Prevent re-init during reload
+
+            return@withLock withContext(Dispatchers.IO) {
+                try {
+                    // Use the singleton model holder with backend preference and specific model path
+                    llmModel = LlmModelHolder.getOrLoadModelWithBackend(
                         context,
-                        settings.selectedModelPath,
-                        settings.preferredBackend
+                        settings.preferredBackend,
+                        settings.selectedModelPath
                     )
-                    if (llmModel == null) {
-                        AppLogger.w(TAG, "Failed to create model from path: ${settings.selectedModelPath}")
-                        // Fall through to auto-selection
+                    val loaded = llmModel?.isModelLoaded() == true
+
+                    if (loaded) {
+                        AppLogger.i(TAG, "✅ Model loaded successfully: ${llmModel?.getExecutionProvider()}")
+                    } else {
+                        AppLogger.w(TAG, "⚠️ Model failed to load")
                     }
+
+                    loaded
+                } catch (e: Exception) {
+                    AppLogger.e(TAG, "Failed to reload model with settings", e)
+                    false
                 }
-
-                // Track if we loaded a GGUF model (for 3-pass workflow setup)
-                var loadedGguf = false
-
-                // If no model loaded yet (no path or path failed), use model type selection
-                if (llmModel == null) {
-                    // Determine which model to load based on settings
-                    val modelType = when (settings.selectedModelType) {
-                        LlmModelType.AUTO -> {
-                            // Auto-select: prefer LiteRT-LM, fallback to GGUF
-                            if (LlmModelFactory.isLiteRtLmModelAvailable(context)) {
-                                LlmModelFactory.ModelType.LITERTLM
-                            } else if (LlmModelFactory.isGgufModelAvailable(context)) {
-                                LlmModelFactory.ModelType.GGUF
-                            } else {
-                                null
-                            }
-                        }
-                        LlmModelType.LITERTLM -> {
-                            if (LlmModelFactory.isLiteRtLmModelAvailable(context)) {
-                                LlmModelFactory.ModelType.LITERTLM
-                            } else null
-                        }
-                        LlmModelType.GGUF -> {
-                            if (LlmModelFactory.isGgufModelAvailable(context)) {
-                                LlmModelFactory.ModelType.GGUF
-                            } else null
-                        }
-                    }
-
-                    if (modelType == null) {
-                        AppLogger.w(TAG, "No model available for settings")
-                        return@withContext false
-                    }
-
-                    loadedGguf = (modelType == LlmModelFactory.ModelType.GGUF)
-
-                    // Create and load the model with backend preference
-                    llmModel = LlmModelFactory.createModelWithBackend(context, modelType, settings.preferredBackend)
-                } else {
-                    // Model was created from specific path - check if it's GGUF
-                    loadedGguf = llmModel is com.dramebaz.app.ai.llm.models.GgufEngineImpl
-                }
-
-                val loaded = llmModel?.loadModel() ?: false
-
-                if (loaded) {
-                    AppLogger.i(TAG, "✅ Model loaded successfully: ${llmModel?.getExecutionProvider()}")
-
-                    // Also load GGUF for 3-pass workflow if available and not already loaded
-                    if (!loadedGguf && LlmModelFactory.isGgufModelAvailable(context)) {
-                        ggufEngine = GgufEngine(context)
-                        ggufEngine?.loadModel()
-                        AppLogger.i(TAG, "GgufEngine also loaded for 3-pass workflow")
-                    } else if (loadedGguf) {
-                        // If GGUF is the primary model, use it directly
-                        ggufEngine = (llmModel as? com.dramebaz.app.ai.llm.models.GgufEngineImpl)?.let {
-                            GgufEngine(context).apply { loadModel() }
-                        }
-                    }
-                } else {
-                    AppLogger.w(TAG, "⚠️ Model failed to load")
-                }
-
-                loaded
-            } catch (e: Exception) {
-                AppLogger.e(TAG, "Failed to reload model with settings", e)
-                false
             }
+        } finally {
+            // Always notify that model switch is complete
+            LlmModelHolder.endModelSwitch()
         }
     }
 
@@ -478,37 +372,33 @@ object LlmService {
 
     /**
      * Analyze chapter for summary, characters, dialogs, and sound cues.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun analyzeChapter(chapterText: String): ChapterAnalysisResponse = withContext(Dispatchers.IO) {
         ensureInitialized()
         beginInference()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first (has built-in analyzeChapter)
-                val ggufResult = ggufEngine?.analyzeChapter(chapterText)
-                if (ggufResult != null) {
-                    AppLogger.d(TAG, "analyzeChapter: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with standard prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "analyzeChapter: Using llmModel with standard prompts ($MAX_INPUT_CHARS chars)")
+                    AppLogger.d(TAG, "analyzeChapter: Using llmModel ($MAX_INPUT_CHARS chars)")
                     val response = model.generateResponse(
                         systemPrompt = AnalysisPrompts.ANALYSIS_SYSTEM_PROMPT,
                         userPrompt = AnalysisPrompts.buildAnalysisPrompt(chapterText, MAX_INPUT_CHARS),
-                        maxTokens = 2048,
-                        temperature = 0.15f
+                        params = GenerationParams.JSON_EXTRACTION.copy(maxTokens = 2048)
                     )
+                    AppLogger.d(TAG, "analyzeChapter: LLM response length=${response.length}")
+                    AppLogger.d(TAG, "analyzeChapter: LLM response preview=${response.take(500)}")
                     val parsed = parseAnalysisResponse(response)
                     if (parsed != null) {
+                        AppLogger.d(TAG, "analyzeChapter: Parsed successfully - characters=${parsed.characters?.size}, dialogs=${parsed.dialogs?.size}")
                         return@withTimeout parsed
+                    } else {
+                        AppLogger.w(TAG, "analyzeChapter: parseAnalysisResponse returned null for response: ${response.take(300)}")
                     }
                 }
 
-                // Final fallback to stubs
+                // Fallback to stubs
                 AppLogger.d(TAG, "analyzeChapter: Using StubFallbacks")
                 null
             } ?: StubFallbacks.analyzeChapter(chapterText)
@@ -516,7 +406,6 @@ object LlmService {
             AppLogger.w(TAG, "analyzeChapter timed out, using fallback")
             StubFallbacks.analyzeChapter(chapterText)
         } catch (e: kotlinx.coroutines.CancellationException) {
-            // Re-throw CancellationException to allow coroutine cancellation to work properly
             AppLogger.d(TAG, "analyzeChapter cancelled")
             throw e
         } catch (e: Exception) {
@@ -529,28 +418,19 @@ object LlmService {
 
     /**
      * Extended analysis for themes, symbols, vocabulary, foreshadowing.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun extendedAnalysisJson(chapterText: String): String = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.extendedAnalysisJson(chapterText)
-                if (ggufResult != null) {
-                    AppLogger.d(TAG, "extendedAnalysisJson: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "extendedAnalysisJson: Using llmModel with prompts")
+                    AppLogger.d(TAG, "extendedAnalysisJson: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = AnalysisPrompts.EXTENDED_ANALYSIS_SYSTEM_PROMPT,
                         userPrompt = AnalysisPrompts.buildExtendedAnalysisPrompt(chapterText, MAX_INPUT_CHARS),
-                        maxTokens = 1024,
-                        temperature = 0.15f
+                        params = GenerationParams.JSON_EXTRACTION
                     )
                     val parsed = parseExtendedAnalysisResponse(response)
                     if (parsed != null) {
@@ -579,28 +459,19 @@ object LlmService {
 
     /**
      * Pass 1: Extract character names from text.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun pass1ExtractCharacterNames(chapterText: String): List<String> = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.extractCharacterNames(chapterText)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "pass1ExtractCharacterNames: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "pass1ExtractCharacterNames: Using llmModel with prompts")
+                    AppLogger.d(TAG, "pass1ExtractCharacterNames: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = ExtractionPrompts.PASS1_SYSTEM_PROMPT,
                         userPrompt = ExtractionPrompts.buildPass1ExtractNamesPrompt(chapterText, MAX_INPUT_CHARS),
-                        maxTokens = 256,
-                        temperature = 0.1f
+                        params = GenerationParams.SHORT_EXTRACTION
                     )
                     val parsed = parseCharacterNamesFromResponse(response)
                     if (parsed.isNotEmpty()) {
@@ -608,7 +479,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "pass1ExtractCharacterNames: Using StubFallbacks")
                 null
             } ?: StubFallbacks.detectCharactersOnPage(chapterText)
@@ -623,28 +493,19 @@ object LlmService {
 
     /**
      * Pass 2: Extract dialogs from a page with speaker attribution.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
-    suspend fun pass2ExtractDialogs(pageText: String, characterNames: List<String>): List<GgufEngine.ExtractedDialogEntry> = withContext(Dispatchers.IO) {
+    suspend fun pass2ExtractDialogs(pageText: String, characterNames: List<String>): List<ExtractedDialog> = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.extractDialogsFromPage(pageText, characterNames)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "pass2ExtractDialogs: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "pass2ExtractDialogs: Using llmModel with prompts")
+                    AppLogger.d(TAG, "pass2ExtractDialogs: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = ExtractionPrompts.PASS2_SYSTEM_PROMPT,
                         userPrompt = ExtractionPrompts.buildPass2ExtractDialogsPrompt(pageText, characterNames, MAX_INPUT_CHARS),
-                        maxTokens = 512,
-                        temperature = 0.15f
+                        params = GenerationParams.JSON_EXTRACTION.copy(maxTokens = 512)
                     )
                     val parsed = parseDialogsFromResponse(response)
                     if (parsed.isNotEmpty()) {
@@ -652,7 +513,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "pass2ExtractDialogs: Using StubFallbacks")
                 null
             } ?: StubFallbacks.extractDialogsFromText(pageText, characterNames)
@@ -667,7 +527,7 @@ object LlmService {
 
     /**
      * Extract traits and voice profile for characters.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun pass3ExtractTraitsAndVoiceProfile(
         char1Name: String, char1Context: String,
@@ -678,22 +538,9 @@ object LlmService {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.pass3ExtractTraitsAndVoiceProfile(
-                    char1Name, char1Context,
-                    char2Name, char2Context,
-                    char3Name, char3Context,
-                    char4Name, char4Context
-                )
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "pass3ExtractTraitsAndVoiceProfile: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts - process each character
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "pass3ExtractTraitsAndVoiceProfile: Using llmModel with prompts")
+                    AppLogger.d(TAG, "pass3ExtractTraitsAndVoiceProfile: Using llmModel")
                     val results = mutableListOf<Pair<String, Pair<List<String>, Map<String, Any>>>>()
 
                     // Process each character
@@ -708,14 +555,12 @@ object LlmService {
                         val response = model.generateResponse(
                             systemPrompt = ExtractionPrompts.PASS3_SYSTEM_PROMPT,
                             userPrompt = ExtractionPrompts.buildPass3TraitsPrompt(name, context),
-                            maxTokens = 256,
-                            temperature = 0.15f
+                            params = GenerationParams.JSON_EXTRACTION.copy(maxTokens = 256)
                         )
                         val parsed = parsePass3Response(response, name)
                         if (parsed != null) {
                             results.add(Pair(name, parsed))
                         } else {
-                            // Use stub fallback for this character
                             results.add(Pair(name, StubFallbacks.singleCharacterTraitsAndProfile(name)))
                         }
                     }
@@ -725,7 +570,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "pass3ExtractTraitsAndVoiceProfile: Using StubFallbacks")
                 null
             } ?: buildStubPass3Result(char1Name, char2Name, char3Name, char4Name)
@@ -754,28 +598,19 @@ object LlmService {
 
     /**
      * Detect characters on a single page.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun detectCharactersOnPage(pageText: String): List<String> = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.detectCharactersOnPage(pageText)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "detectCharactersOnPage: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "detectCharactersOnPage: Using llmModel with prompts")
+                    AppLogger.d(TAG, "detectCharactersOnPage: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = StoryPrompts.DETECT_CHARACTERS_SYSTEM_PROMPT,
                         userPrompt = StoryPrompts.buildDetectCharactersPrompt(pageText, MAX_INPUT_CHARS),
-                        maxTokens = 256,
-                        temperature = 0.1f
+                        params = GenerationParams.SHORT_EXTRACTION
                     )
                     val parsed = parseCharacterNamesFromResponse(response)
                     if (parsed.isNotEmpty()) {
@@ -783,7 +618,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "detectCharactersOnPage: Using StubFallbacks")
                 null
             } ?: StubFallbacks.detectCharactersOnPage(pageText)
@@ -798,28 +632,19 @@ object LlmService {
 
     /**
      * Infer traits for a character from an excerpt.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun inferTraitsForCharacter(characterName: String, excerpt: String): List<String> = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.inferTraitsForCharacter(characterName, excerpt)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "inferTraitsForCharacter: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "inferTraitsForCharacter: Using llmModel with prompts")
+                    AppLogger.d(TAG, "inferTraitsForCharacter: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = StoryPrompts.INFER_TRAITS_SYSTEM_PROMPT,
                         userPrompt = StoryPrompts.buildInferTraitsPrompt(characterName, excerpt),
-                        maxTokens = 256,
-                        temperature = 0.15f
+                        params = GenerationParams.JSON_EXTRACTION.copy(maxTokens = 256)
                     )
                     val parsed = parseTraitsFromResponse(response)
                     if (parsed.isNotEmpty()) {
@@ -827,7 +652,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "inferTraitsForCharacter: Using StubFallbacks")
                 null
             } ?: StubFallbacks.inferTraitsFromName(characterName)
@@ -844,35 +668,25 @@ object LlmService {
 
     /**
      * Generate a story based on user prompt.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun generateStory(userPrompt: String): String = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.generateStory(userPrompt)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "generateStory: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "generateStory: Using llmModel with prompts")
+                    AppLogger.d(TAG, "generateStory: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = StoryPrompts.STORY_GENERATION_SYSTEM_PROMPT,
                         userPrompt = StoryPrompts.buildStoryPrompt(userPrompt),
-                        maxTokens = 2048,
-                        temperature = 0.7f
+                        params = GenerationParams.CREATIVE.copy(maxTokens = 2048)
                     )
                     if (response.isNotBlank()) {
                         return@withTimeout response
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "generateStory: Using StubFallbacks")
                 null
             } ?: StubFallbacks.generateStory(userPrompt)
@@ -886,8 +700,8 @@ object LlmService {
     }
 
     /**
-     * STORY-003: Remix an existing story based on user instructions.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Remix an existing story based on user instructions.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      * @param remixInstruction User's instruction for how to remix (e.g., "make it scary", "from the villain's perspective")
      * @param sourceStory The original story text to remix
      * @return The remixed story content
@@ -897,22 +711,13 @@ object LlmService {
         try {
             val remixPrompt = StoryPrompts.buildRemixPrompt(remixInstruction, sourceStory)
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.remixStory(remixPrompt)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "remixStory: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "remixStory: Using llmModel with prompts")
+                    AppLogger.d(TAG, "remixStory: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = StoryPrompts.STORY_REMIX_SYSTEM_PROMPT,
                         userPrompt = remixPrompt,
-                        maxTokens = 2048,
-                        temperature = 0.7f
+                        params = GenerationParams.CREATIVE.copy(maxTokens = 2048)
                     )
                     if (response.isNotBlank()) {
                         return@withTimeout response
@@ -933,9 +738,8 @@ object LlmService {
     }
 
     /**
-     * STORY-002: Generate a story from an inspiration image.
-     * Uses multimodal capabilities (if supported) to analyze the image and generate a story.
-     * Supports both Gemma3nModel and LiteRtLmEngineImpl with image capabilities.
+     * Generate a story from an inspiration image.
+     * Uses the polymorphic LlmModel.generateFromImage() - no type-checking required.
      *
      * @param imagePath Path to the image file on device
      * @param userPrompt Optional user prompt for story direction
@@ -952,22 +756,15 @@ object LlmService {
             }
 
             val result = withTimeout(LLM_TIMEOUT_MS) {
-                // Try Gemma3nModel first (has dedicated generateStoryFromImage method)
-                val gemmaModel = llmModel as? com.dramebaz.app.ai.llm.models.Gemma3nModel
-                if (gemmaModel != null) {
-                    AppLogger.d(TAG, "generateStoryFromImage: Using Gemma3nModel")
-                    return@withTimeout gemmaModel.generateStoryFromImage(imagePath, userPrompt)
+                val model = llmModel
+                if (model != null && model.isModelLoaded()) {
+                    AppLogger.d(TAG, "generateStoryFromImage: Using llmModel.generateFromImage()")
+                    val response = model.generateFromImage(imagePath, userPrompt)
+                    if (response.isNotBlank()) {
+                        return@withTimeout response
+                    }
                 }
-
-                // Try LiteRtLmEngineImpl (use underlying engine's generateFromImage)
-                val liteRtModel = llmModel as? com.dramebaz.app.ai.llm.models.LiteRtLmEngineImpl
-                if (liteRtModel != null) {
-                    AppLogger.d(TAG, "generateStoryFromImage: Using LiteRtLmEngineImpl")
-                    return@withTimeout liteRtModel.getUnderlyingEngine().generateFromImage(imagePath, userPrompt)
-                }
-
-                // Model doesn't support image generation
-                AppLogger.w(TAG, "generateStoryFromImage: No compatible model for image generation")
+                AppLogger.w(TAG, "generateStoryFromImage: Model returned empty")
                 null
             }
 
@@ -991,7 +788,7 @@ object LlmService {
 
     /**
      * Extract key moments for a character in a chapter.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun extractKeyMomentsForCharacter(
         characterName: String,
@@ -1001,22 +798,13 @@ object LlmService {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.extractKeyMomentsForCharacter(characterName, chapterText, chapterTitle)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "extractKeyMomentsForCharacter: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "extractKeyMomentsForCharacter: Using llmModel with prompts")
+                    AppLogger.d(TAG, "extractKeyMomentsForCharacter: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = StoryPrompts.KEY_MOMENTS_SYSTEM_PROMPT,
                         userPrompt = StoryPrompts.buildKeyMomentsPrompt(characterName, chapterText, chapterTitle, MAX_INPUT_CHARS),
-                        maxTokens = 512,
-                        temperature = 0.15f
+                        params = GenerationParams.JSON_EXTRACTION.copy(maxTokens = 512)
                     )
                     val parsed = parseKeyMomentsFromResponse(response)
                     if (parsed.isNotEmpty()) {
@@ -1024,7 +812,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "extractKeyMomentsForCharacter: Using StubFallbacks")
                 null
             } ?: StubFallbacks.extractKeyMoments(characterName, chapterTitle)
@@ -1039,7 +826,7 @@ object LlmService {
 
     /**
      * Extract relationships for a character.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun extractRelationshipsForCharacter(
         characterName: String,
@@ -1049,22 +836,13 @@ object LlmService {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.extractRelationshipsForCharacter(characterName, chapterText, allCharacterNames)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "extractRelationshipsForCharacter: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "extractRelationshipsForCharacter: Using llmModel with prompts")
+                    AppLogger.d(TAG, "extractRelationshipsForCharacter: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = StoryPrompts.RELATIONSHIPS_SYSTEM_PROMPT,
                         userPrompt = StoryPrompts.buildRelationshipsPrompt(characterName, chapterText, allCharacterNames, MAX_INPUT_CHARS),
-                        maxTokens = 512,
-                        temperature = 0.15f
+                        params = GenerationParams.JSON_EXTRACTION.copy(maxTokens = 512)
                     )
                     val parsed = parseRelationshipsFromResponse(response)
                     if (parsed.isNotEmpty()) {
@@ -1072,7 +850,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "extractRelationshipsForCharacter: Using StubFallbacks")
                 null
             } ?: StubFallbacks.extractRelationships(characterName, allCharacterNames)
@@ -1087,35 +864,25 @@ object LlmService {
 
     /**
      * Suggest voice profiles from JSON.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun suggestVoiceProfilesJson(charactersWithTraitsJson: String): String? = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.suggestVoiceProfilesJson(charactersWithTraitsJson)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "suggestVoiceProfilesJson: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel with prompts
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "suggestVoiceProfilesJson: Using llmModel with prompts")
+                    AppLogger.d(TAG, "suggestVoiceProfilesJson: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = StoryPrompts.VOICE_PROFILE_SYSTEM_PROMPT,
                         userPrompt = StoryPrompts.buildVoiceProfilesPrompt(charactersWithTraitsJson),
-                        maxTokens = 512,
-                        temperature = 0.15f
+                        params = GenerationParams.JSON_EXTRACTION.copy(maxTokens = 512)
                     )
                     if (response.isNotBlank()) {
                         return@withTimeout extractJsonFromResponse(response)
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "suggestVoiceProfilesJson: Using StubFallbacks")
                 null
             } ?: StubFallbacks.suggestVoiceProfiles(charactersWithTraitsJson)
@@ -1142,7 +909,7 @@ object LlmService {
 
     /**
      * Extract characters and traits in a text segment.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun extractCharactersAndTraitsInSegment(
         segmentText: String,
@@ -1152,23 +919,14 @@ object LlmService {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.extractCharactersAndTraitsInSegment(segmentText, skipNamesWithTraits, namesNeedingTraits)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "extractCharactersAndTraitsInSegment: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel - extract characters first, then traits for each
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "extractCharactersAndTraitsInSegment: Using llmModel with prompts")
+                    AppLogger.d(TAG, "extractCharactersAndTraitsInSegment: Using llmModel")
                     // First get character names
                     val namesResponse = model.generateResponse(
                         systemPrompt = StoryPrompts.DETECT_CHARACTERS_SYSTEM_PROMPT,
                         userPrompt = StoryPrompts.buildDetectCharactersPrompt(segmentText, MAX_INPUT_CHARS),
-                        maxTokens = 256,
-                        temperature = 0.1f
+                        params = GenerationParams.SHORT_EXTRACTION
                     )
                     val detectedNames = parseCharacterNamesFromResponse(namesResponse)
                         .filter { it !in skipNamesWithTraits }
@@ -1180,8 +938,7 @@ object LlmService {
                         val traitsResponse = model.generateResponse(
                             systemPrompt = StoryPrompts.INFER_TRAITS_SYSTEM_PROMPT,
                             userPrompt = StoryPrompts.buildInferTraitsPrompt(name, segmentText),
-                            maxTokens = 128,
-                            temperature = 0.15f
+                            params = GenerationParams.SHORT_EXTRACTION.copy(maxTokens = 128)
                         )
                         val traits = parseTraitsFromResponse(traitsResponse)
                         results.add(Pair(name, traits))
@@ -1191,7 +948,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "extractCharactersAndTraitsInSegment: Using StubFallbacks")
                 null
             } ?: StubFallbacks.extractCharactersAndTraitsInSegment(segmentText, skipNamesWithTraits, namesNeedingTraits)
@@ -1214,9 +970,9 @@ object LlmService {
     // ==================== VIS-001: Scene Prompt Generation ====================
 
     /**
-     * VIS-001: Generate an image generation prompt from scene text.
+     * Generate an image generation prompt from scene text.
      * Creates a structured prompt suitable for Stable Diffusion or Imagen.
-     * Uses GgufEngine if available, falls back to llmModel with prompts, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun generateScenePrompt(
         sceneText: String,
@@ -1226,23 +982,14 @@ object LlmService {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.generateScenePrompt(sceneText, mood, characters)
-                if (ggufResult != null) {
-                    AppLogger.d(TAG, "generateScenePrompt: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel - generate scene prompt text
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
-                    AppLogger.d(TAG, "generateScenePrompt: Using llmModel with prompts")
+                    AppLogger.d(TAG, "generateScenePrompt: Using llmModel")
                     val userPrompt = buildScenePromptRequest(sceneText, mood, characters)
                     val response = model.generateResponse(
                         systemPrompt = "You are an image prompt generator. Create a vivid, descriptive prompt for image generation from the scene. Output valid JSON only.",
                         userPrompt = userPrompt,
-                        maxTokens = 256,
-                        temperature = 0.4f
+                        params = GenerationParams(maxTokens = 256, temperature = 0.4f)
                     )
                     val parsed = parseScenePromptFromResponse(response, sceneText, mood)
                     if (parsed != null) {
@@ -1250,7 +997,6 @@ object LlmService {
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "generateScenePrompt: Using StubFallbacks")
                 null
             } ?: StubFallbacks.generateScenePrompt(sceneText, mood, characters)
@@ -1269,37 +1015,27 @@ object LlmService {
     // ==================== Raw Text Generation ====================
 
     /**
-     * INS-002: Generate raw text response from LLM for custom prompts.
+     * Generate raw text response from LLM for custom prompts.
      * Used for foreshadowing detection and other analysis tasks.
-     * Uses GgufEngine if available, falls back to llmModel, then to StubFallbacks.
+     * Uses the polymorphic LlmModel interface - no type-checking required.
      */
     suspend fun generateRawText(prompt: String): String = withContext(Dispatchers.IO) {
         ensureInitialized()
         try {
             withTimeout(LLM_TIMEOUT_MS) {
-                // Try GgufEngine first
-                val ggufResult = ggufEngine?.generateRaw(prompt)
-                if (!ggufResult.isNullOrEmpty()) {
-                    AppLogger.d(TAG, "generateRawText: Using GgufEngine result")
-                    return@withTimeout ggufResult
-                }
-
-                // Fall back to llmModel
                 val model = llmModel
                 if (model != null && model.isModelLoaded()) {
                     AppLogger.d(TAG, "generateRawText: Using llmModel")
                     val response = model.generateResponse(
                         systemPrompt = "You are a helpful assistant. Answer the following query.",
                         userPrompt = prompt,
-                        maxTokens = 1024,
-                        temperature = 0.5f
+                        params = GenerationParams.DEFAULT
                     )
                     if (response.isNotBlank()) {
                         return@withTimeout response
                     }
                 }
 
-                // Final fallback to stubs
                 AppLogger.d(TAG, "generateRawText: Using StubFallbacks")
                 null
             } ?: StubFallbacks.generateRawText(prompt)
@@ -1328,16 +1064,30 @@ object LlmService {
     private fun parseAnalysisResponse(response: String): ChapterAnalysisResponse? {
         return try {
             val json = extractJsonFromResponse(response)
-            if (json.isEmpty()) return null
-            val obj = gson.fromJson(json, Map::class.java) as? Map<*, *> ?: return null
-            ChapterAnalysisResponse(
+            if (json.isEmpty()) {
+                AppLogger.w(TAG, "parseAnalysisResponse: extractJsonFromResponse returned empty string")
+                AppLogger.w(TAG, "parseAnalysisResponse: raw response was: ${response.take(500)}")
+                return null
+            }
+            AppLogger.d(TAG, "parseAnalysisResponse: Extracted JSON length=${json.length}")
+
+            val obj = gson.fromJson(json, Map::class.java) as? Map<*, *>
+            if (obj == null) {
+                AppLogger.w(TAG, "parseAnalysisResponse: gson.fromJson returned null for: ${json.take(300)}")
+                return null
+            }
+
+            val result = ChapterAnalysisResponse(
                 chapterSummary = parseChapterSummary(obj["chapter_summary"]),
                 characters = parseCharacters(obj["characters"]),
                 dialogs = parseDialogs(obj["dialogs"]),
                 soundCues = parseSoundCues(obj["sound_cues"])
             )
+            AppLogger.d(TAG, "parseAnalysisResponse: Created ChapterAnalysisResponse with ${result.characters?.size ?: 0} chars, ${result.dialogs?.size ?: 0} dialogs")
+            result
         } catch (e: Exception) {
             AppLogger.w(TAG, "Failed to parse analysis response: ${e.message}")
+            AppLogger.w(TAG, "parseAnalysisResponse: Exception parsing: ${response.take(500)}")
             null
         }
     }
@@ -1476,14 +1226,14 @@ object LlmService {
      * Parse dialogs from LLM response.
      * Expected format: {"dialogs": [{"speaker": "...", "text": "...", "emotion": "...", "intensity": 0.5}]}
      */
-    private fun parseDialogsFromResponse(response: String): List<GgufEngine.ExtractedDialogEntry> {
+    private fun parseDialogsFromResponse(response: String): List<ExtractedDialog> {
         return try {
             val cleanedResponse = extractJsonFromResponse(response)
             val map = gson.fromJson(cleanedResponse, Map::class.java)
             val dialogs = map["dialogs"] as? List<*> ?: return emptyList()
             dialogs.mapNotNull { item ->
                 if (item is Map<*, *>) {
-                    GgufEngine.ExtractedDialogEntry(
+                    ExtractedDialog(
                         speaker = item["speaker"] as? String ?: "Unknown",
                         text = item["text"] as? String ?: "",
                         emotion = item["emotion"] as? String ?: "neutral",

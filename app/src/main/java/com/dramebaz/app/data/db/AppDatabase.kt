@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         CharacterPageMapping::class,  // AUG-043: Character-page mapping for per-segment audio
         BookSeries::class  // SUMMARY-002: Book series for multi-book cross-reference
     ],
-    version = 12,  // LIBRARY-001: Added library organization fields to books
+    version = 14,  // AUDIO-REGEN-001: Added lastPageIndex to ReadingSession for targeted audio regeneration
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

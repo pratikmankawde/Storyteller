@@ -4,18 +4,21 @@ import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Environment
-import android.widget.Button
+import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
+import com.dramebaz.app.R
 import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
 import com.dramebaz.app.ui.main.MainActivity
 import com.dramebaz.app.utils.AppLogger
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -25,65 +28,68 @@ import java.io.FileOutputStream
 /**
  * Test entry: lists test actions for each feature/milestone.
  * Run the corresponding test after implementing each task.
+ * Uses Material 3 design components.
  */
 class TestActivity : AppCompatActivity() {
     private val app get() = applicationContext as DramebazApplication
     private var mediaPlayer: MediaPlayer? = null
     private lateinit var logPane: TextView
+    private lateinit var buttonContainer: LinearLayout
+    private var isLogsExpanded = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val scroll = ScrollView(this)
-        val layout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        layout.setPadding(48, 48, 48, 48)
+        setContentView(R.layout.activity_test)
 
-        fun addTest(name: String, block: () -> Unit) {
-            val b = Button(this).apply {
-                text = name
-                setOnClickListener { block() }
-            }
-            layout.addView(b)
+        // Setup toolbar
+        findViewById<MaterialToolbar>(R.id.toolbar).setNavigationOnClickListener { finish() }
+
+        // Get views
+        buttonContainer = findViewById(R.id.layoutTestButtons)
+        logPane = findViewById(R.id.textLogs)
+
+        // Setup logs expand/collapse
+        val logsHeader = findViewById<LinearLayout>(R.id.layoutLogsHeader)
+        val expandIcon = findViewById<ImageView>(R.id.iconExpandLogs)
+        logsHeader.setOnClickListener {
+            isLogsExpanded = !isLogsExpanded
+            logPane.visibility = if (isLogsExpanded) android.view.View.VISIBLE else android.view.View.GONE
+            expandIcon.rotation = if (isLogsExpanded) 180f else 0f
         }
 
-        addTest("Open Main (Library)", { startActivity(Intent(this, MainActivity::class.java)) })
-        addTest("Load demo book (Space story.pdf)", { loadDemoBook() })
-        addTest("M1: Import & Library", { startActivity(Intent(this, MainActivity::class.java)) })
-        addTest("M2: LLM Test - Chapter Analysis", { testLlmAnalysis() })
-        addTest("M2: LLM Test - Extended Analysis", { testLlmExtended() })
-        addTest("M3: TTS Test - Simple", { testTts("Hello, this is a test of the text to speech engine.") })
-        addTest("M3: TTS Test - Long Text", { testTts("The quick brown fox jumps over the lazy dog. This is a longer sentence to test the text to speech synthesis capabilities of the Piper VCTK medium model.") })
-        addTest("M4: Character voices (stub)", { startActivity(Intent(this, MainActivity::class.java)) })
-        addTest("M5: Sound cues (stub)", { startActivity(Intent(this, MainActivity::class.java)) })
-        addTest("M6: Characters & Insights", { startActivity(Intent(this, MainActivity::class.java)) })
-        addTest("M7: Themes & bookmarks", { startActivity(Intent(this, MainActivity::class.java)) })
-
-        layout.addView(TextView(this).apply {
-            text = "Space story.pdf is bundled with the APK. Tap \"Load demo book\" to copy it into the app and add to Library, then open Main to read/analyze. TTS tests save to app Download folder. Logs below."
-            setPadding(0, 24, 0, 0)
-        })
-        layout.addView(TextView(this).apply {
-            text = "Test log:"
-            setPadding(0, 16, 0, 4)
-        })
-        logPane = TextView(this).apply {
-            setPadding(8, 8, 8, 8)
-            setBackgroundColor(0xFFEEEEEE.toInt())
-            minLines = 12
-            text = "(Run a test to see logs here.)"
-        }
-        layout.addView(logPane)
-        scroll.addView(layout)
-        setContentView(scroll)
+        // Add test buttons using Material 3 style
+        addTest("Open Main (Library)") { startActivity(Intent(this, MainActivity::class.java)) }
+        addTest("Load demo book (SpaceStory.pdf)") { loadDemoBook() }
+        addTest("M1: Import & Library") { startActivity(Intent(this, MainActivity::class.java)) }
+        addTest("M2: LLM Test - Chapter Analysis") { testLlmAnalysis() }
+        addTest("M2: LLM Test - Extended Analysis") { testLlmExtended() }
+        addTest("M3: TTS Test - Simple") { testTts("Hello, this is a test of the text to speech engine.") }
+        addTest("M3: TTS Test - Long Text") { testTts("The quick brown fox jumps over the lazy dog. This is a longer sentence to test the text to speech synthesis capabilities of the Piper VCTK medium model.") }
+        addTest("M5: Stable Audio SFX Test") { startActivity(Intent(this, StableAudioTestActivity::class.java)) }
+        addTest("LLM Benchmark (SpaceStory)") { startActivity(Intent(this, LlmBenchmarkActivity::class.java)) }
+        addTest("PDF Viewer Test") { startActivity(Intent(this, PdfViewerTestActivity::class.java)) }
     }
 
-    /** Copy bundled Space story.pdf from assets to app files and import as book. */
+    private fun addTest(name: String, block: () -> Unit) {
+        val button = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = name
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (4 * resources.displayMetrics.density).toInt() }
+            setOnClickListener { block() }
+        }
+        buttonContainer.addView(button)
+    }
+
+    /** Copy bundled SpaceStory.pdf from assets to app files and import as book. */
     private fun loadDemoBook() {
-        log("Demo: copying Space story.pdf from assets...")
+        log("Demo: copying SpaceStory.pdf from assets...")
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val destDir = File(getExternalFilesDir(null), "demo").apply { mkdirs() }
-                val destFile = File(destDir, "Space story.pdf")
-                assets.open("demo/Space story.pdf").use { input ->
+                val destFile = File(destDir, "SpaceStory.pdf")
+                assets.open("demo/SpaceStory.pdf").use { input ->
                     FileOutputStream(destFile).use { output ->
                         input.copyTo(output)
                     }
@@ -91,7 +97,7 @@ class TestActivity : AppCompatActivity() {
                 log("Demo: copied to ${destFile.absolutePath}")
 
                 // Delete existing book with the same title (re-import with proper PDF extraction)
-                val existingBook = app.bookRepository.findBookByTitle("Space story")
+                val existingBook = app.bookRepository.findBookByTitle("SpaceStory")
                 if (existingBook != null) {
                     log("Demo: deleting existing book (id=${existingBook.id}) to re-import with PDF extraction...")
                     app.bookRepository.deleteBookWithChapters(existingBook.id)
@@ -101,7 +107,7 @@ class TestActivity : AppCompatActivity() {
                 val bookId = importUseCase.importFromFile(this@TestActivity, destFile.absolutePath, "pdf")
                 withContext(Dispatchers.Main) {
                     if (bookId > 0) {
-                        log("Demo: imported bookId=$bookId (Space story). Open Library to see it.")
+                        log("Demo: imported bookId=$bookId (SpaceStory). Open Library to see it.")
                         Toast.makeText(this@TestActivity, "Demo book imported (bookId=$bookId). Open Library.", Toast.LENGTH_LONG).show()
                     } else {
                         log("Demo: import failed (bookId=$bookId)")
@@ -254,10 +260,10 @@ class TestActivity : AppCompatActivity() {
     }
 
     private fun testLlmAnalysis() {
-        log("LLM: starting chapter analysis (Space story - Chapter 2)")
+        log("LLM: starting chapter analysis (SpaceStory - Chapter 2)")
         lifecycleScope.launch {
-            Toast.makeText(this@TestActivity, "Testing LLM chapter analysis with Space story...", Toast.LENGTH_SHORT).show()
-            // Using Chapter 2: The Hydra's Riddle from Space story.pdf
+            Toast.makeText(this@TestActivity, "Testing LLM chapter analysis with SpaceStory...", Toast.LENGTH_SHORT).show()
+            // Using Chapter 2: The Hydra's Riddle from SpaceStory.pdf
             val testChapter = """
                 Chapter 2: The Hydra's Riddle
 
@@ -307,10 +313,10 @@ class TestActivity : AppCompatActivity() {
     }
 
     private fun testLlmExtended() {
-        log("LLM: starting extended analysis (Space story - Chapter 3)")
+        log("LLM: starting extended analysis (SpaceStory - Chapter 3)")
         lifecycleScope.launch {
-            Toast.makeText(this@TestActivity, "Testing LLM extended analysis with Space story...", Toast.LENGTH_SHORT).show()
-            // Using Chapter 3: The Ascent of the Void-Griffin from Space story.pdf
+            Toast.makeText(this@TestActivity, "Testing LLM extended analysis with SpaceStory...", Toast.LENGTH_SHORT).show()
+            // Using Chapter 3: The Ascent of the Void-Griffin from SpaceStory.pdf
             val testChapter = """
                 Chapter 3: The Ascent of the Void-Griffin
 

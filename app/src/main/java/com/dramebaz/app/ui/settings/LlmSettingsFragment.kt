@@ -174,6 +174,7 @@ class LlmSettingsFragment : Fragment() {
                 val typeLabel = when (model.type) {
                     LlmModelFactory.ModelType.LITERTLM -> "LiteRT"
                     LlmModelFactory.ModelType.GGUF -> "GGUF"
+                    LlmModelFactory.ModelType.MEDIAPIPE -> "MediaPipe"
                 }
                 "${model.fileName} ($sizeMb MB, $typeLabel)"
             })

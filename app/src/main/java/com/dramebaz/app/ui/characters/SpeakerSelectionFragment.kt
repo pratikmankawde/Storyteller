@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.ai.tts.SpeakerMatcher
+import com.dramebaz.app.domain.usecases.AudioRegenerationManager
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -167,13 +168,19 @@ class SpeakerSelectionFragment : Fragment() {
                     app.pageAudioStorage.deleteSegmentsForCharacter(bookId, character.name)
                     AppLogger.d("SpeakerSelection", "Deleted old audio files for ${character.name}")
 
-                    // Get segments that need regeneration (on current page if available)
-                    val segmentsToRegenerate = characterPageMappingDao.getSegmentsForCharacter(bookId, character.name)
-
-                    if (segmentsToRegenerate.isNotEmpty()) {
-                        // Regenerate audio for affected segments in background
-                        val regenerated = app.segmentAudioGenerator.regenerateSegments(segmentsToRegenerate, speakerId)
-                        AppLogger.i("SpeakerSelection", "Regenerated $regenerated segments for ${character.name}")
+                    // AUDIO-REGEN-001: Use AudioRegenerationManager for targeted current-page regeneration
+                    val session = app.db.readingSessionDao().getCurrent()
+                    val pageNumber = session?.lastPageIndex ?: 1
+                    val chapterId = session?.chapterId ?: 0L
+                    if (chapterId > 0 && session?.bookId == bookId) {
+                        AudioRegenerationManager.enqueueRegeneration(
+                            bookId = bookId,
+                            chapterId = chapterId,
+                            pageNumber = pageNumber,
+                            characterName = character.name,
+                            newSpeakerId = speakerId
+                        )
+                        AppLogger.i("SpeakerSelection", "Enqueued audio regeneration for ${character.name} on page $pageNumber")
                     }
 
                     withContext(Dispatchers.Main) {
@@ -224,7 +231,7 @@ class SpeakerSelectionFragment : Fragment() {
 
             // Speaker traits
             val ageText = traits.ageYears?.toString() ?: "?"
-            holder.speakerTraits.text = "${traits.gender}, $ageText yrs, ${traits.accent}, ${traits.region}"
+            holder.speakerTraits.text = "${traits.genderLabel}, $ageText yrs, ${traits.accent}, ${traits.region}"
 
             // Pitch level
             holder.speakerPitch.text = "Pitch: ${traits.pitchLevel.name.lowercase().replaceFirstChar { it.uppercase() }}"

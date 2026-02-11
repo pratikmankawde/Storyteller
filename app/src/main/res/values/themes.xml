@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Using Material3 theme for proper Chip and other M3 component support -->
-    <style name="Theme.Dramebaz" parent="Theme.Material3.Light.NoActionBar">
+    <!-- Using Material 2 (MaterialComponents) theme -->
+    <style name="Theme.Dramebaz" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryContainer">@color/primary_variant</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
         <item name="colorOnPrimary">@color/on_primary</item>
         <item name="colorSecondary">@color/secondary</item>
-        <item name="colorSecondaryContainer">@color/secondary_variant</item>
+        <item name="colorSecondaryVariant">@color/secondary_variant</item>
         <item name="colorOnSecondary">@color/on_secondary</item>
         <item name="android:colorBackground">@color/background</item>
         <item name="colorSurface">@color/surface</item>
-        <item name="colorSurfaceVariant">@color/surface_variant</item>
         <item name="colorOnSurface">@color/on_surface</item>
         <item name="android:statusBarColor">@color/primary</item>
         <item name="android:navigationBarColor">@color/background</item>
@@ -19,17 +18,17 @@
         <item name="materialButtonStyle">@style/Widget.Dramebaz.Button</item>
     </style>
 
-    <!-- Buttons: readable text size (16sp). Use Material3 parents (available in Material 1.11+). -->
-    <style name="Widget.Dramebaz.Button" parent="Widget.Material3.Button">
+    <!-- Buttons: readable text size (16sp). Use Material 2 parents. -->
+    <style name="Widget.Dramebaz.Button" parent="Widget.MaterialComponents.Button">
         <item name="android:textSize">16sp</item>
     </style>
-    <style name="Widget.Dramebaz.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+    <style name="Widget.Dramebaz.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textSize">16sp</item>
     </style>
-    <style name="Widget.Dramebaz.Button.Tonal" parent="Widget.Material3.Button.TonalButton">
+    <style name="Widget.Dramebaz.Button.Tonal" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textSize">16sp</item>
     </style>
-    <style name="Widget.Dramebaz.Button.Text" parent="Widget.Material3.Button.TextButton">
+    <style name="Widget.Dramebaz.Button.Text" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="android:textSize">16sp</item>
     </style>
 

@@ -8,6 +8,7 @@ import com.dramebaz.app.data.models.FontFamily
 import com.dramebaz.app.data.models.LlmBackend
 import com.dramebaz.app.data.models.LlmModelType
 import com.dramebaz.app.data.models.LlmSettings
+import com.dramebaz.app.data.models.NarratorSettings
 import com.dramebaz.app.data.models.ReadingSettings
 import com.dramebaz.app.data.models.ReadingTheme
 import com.dramebaz.app.playback.mixer.PlaybackTheme
@@ -39,6 +40,8 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
         private const val KEY_AUTO_PLAY_NEXT = "auto_play_next"
         private const val KEY_PAUSE_SCREEN_OFF = "pause_screen_off"
         private const val KEY_BACKGROUND_PLAYBACK = "background_playback"
+        private const val KEY_TTS_MODEL_ID = "tts_model_id"
+        private const val KEY_TTS_MODEL_PATH = "tts_model_path"
         
         // Feature settings keys
         private const val KEY_SMART_CASTING = "enable_smart_casting"
@@ -46,11 +49,17 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
         private const val KEY_DEEP_ANALYSIS = "enable_deep_analysis"
         private const val KEY_EMOTION_MODIFIERS = "enable_emotion_modifiers"
         private const val KEY_KARAOKE_HIGHLIGHT = "enable_karaoke_highlight"
+        private const val KEY_INCREMENTAL_ANALYSIS_PERCENT = "incremental_analysis_page_percent"
 
         // LLM settings keys
         private const val KEY_LLM_MODEL_TYPE = "llm_model_type"
         private const val KEY_LLM_BACKEND = "llm_backend"
         private const val KEY_LLM_MODEL_PATH = "llm_model_path"
+
+        // Narrator voice settings keys
+        private const val KEY_NARRATOR_SPEAKER_ID = "narrator_speaker_id"
+        private const val KEY_NARRATOR_SPEED = "narrator_speed"
+        private const val KEY_NARRATOR_ENERGY = "narrator_energy"
     }
     
     private val _readingSettings = MutableStateFlow(ReadingSettings())
@@ -64,6 +73,9 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
 
     private val _llmSettings = MutableStateFlow(LlmSettings())
     val llmSettings: StateFlow<LlmSettings> = _llmSettings.asStateFlow()
+
+    private val _narratorSettings = MutableStateFlow(NarratorSettings())
+    val narratorSettings: StateFlow<NarratorSettings> = _narratorSettings.asStateFlow()
     
     /**
      * Load all settings from database into StateFlows.
@@ -91,8 +103,10 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
             val autoPlay = appSettingsDao.get(KEY_AUTO_PLAY_NEXT)?.toBooleanStrictOrNull() ?: true
             val pauseOnOff = appSettingsDao.get(KEY_PAUSE_SCREEN_OFF)?.toBooleanStrictOrNull() ?: true
             val bgPlay = appSettingsDao.get(KEY_BACKGROUND_PLAYBACK)?.toBooleanStrictOrNull() ?: true
-            
-            _audioSettings.value = AudioSettings(speed, playbackTheme, autoPlay, pauseOnOff, bgPlay)
+            val ttsModelId = appSettingsDao.get(KEY_TTS_MODEL_ID)?.takeIf { it.isNotEmpty() }
+            val ttsModelPath = appSettingsDao.get(KEY_TTS_MODEL_PATH)?.takeIf { it.isNotEmpty() }
+
+            _audioSettings.value = AudioSettings(speed, playbackTheme, autoPlay, pauseOnOff, bgPlay, ttsModelId, ttsModelPath)
             
             // Load feature settings
             val smartCast = appSettingsDao.get(KEY_SMART_CASTING)?.toBooleanStrictOrNull() ?: true
@@ -100,8 +114,9 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
             val deepAnalysis = appSettingsDao.get(KEY_DEEP_ANALYSIS)?.toBooleanStrictOrNull() ?: true
             val emotionMod = appSettingsDao.get(KEY_EMOTION_MODIFIERS)?.toBooleanStrictOrNull() ?: true
             val karaoke = appSettingsDao.get(KEY_KARAOKE_HIGHLIGHT)?.toBooleanStrictOrNull() ?: true
-            
-            _featureSettings.value = FeatureSettings(smartCast, genVisuals, deepAnalysis, emotionMod, karaoke)
+            val incrementalPercent = appSettingsDao.get(KEY_INCREMENTAL_ANALYSIS_PERCENT)?.toIntOrNull() ?: 50
+
+            _featureSettings.value = FeatureSettings(smartCast, genVisuals, deepAnalysis, emotionMod, karaoke, incrementalPercent)
 
             // Load LLM settings
             val modelType = appSettingsDao.get(KEY_LLM_MODEL_TYPE)?.let {
@@ -113,6 +128,13 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
             val modelPath = appSettingsDao.get(KEY_LLM_MODEL_PATH)
 
             _llmSettings.value = LlmSettings(modelType, backend, modelPath)
+
+            // Load Narrator settings
+            val narratorSpeakerId = appSettingsDao.get(KEY_NARRATOR_SPEAKER_ID)?.toIntOrNull() ?: 0
+            val narratorSpeed = appSettingsDao.get(KEY_NARRATOR_SPEED)?.toFloatOrNull() ?: NarratorSettings.DEFAULT_SPEED
+            val narratorEnergy = appSettingsDao.get(KEY_NARRATOR_ENERGY)?.toFloatOrNull() ?: 1.0f
+
+            _narratorSettings.value = NarratorSettings(narratorSpeakerId, narratorSpeed, narratorEnergy)
 
             AppLogger.d(TAG, "Settings loaded successfully")
         } catch (e: Exception) {
@@ -134,6 +156,8 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
         appSettingsDao.put(AppSettings(KEY_AUTO_PLAY_NEXT, settings.autoPlayNextChapter.toString()))
         appSettingsDao.put(AppSettings(KEY_PAUSE_SCREEN_OFF, settings.pauseOnScreenOff.toString()))
         appSettingsDao.put(AppSettings(KEY_BACKGROUND_PLAYBACK, settings.enableBackgroundPlayback.toString()))
+        appSettingsDao.put(AppSettings(KEY_TTS_MODEL_ID, settings.ttsModelId ?: ""))
+        appSettingsDao.put(AppSettings(KEY_TTS_MODEL_PATH, settings.ttsModelPath ?: ""))
         _audioSettings.value = settings
     }
     
@@ -143,6 +167,7 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
         appSettingsDao.put(AppSettings(KEY_DEEP_ANALYSIS, settings.enableDeepAnalysis.toString()))
         appSettingsDao.put(AppSettings(KEY_EMOTION_MODIFIERS, settings.enableEmotionModifiers.toString()))
         appSettingsDao.put(AppSettings(KEY_KARAOKE_HIGHLIGHT, settings.enableKaraokeHighlight.toString()))
+        appSettingsDao.put(AppSettings(KEY_INCREMENTAL_ANALYSIS_PERCENT, settings.incrementalAnalysisPagePercent.toString()))
         _featureSettings.value = settings
     }
 
@@ -153,6 +178,17 @@ class SettingsRepository(private val appSettingsDao: AppSettingsDao) {
         appSettingsDao.put(AppSettings(KEY_LLM_MODEL_PATH, settings.selectedModelPath ?: ""))
         _llmSettings.value = settings
         AppLogger.d(TAG, "LLM settings updated: model=${settings.selectedModelType}, backend=${settings.preferredBackend}, path=${settings.selectedModelPath}")
+    }
+
+    /**
+     * NARRATOR-001: Update narrator voice settings.
+     */
+    suspend fun updateNarratorSettings(settings: NarratorSettings) = withContext(Dispatchers.IO) {
+        appSettingsDao.put(AppSettings(KEY_NARRATOR_SPEAKER_ID, settings.speakerId.toString()))
+        appSettingsDao.put(AppSettings(KEY_NARRATOR_SPEED, settings.speed.toString()))
+        appSettingsDao.put(AppSettings(KEY_NARRATOR_ENERGY, settings.energy.toString()))
+        _narratorSettings.value = settings
+        AppLogger.d(TAG, "Narrator settings updated: speaker=${settings.speakerId}, speed=${settings.speed}, energy=${settings.energy}")
     }
 }
 

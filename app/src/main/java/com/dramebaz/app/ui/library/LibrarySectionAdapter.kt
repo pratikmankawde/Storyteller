@@ -80,6 +80,13 @@ class LibrarySectionAdapter(
         }
     }
 
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        super.onViewRecycled(holder)
+        // Clear animations when view is recycled to prevent "Tmp detached view" crashes
+        holder.itemView.clearAnimation()
+        holder.itemView.animate().setListener(null)
+    }
+
     inner class HeaderViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val icon: ImageView = itemView.findViewById(R.id.section_icon)
         private val title: TextView = itemView.findViewById(R.id.section_title)
@@ -113,18 +120,24 @@ class LibrarySectionAdapter(
             val book = item.book
             title.text = book.title
             metadata.text = book.format.uppercase()
-            
+
             bindAnalysisState(book)
-            
+
+	            // COVER-001: Load appropriate book cover (embedded or placeholder)
+	            BookCoverLoader.loadCoverInto(cover, book)
+
             val transitionName = "book_cover_${book.id}"
             ViewCompat.setTransitionName(cover, transitionName)
-            
+
             itemView.setOnClickListener { onBookClick(book, cover) }
             itemView.setOnLongClickListener { onBookLongClick(book) }
-            
-            // Add animation
-            itemView.alpha = 0f
-            itemView.animate().alpha(1f).setDuration(300).setStartDelay(position * 30L).start()
+
+            // Clear any pending animation to avoid RecyclerView recycling issues
+            // Use clearAnimation() instead of animate().cancel() to avoid triggering
+            // onAnimationEnd callbacks that can cause "Tmp detached view" crashes
+            itemView.clearAnimation()
+            itemView.animate().setListener(null)
+            itemView.alpha = 1f
         }
         
         private fun bindAnalysisState(book: Book) {

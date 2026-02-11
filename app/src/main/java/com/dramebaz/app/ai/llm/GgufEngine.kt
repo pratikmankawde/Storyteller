@@ -11,6 +11,8 @@ import com.dramebaz.app.utils.AppLogger
 import com.google.gson.Gson
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -38,6 +40,9 @@ class GgufEngine(private val context: Context, private val externalModelPath: St
     private val gson = Gson()
     private var nativeHandle: Long = 0L
     private var modelLoaded = false
+
+    // Mutex to serialize LLM calls - only one inference at a time
+    private val inferenceMutex = Mutex()
 
     private val maxInputChars = 10000
     private val jsonValidityReminder = "\nEnsure the JSON is valid and contains no trailing commas."
@@ -249,8 +254,9 @@ class GgufEngine(private val context: Context, private val externalModelPath: St
      * - Input sanitization to prevent native crashes
      * - Pre/post inference logging for debugging
      * - Detailed error categorization and logging
+     * - Mutex to ensure only one LLM call is in progress at a time
      */
-    private fun generateResponse(prompt: String, maxTokens: Int, temperature: Float, jsonMode: Boolean = true): String {
+    private suspend fun generateResponse(prompt: String, maxTokens: Int, temperature: Float, jsonMode: Boolean = true): String = inferenceMutex.withLock {
         if (!modelLoaded || nativeHandle == 0L) {
             LlmErrorHandler.logError(
                 category = LlmErrorHandler.ErrorCategory.MODEL_NOT_LOADED,
@@ -258,7 +264,7 @@ class GgufEngine(private val context: Context, private val externalModelPath: St
                 message = "Model not loaded or invalid handle (handle=$nativeHandle, loaded=$modelLoaded)",
                 inputText = prompt
             )
-            return ""
+            return@withLock ""
         }
 
         // Sanitize input to prevent native crashes from malformed text
@@ -270,7 +276,7 @@ class GgufEngine(private val context: Context, private val externalModelPath: St
                 message = "Invalid or empty input after sanitization",
                 inputText = prompt
             )
-            return ""
+            return@withLock ""
         }
 
         val t = if (jsonMode) temperature.coerceIn(0f, 0.2f) else temperature
@@ -288,7 +294,7 @@ class GgufEngine(private val context: Context, private val externalModelPath: St
         )
 
         val startMs = System.currentTimeMillis()
-        return try {
+        return@withLock try {
             val response = LlamaNative.generate(nativeHandle, sanitizedPrompt, maxTokens, t)
             val elapsedMs = System.currentTimeMillis() - startMs
 

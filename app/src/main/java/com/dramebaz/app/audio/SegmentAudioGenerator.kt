@@ -2,10 +2,13 @@ package com.dramebaz.app.audio
 
 import com.dramebaz.app.ai.tts.SherpaTtsEngine
 import com.dramebaz.app.data.audio.PageAudioStorage
+import com.dramebaz.app.data.db.BookDao
 import com.dramebaz.app.data.db.CharacterDao
 import com.dramebaz.app.data.db.CharacterPageMapping
 import com.dramebaz.app.data.db.CharacterPageMappingDao
 import com.dramebaz.app.data.models.Dialog
+import com.dramebaz.app.data.models.NarratorSettings
+import com.dramebaz.app.data.models.VoiceProfile
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,17 +17,19 @@ import java.io.File
 /**
  * AUG-043: Generates audio for individual page segments (dialogs and narration)
  * using character-specific speaker IDs.
+ * NARRATOR-002: Now uses BookDao for per-book narrator voice settings.
  */
 class SegmentAudioGenerator(
     private val ttsEngine: SherpaTtsEngine,
     private val pageAudioStorage: PageAudioStorage,
     private val characterDao: CharacterDao,
-    private val characterPageMappingDao: CharacterPageMappingDao
+    private val characterPageMappingDao: CharacterPageMappingDao,
+    private val bookDao: BookDao
 ) {
     private val tag = "SegmentAudioGenerator"
     private val defaultNarratorSpeakerId = 0  // Fallback speaker for narrator if not in database
 
-    // Cache for narrator's speaker ID from database
+    // Cache for narrator's speaker ID from database (kept for legacy/fallback)
     private var cachedNarratorSpeakerId: Int? = null
 
     /**
@@ -81,8 +86,14 @@ class SegmentAudioGenerator(
                 }
 
                 // Generate audio with character's speaker ID
+                // NARRATOR-002: Use per-book narrator settings for voice profile (speed/energy)
                 val speakerId = segment.speakerId ?: defaultNarratorSpeakerId
-                val result = ttsEngine.speak(segment.text, null, null, speakerId)
+                val voiceProfile = if (segment.characterName == "Narrator") {
+                    getNarratorVoiceProfile(bookId)
+                } else {
+                    null  // TODO: Get character voice profile from database
+                }
+                val result = ttsEngine.speak(segment.text, voiceProfile, null, speakerId)
 
                 result.onSuccess { audioFile ->
                     audioFile?.let { file ->
@@ -297,15 +308,35 @@ class SegmentAudioGenerator(
     }
 
     /**
-     * Get the narrator's speaker ID from database, with caching.
+     * NARRATOR-002: Get the narrator's speaker ID from Book entity (per-book settings).
+     * Falls back to character database (legacy) then default if not found.
      */
     private suspend fun getNarratorSpeakerId(bookId: Long): Int {
+        // First check Book entity (per-book settings)
+        val book = bookDao.getById(bookId)
+        book?.narratorSpeakerId?.let { return it }
+
+        // Fallback to cached value
         cachedNarratorSpeakerId?.let { return it }
 
+        // Fallback to character database (legacy)
         val narrator = characterDao.getByBookIdAndName(bookId, "Narrator")
         val speakerId = narrator?.speakerId ?: defaultNarratorSpeakerId
         cachedNarratorSpeakerId = speakerId
         return speakerId
+    }
+
+    /**
+     * NARRATOR-002: Get the narrator's voice profile from Book entity (per-book settings).
+     * Returns a VoiceProfile with the configured speed and energy (default speed is 0.9 for slower narration).
+     */
+    private suspend fun getNarratorVoiceProfile(bookId: Long): VoiceProfile {
+        val book = bookDao.getById(bookId)
+        return VoiceProfile(
+            speed = book?.narratorSpeed ?: NarratorSettings.DEFAULT_SPEED,
+            energy = book?.narratorEnergy ?: 1.0f,
+            pitch = 1.0f
+        )
     }
 
     /**

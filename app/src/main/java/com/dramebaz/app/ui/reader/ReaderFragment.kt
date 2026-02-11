@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
 import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
+import com.dramebaz.app.domain.usecases.AudioRegenerationManager
 import com.dramebaz.app.domain.usecases.ChapterCharacterExtractionUseCase
 import com.dramebaz.app.domain.usecases.ChapterLookaheadManager
 import com.dramebaz.app.domain.usecases.MergeCharactersUseCase
@@ -125,8 +126,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 // Auto-continue to next page when current page finishes
                 if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex + 1 < novelPages.size) {
                     view?.post {
-                        currentPageIndex = currentPageIndex + 1
-                        viewPager?.setCurrentItem(currentPageIndex, true)
+                        goToPage(currentPageIndex + 1, smooth = true)
                         playCurrentPage()
                     }
                 } else {
@@ -182,6 +182,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     private var isPdfBook = false
     private var pdfFilePath: String? = null
 
+    // Page curl view for PDF books (curl-style page flip animation)
+    private var pageCurlView: com.dramebaz.app.ui.widget.PageCurlView? = null
+    private var isUsingPageCurlForPdf = false
+
     // Pre-generated audio for pages (page index -> audio file)
     private val preGeneratedAudio = mutableMapOf<Int, java.io.File>()
     private var currentPageIndex = 0
@@ -202,6 +206,23 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
     // VOICE-002: Voice consistency checker
     private var voiceConsistencyChecker: VoiceConsistencyChecker? = null
+
+    // Audio generation progress UI elements
+    private var audioGenBanner: View? = null
+    private var audioGenText: TextView? = null
+    private var audioGenProgress: android.widget.ProgressBar? = null
+
+    // Reading progress UI element
+    private var readingProgressBar: android.widget.ProgressBar? = null
+
+    // Track audio generation state
+    private var isGeneratingAudio = false
+    private var generatingPageIndex = -1
+    private var generatingSegmentCount = 0
+    private var generatedSegmentCount = 0
+
+    // Track lookahead analysis state (for showing loading banner)
+    private var isAnalyzingNextChapter = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -273,36 +294,15 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
         // Initialize novel page view
         viewPager = view.findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.viewpager_novel)
+        pageCurlView = view.findViewById(R.id.page_curl_view)
         val highlightColor = ContextCompat.getColor(requireContext(), android.R.color.holo_blue_light).let { c ->
             android.graphics.Color.argb(100, android.graphics.Color.red(c), android.graphics.Color.green(c), android.graphics.Color.blue(c))
         }
 
         novelPageAdapter = NovelPageAdapter(highlightColor, viewLifecycleOwner.lifecycleScope) { pageIndex ->
-            // Page changed callback
-            AppLogger.d(tag, "Page changed to: $pageIndex")
-            currentPageIndex = pageIndex
-            updateFabPlayCurrentPageVisibility()
-
-            // Pre-generate audio for the next page in background while user is reading this page
-            if (pageIndex + 1 < novelPages.size && !preGeneratedAudio.containsKey(pageIndex + 1)) {
-                preGenerateAudioForPages(pageIndex + 1, 1)
-            }
-
-            // AUG-037: Pre-analyze next chapter when user reaches 80% of current chapter
-            if (novelPages.isNotEmpty()) {
-                val progressPercent = (pageIndex + 1).toFloat() / novelPages.size * 100
-                if (progressPercent >= 80) {
-                    triggerNextChapterPreAnalysis()
-                }
-            }
-
-            // LIBRARY-001: Update reading progress as user reads through pages
-            if (novelPages.isNotEmpty()) {
-                val chapterProgress = (pageIndex + 1).toFloat() / novelPages.size
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    updateBookReadingProgress(chapterProgress)
-                }
-            }
+            // Page changed callback from NovelPageAdapter (e.g., from highlighting navigation)
+            AppLogger.d(tag, "NovelPageAdapter page changed to: $pageIndex")
+            handleReaderPageChanged(pageIndex)
         }
 
         viewPager?.adapter = novelPageAdapter
@@ -313,6 +313,15 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         viewPager?.clipToPadding = false
         viewPager?.clipChildren = false
 
+        // Register page change callback to update reading progress when user swipes pages
+        viewPager?.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                AppLogger.d(tag, "ViewPager page selected: $position")
+                handleReaderPageChanged(position)
+            }
+        })
+
         // SETTINGS-002: Observe reading settings and apply to adapter
         viewLifecycleOwner.lifecycleScope.launch {
             app.settingsRepository.readingSettings.collectLatest { settings ->
@@ -321,8 +330,23 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             }
         }
 
+        // BOLD-001: Load and observe character names for bolding on reading pages
+        viewLifecycleOwner.lifecycleScope.launch {
+            app.db.characterDao().getByBookId(bookId).collectLatest { characters ->
+                val characterNames = characters.map { it.name }
+                AppLogger.d(tag, "BOLD-001: Loaded ${characterNames.size} character names for bolding")
+                novelPageAdapter?.setCharacterNames(characterNames)
+            }
+        }
+
         // AUG-041: Setup degraded mode banner
         setupDegradedModeBanner(view)
+
+        // Setup audio generation progress banner
+        setupAudioGenBanner(view)
+
+        // Setup reading progress bar
+        setupReadingProgressBar(view)
 
         val body = view.findViewById<TextView>(R.id.body) // May be null in novel view
         val recapCard = view.findViewById<MaterialCardView>(R.id.recap_card) // May be null in novel view
@@ -384,21 +408,25 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             bookRepository = app.bookRepository
         )
 
-        // READ-003: Observe lookahead state for subtle UI indicator
+        // READ-003: Observe lookahead state for loading indicator
         viewLifecycleOwner.lifecycleScope.launch {
             chapterLookaheadManager?.lookaheadState?.collectLatest { state ->
                 when (state) {
                     is ChapterLookaheadManager.LookaheadState.Analyzing -> {
                         AppLogger.d(tag, "Lookahead analyzing: ${state.chapterTitle}")
-                        // Could show a subtle indicator here (optional)
+                        showLookaheadProgress(state.chapterTitle)
                     }
                     is ChapterLookaheadManager.LookaheadState.Complete -> {
                         AppLogger.i(tag, "Lookahead complete: ${state.chapterTitle}")
+                        hideLookaheadProgress()
                     }
                     is ChapterLookaheadManager.LookaheadState.Failed -> {
                         AppLogger.w(tag, "Lookahead failed: ${state.error}")
+                        hideLookaheadProgress()
                     }
-                    ChapterLookaheadManager.LookaheadState.Idle -> {}
+                    ChapterLookaheadManager.LookaheadState.Idle -> {
+                        hideLookaheadProgress()
+                    }
                 }
             }
         }
@@ -411,6 +439,9 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
         // UI-003: Set up character avatar observer
         setupCharacterAvatarObserver()
+
+        // AUDIO-REGEN-001: Set up callback for audio regeneration completion
+        setupAudioRegenerationCallback()
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             // READ-001: Load saved reading mode preference first
@@ -602,8 +633,15 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         if (novelPages.size > 1) {
                             AppLogger.d(tag, "Second page: ${novelPages[1].lines.size} lines, ${novelPages[1].text.length} chars")
                         }
+                        // Initialize reading progress bar at page 0
+                        updateReadingProgressUI(0, novelPages.size)
                     }
-                    Toast.makeText(requireContext(), "Chapter loaded: ${novelPages.size} pages. Swipe to turn pages.", Toast.LENGTH_SHORT).show()
+
+                    // Setup PageCurlView for PDF books with curl-style page flipping
+                    setupPageCurlIfNeeded()
+
+                    val viewMode = if (isUsingPageCurlForPdf) "curl animation" else "3D page turn"
+                    Toast.makeText(requireContext(), "Chapter loaded: ${novelPages.size} pages ($viewMode). Swipe to turn pages.", Toast.LENGTH_SHORT).show()
 
                     // Load any saved page audio first, THEN pre-generate missing pages
                     // Use a sequential coroutine to avoid race condition
@@ -865,6 +903,29 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         // Get character voice profiles and speaker IDs from database
         val characterMap = mutableMapOf<String, VoiceProfile?>()
         val speakerIdMap = mutableMapOf<String, Int?>()  // T11.1: Map character name to speaker ID
+
+        val bookId = arguments?.getLong("bookId") ?: return@withContext
+
+        // NARRATOR-FIX: Load narrator speaker ID and voice profile from Book entity (per-book settings)
+        val book = app.db.bookDao().getById(bookId)
+        val narratorSpeakerId = book?.narratorSpeakerId
+        val narratorVoiceProfile = VoiceProfile(
+            speed = book?.narratorSpeed ?: com.dramebaz.app.data.models.NarratorSettings.DEFAULT_SPEED,
+            energy = book?.narratorEnergy ?: 1.0f,
+            pitch = 1.0f
+        )
+        speakerIdMap["Narrator"] = narratorSpeakerId
+        characterMap["Narrator"] = narratorVoiceProfile
+        AppLogger.d(tag, "Loaded narrator settings: speakerId=$narratorSpeakerId, speed=${narratorVoiceProfile.speed}, energy=${narratorVoiceProfile.energy}")
+
+        // SPEAKER-FIX: Load ALL character speaker IDs from database first (not just those with voice profiles)
+        val dbCharacters = app.db.characterDao().getByBookId(bookId).first()
+        dbCharacters.forEach { dbChar ->
+            speakerIdMap[dbChar.name] = dbChar.speakerId
+            AppLogger.d(tag, "Loaded speakerId ${dbChar.speakerId} for character '${dbChar.name}' from database")
+        }
+
+        // Parse voice profiles from analysis (for characters that have them)
         analysis.characters?.forEach { charStub ->
             charStub.voiceProfile?.let { vpMap ->
                 try {
@@ -880,21 +941,13 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         emotionBias = emotionBiasMap
                     )
                     characterMap[charStub.name] = vp
-
-                    // T11.1: Load speaker ID from database for this character
-                    val bookId = arguments?.getLong("bookId") ?: return@withContext
-                    val dbCharacters = app.db.characterDao().getByBookId(bookId)
-                    // Use first() to get the current value from Flow
-                    val foundCharacter = dbCharacters.first().firstOrNull { it.name == charStub.name }
-                    speakerIdMap[charStub.name] = foundCharacter?.speakerId
-
-                    AppLogger.d(tag, "Parsed voice profile for character: ${charStub.name}, pitch=${vp.pitch}, speed=${vp.speed}, speakerId=${foundCharacter?.speakerId}")
+                    AppLogger.d(tag, "Parsed voice profile for character: ${charStub.name}, pitch=${vp.pitch}, speed=${vp.speed}, speakerId=${speakerIdMap[charStub.name]}")
                 } catch (e: Exception) {
                     AppLogger.w(tag, "Failed to parse voice profile for ${charStub.name}", e)
                 }
             }
         }
-        AppLogger.d(tag, "Loaded ${characterMap.size} character voice profiles")
+        AppLogger.d(tag, "Loaded ${characterMap.size} character voice profiles, ${speakerIdMap.size} speaker IDs")
 
         // Split chapter text into narration and dialog segments
         val paragraphs = chapterText.split("\n\n", "\n").filter { it.isNotBlank() }
@@ -1035,10 +1088,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 novelPageAdapter?.highlightLine(targetPageIndex, targetLineIndex)
 
                 // Scroll to the page if needed (with smooth animation)
-                viewPager?.let { pager ->
-                    if (pager.currentItem != targetPageIndex) {
-                        pager.setCurrentItem(targetPageIndex, true)
-                    }
+                if (currentPageIndex != targetPageIndex) {
+                    goToPage(targetPageIndex, smooth = true)
                 }
             }
         }
@@ -1122,6 +1173,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 val relativeSegmentStart = (segmentRange.start - pageStartOffset).coerceAtLeast(0)
                 val relativeSegmentEnd = (segmentRange.end - pageStartOffset).coerceAtMost(page.text.length)
 
+                AppLogger.d(tag, "UI-001: Karaoke page=$pageIndex, segment=[${segmentRange.start},${segmentRange.end}], " +
+                        "pageOffset=$pageStartOffset, relative=[$relativeSegmentStart,$relativeSegmentEnd], " +
+                        "word=${currentWord?.word}[${currentWord?.startIndex},${currentWord?.endIndex}]")
+
                 val pageSegmentRange = KaraokeHighlighter.TextRange(
                     start = relativeSegmentStart,
                     end = relativeSegmentEnd,
@@ -1153,10 +1208,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 )
 
                 // Ensure the page is visible
-                viewPager?.let { pager ->
-                    if (pager.currentItem != pageIndex) {
-                        pager.setCurrentItem(pageIndex, true)
-                    }
+                if (currentPageIndex != pageIndex) {
+                    goToPage(pageIndex, smooth = true)
                 }
 
                 break
@@ -1215,6 +1268,47 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         }
 
         AppLogger.d(tag, "UI-003: Character avatar observer set up")
+    }
+
+    /**
+     * AUDIO-REGEN-001: Set up callback for audio regeneration completion.
+     * When a character's voice is changed and audio is regenerated, this refreshes the audio cache.
+     */
+    private fun setupAudioRegenerationCallback() {
+        AudioRegenerationManager.onAudioRegenerated = { regenBookId, regenChapterId, regenPageNumber, characterName ->
+            // Check if the regenerated audio is for the current book/chapter/page
+            if (regenBookId == bookId && regenChapterId == loadedChapterId) {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                    if (!isAdded) return@launch
+
+                    // Clear cached audio for the regenerated page so it's reloaded
+                    val pageIndex = regenPageNumber - 1 // Convert 1-based to 0-based
+                    preGeneratedAudio.remove(pageIndex)
+                    AppLogger.i(tag, "AUDIO-REGEN-001: Audio regenerated for $characterName on page $regenPageNumber, cleared cache")
+
+                    // If this is the current page, show a toast and potentially reload
+                    if (pageIndex == currentPageIndex) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Voice updated for $characterName",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        // Reload the audio file for the current page
+                        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                            val savedAudio = app.pageAudioStorage.getAudioFile(bookId, loadedChapterId, pageIndex)
+                            if (savedAudio != null) {
+                                withContext(Dispatchers.Main) {
+                                    preGeneratedAudio[pageIndex] = savedAudio
+                                    AppLogger.i(tag, "AUDIO-REGEN-001: Reloaded audio for page $regenPageNumber")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        AppLogger.d(tag, "AUDIO-REGEN-001: Audio regeneration callback set up")
     }
 
     private fun showPlayerBottomSheet() {
@@ -1534,13 +1628,22 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
                     AppLogger.d(tag, "Pre-generating audio for page $i: analysis=${chapterAnalysis != null}, totalDialogs=${allDialogs?.size ?: 0}, matchedDialogs=${dialogs.size}, pageChars=${pageText.length}")
 
+                    // Estimate segment count (dialogs + 1 for narration, minimum 1)
+                    val estimatedSegments = maxOf(1, dialogs.size + 1)
+                    showAudioGenProgress(i, estimatedSegments)
+
                     val segmentFiles = app.segmentAudioGenerator.generatePageAudio(
                         bookId = bookId,
                         chapterId = chapterId,
                         pageNumber = pageNumber,
                         pageText = pageText,
-                        dialogs = dialogs
+                        dialogs = dialogs,
+                        onSegmentGenerated = { current, total ->
+                            updateAudioGenProgress(current, total)
+                        }
                     )
+
+                    hideAudioGenProgress()
 
                     if (segmentFiles.isNotEmpty()) {
                         // Stitch segments into a single page audio file
@@ -1570,6 +1673,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 }
             } catch (e: Exception) {
                 AppLogger.e(tag, "Error in preGenerateAudioForPages", e)
+                hideAudioGenProgress()
             }
         }
     }
@@ -1607,13 +1711,22 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
                 AppLogger.d(tag, "Pre-generating audio for page $i: analysis=${chapterAnalysis != null}, totalDialogs=${allDialogs?.size ?: 0}, matchedDialogs=${dialogs.size}, pageChars=${pageText.length}")
 
+                // Estimate segment count (dialogs + 1 for narration, minimum 1)
+                val estimatedSegments = maxOf(1, dialogs.size + 1)
+                showAudioGenProgress(i, estimatedSegments)
+
                 val segmentFiles = app.segmentAudioGenerator.generatePageAudio(
                     bookId = bookId,
                     chapterId = chapterId,
                     pageNumber = pageNumber,
                     pageText = pageText,
-                    dialogs = dialogs
+                    dialogs = dialogs,
+                    onSegmentGenerated = { current, total ->
+                        updateAudioGenProgress(current, total)
+                    }
                 )
+
+                hideAudioGenProgress()
 
                 if (segmentFiles.isNotEmpty()) {
                     // Stitch segments into a single page audio file
@@ -1643,6 +1756,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             }
         } catch (e: Exception) {
             AppLogger.e(tag, "Error in preGenerateAudioForPagesSync", e)
+            hideAudioGenProgress()
         }
     }
 
@@ -1685,8 +1799,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             return
         }
 
-        val pageIndex = viewPager?.currentItem ?: 0
-        currentPageIndex = pageIndex
+        // Use currentPageIndex which is maintained by handleReaderPageChanged
+        val pageIndex = currentPageIndex.coerceIn(0, maxOf(0, novelPages.size - 1))
 
         // READ-002: Notify buffer manager that playback is starting
         if (novelPages.isNotEmpty()) {
@@ -1807,6 +1921,11 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         pdfPageRenderer = null
         novelPageAdapter = null
 
+        // Clean up PageCurlView
+        pageCurlView?.listener = null
+        pageCurlView = null
+        isUsingPageCurlForPdf = false
+
         playbackEngine?.cleanup()
         audioMixer?.cleanup()
         playbackEngine = null
@@ -1887,6 +2006,237 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
         // Initial check
         updateBanner()
+    }
+
+    /**
+     * Setup audio generation progress banner.
+     */
+    private fun setupAudioGenBanner(view: View) {
+        audioGenBanner = view.findViewById(R.id.audio_gen_banner)
+        audioGenText = view.findViewById(R.id.audio_gen_text)
+        audioGenProgress = view.findViewById(R.id.audio_gen_progress)
+        AppLogger.d(tag, "Audio gen banner setup: banner=${audioGenBanner != null}, text=${audioGenText != null}, progress=${audioGenProgress != null}")
+    }
+
+    /**
+     * Setup reading progress bar and make it visible.
+     */
+    private fun setupReadingProgressBar(view: View) {
+        readingProgressBar = view.findViewById(R.id.reading_progress)
+        readingProgressBar?.visibility = View.VISIBLE
+        readingProgressBar?.max = 100
+        readingProgressBar?.progress = 0
+        AppLogger.d(tag, "Reading progress bar initialized")
+    }
+
+    /**
+     * Update reading progress bar UI based on current page position.
+     * @param currentPage 0-based current page index
+     * @param totalPages total number of pages
+     */
+    private fun updateReadingProgressUI(currentPage: Int, totalPages: Int) {
+        if (totalPages <= 0) return
+        val progressPercent = ((currentPage + 1).toFloat() / totalPages * 100).toInt()
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            if (!isAdded) return@launch
+            readingProgressBar?.progress = progressPercent
+        }
+    }
+
+    /**
+     * Centralized page-change handler - called when page changes via any mechanism
+     * (ViewPager2 swipe, PageCurlView curl, or programmatic navigation).
+     */
+    private fun handleReaderPageChanged(pageIndex: Int) {
+        currentPageIndex = pageIndex
+        updateFabPlayCurrentPageVisibility()
+
+        // Pre-generate audio for the next page in background while user is reading this page
+        if (pageIndex + 1 < novelPages.size && !preGeneratedAudio.containsKey(pageIndex + 1)) {
+            preGenerateAudioForPages(pageIndex + 1, 1)
+        }
+
+        // AUG-037: Pre-analyze next chapter when user reaches 50% of current chapter
+        if (novelPages.isNotEmpty()) {
+            val progressPercent = (pageIndex + 1).toFloat() / novelPages.size * 100
+            if (progressPercent >= 50) {
+                triggerNextChapterPreAnalysis()
+            }
+        }
+
+        // LIBRARY-001: Update reading progress as user reads through pages
+        if (novelPages.isNotEmpty()) {
+            val chapterProgress = (pageIndex + 1).toFloat() / novelPages.size
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                updateBookReadingProgress(chapterProgress)
+            }
+            // Update visual reading progress bar
+            updateReadingProgressUI(pageIndex, novelPages.size)
+        }
+
+        // AUDIO-REGEN-001: Save last page index for targeted audio regeneration
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            app.db.readingSessionDao().updateLastPageIndex(pageIndex + 1) // 1-based page number
+        }
+    }
+
+    /**
+     * Navigate to a specific page using the appropriate view (ViewPager2 or PageCurlView).
+     * @param targetPageIndex the 0-based page index to navigate to
+     * @param smooth whether to animate the transition (only applies to ViewPager2)
+     */
+    private fun goToPage(targetPageIndex: Int, smooth: Boolean = true) {
+        val clampedIndex = targetPageIndex.coerceIn(0, maxOf(0, novelPages.size - 1))
+        if (isUsingPageCurlForPdf) {
+            pageCurlView?.setCurrentPage(clampedIndex)
+            // PageCurlView.setCurrentPage doesn't fire onPageChanged, so we call it manually
+            handleReaderPageChanged(clampedIndex)
+        } else {
+            viewPager?.setCurrentItem(clampedIndex, smooth)
+            // OnPageChangeCallback will call handleReaderPageChanged
+        }
+    }
+
+    /**
+     * Determine whether to use PageCurlView for the current book.
+     * Returns true if this is a PDF book with a valid renderer and all pages are PDF-backed.
+     */
+    private fun shouldUsePageCurlForPdf(): Boolean {
+        return isPdfBook &&
+                pdfPageRenderer != null &&
+                novelPages.isNotEmpty() &&
+                novelPages.all { it.usePdfRendering && it.getPdfPageIndex() != null }
+    }
+
+    /**
+     * Setup PageCurlView for PDF books if conditions are met.
+     * Configures the listener and switches visibility from ViewPager2 to PageCurlView.
+     */
+    private fun setupPageCurlIfNeeded() {
+        if (!shouldUsePageCurlForPdf()) {
+            // Use ViewPager2 (default)
+            isUsingPageCurlForPdf = false
+            viewPager?.visibility = View.VISIBLE
+            pageCurlView?.visibility = View.GONE
+            return
+        }
+
+        val renderer = pdfPageRenderer ?: return
+        val curl = pageCurlView ?: return
+
+        isUsingPageCurlForPdf = true
+        viewPager?.visibility = View.GONE
+        curl.visibility = View.VISIBLE
+
+        curl.listener = object : com.dramebaz.app.ui.widget.PageCurlView.PageCurlListener {
+            override fun onPageChanged(newPageIndex: Int) {
+                handleReaderPageChanged(newPageIndex)
+            }
+
+            override fun getPageCount(): Int = novelPages.size
+
+            override fun getPageBitmap(pageIndex: Int, width: Int, height: Int, callback: (android.graphics.Bitmap?) -> Unit) {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    // Map novel page index to PDF page index
+                    val pdfPageIndex = novelPages.getOrNull(pageIndex)?.getPdfPageIndex()
+                    val bitmap = if (pdfPageIndex != null) {
+                        renderer.renderPage(pdfPageIndex, width)
+                    } else {
+                        null
+                    }
+                    withContext(Dispatchers.Main) {
+                        callback(bitmap)
+                    }
+                }
+            }
+        }
+
+        // Set initial page
+        curl.setCurrentPage(currentPageIndex.coerceIn(0, maxOf(0, novelPages.size - 1)))
+        AppLogger.i(tag, "PageCurlView enabled for PDF book with ${novelPages.size} pages")
+    }
+
+    /**
+     * Show audio generation progress banner with toast notification.
+     */
+    private fun showAudioGenProgress(pageIndex: Int, totalSegments: Int) {
+        isGeneratingAudio = true
+        generatingPageIndex = pageIndex
+        generatingSegmentCount = totalSegments
+        generatedSegmentCount = 0
+
+        AppLogger.d(tag, "showAudioGenProgress: page=$pageIndex, segments=$totalSegments, bannerNull=${audioGenBanner == null}")
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            if (!isAdded) return@launch
+            Toast.makeText(requireContext(), "Generating audio for page ${pageIndex + 1}...", Toast.LENGTH_SHORT).show()
+            audioGenBanner?.visibility = View.VISIBLE
+            audioGenText?.text = "Generating audio for page ${pageIndex + 1}... (0/$totalSegments)"
+            audioGenProgress?.max = totalSegments
+            audioGenProgress?.progress = 0
+            AppLogger.d(tag, "Audio gen banner visibility set to VISIBLE")
+        }
+    }
+
+    /**
+     * Update audio generation progress.
+     */
+    private fun updateAudioGenProgress(current: Int, total: Int) {
+        generatedSegmentCount = current
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            if (!isAdded) return@launch
+            val pageDisplay = generatingPageIndex + 1
+            audioGenText?.text = "Generating audio for page $pageDisplay... ($current/$total)"
+            audioGenProgress?.progress = current
+        }
+    }
+
+    /**
+     * Hide audio generation progress banner.
+     */
+    private fun hideAudioGenProgress() {
+        isGeneratingAudio = false
+        generatingPageIndex = -1
+        generatingSegmentCount = 0
+        generatedSegmentCount = 0
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            if (!isAdded) return@launch
+            // Only hide if not showing lookahead progress
+            if (!isAnalyzingNextChapter) {
+                audioGenBanner?.visibility = View.GONE
+            }
+        }
+    }
+
+    /**
+     * Show lookahead analysis progress banner when analyzing next chapter.
+     */
+    private fun showLookaheadProgress(chapterTitle: String) {
+        isAnalyzingNextChapter = true
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            if (!isAdded) return@launch
+            // Don't override if audio is currently generating
+            if (isGeneratingAudio) return@launch
+            audioGenBanner?.visibility = View.VISIBLE
+            audioGenText?.text = "Preparing next chapter: $chapterTitle..."
+            audioGenProgress?.isIndeterminate = true
+        }
+    }
+
+    /**
+     * Hide lookahead analysis progress banner.
+     */
+    private fun hideLookaheadProgress() {
+        isAnalyzingNextChapter = false
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            if (!isAdded) return@launch
+            // Only hide if audio is not generating
+            if (!isGeneratingAudio) {
+                audioGenBanner?.visibility = View.GONE
+            }
+            audioGenProgress?.isIndeterminate = false
+        }
     }
 
     // ============== READ-001: Reading Mode Toggle Methods ==============

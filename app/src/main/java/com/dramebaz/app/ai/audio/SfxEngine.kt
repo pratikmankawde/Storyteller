@@ -8,12 +8,19 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Real SFX engine implementation with tag-based sound effect library.
- * Maps sound prompts to bundled sound files based on keywords and categories.
+ * SFX engine implementation with AI-powered generation and tag-based fallback.
+ *
+ * Primary: Uses StableAudioEngine (Stable Audio Open Small) for AI-generated SFX
+ * Fallback: Maps sound prompts to bundled sound files based on keywords and categories.
+ *
  * T3.2: SFX generation/selection - resolves sound_cue to file_path.
  */
 class SfxEngine(private val context: Context) {
     private val tag = "SfxEngine"
+
+    // AI-powered SFX generator (optional - enabled when models are available)
+    private var stableAudioEngine: StableAudioEngine? = null
+    private var aiGenerationEnabled = false
 
     // SFX library mapping: keyword/category -> asset path
     private val sfxLibrary = mapOf(
@@ -89,8 +96,48 @@ class SfxEngine(private val context: Context) {
     )
 
     /**
+     * Initialize AI-powered SFX generation with Stable Audio Open Small models.
+     * @param modelDirectory Directory containing the TFLite model files
+     * @param useGpu Whether to use GPU acceleration if available (default: false - CPU is faster for init)
+     * @return true if AI generation was successfully initialized
+     */
+    suspend fun initializeAiGeneration(modelDirectory: String, useGpu: Boolean = false): Boolean {
+        return try {
+            val engine = StableAudioEngine(context)
+            val success = engine.initialize(modelDirectory, useGpu = useGpu)
+            if (success) {
+                stableAudioEngine = engine
+                aiGenerationEnabled = true
+                val accelerator = if (useGpu) "GPU delegate" else "CPU"
+                AppLogger.i(tag, "✅ AI SFX generation enabled with Stable Audio ($accelerator)")
+            } else {
+                AppLogger.w(tag, "Failed to initialize AI SFX generation, using fallback only")
+            }
+            success
+        } catch (e: Exception) {
+            AppLogger.e(tag, "Error initializing AI SFX generation", e)
+            false
+        }
+    }
+
+    /**
+     * Check if AI-powered generation is available.
+     */
+    fun isAiGenerationEnabled(): Boolean = aiGenerationEnabled && stableAudioEngine?.isReady() == true
+
+    /**
+     * Release AI engine resources.
+     */
+    fun release() {
+        stableAudioEngine?.release()
+        stableAudioEngine = null
+        aiGenerationEnabled = false
+    }
+
+    /**
      * Resolve sound prompt to a sound file.
-     * Uses keyword matching and category-based selection.
+     * Primary: Uses AI generation if enabled
+     * Fallback: Uses keyword matching and category-based selection from bundled assets.
      */
     suspend fun resolveToFile(
         soundPrompt: String,
@@ -100,43 +147,72 @@ class SfxEngine(private val context: Context) {
         try {
             AppLogger.d(tag, "Resolving SFX: prompt='$soundPrompt', category='$category', duration=${durationSeconds}s")
 
-            // Normalize prompt for matching
-            val normalizedPrompt = soundPrompt.lowercase().trim()
-
-            // Try direct keyword match first
-            val matchedKeyword = sfxLibrary.keys.firstOrNull { keyword ->
-                normalizedPrompt.contains(keyword, ignoreCase = true)
+            // Try AI generation first if enabled
+            if (isAiGenerationEnabled()) {
+                val aiGeneratedFile = generateWithAi(soundPrompt, durationSeconds)
+                if (aiGeneratedFile != null) {
+                    AppLogger.i(tag, "✅ AI-generated SFX: '$soundPrompt' -> ${aiGeneratedFile.name}")
+                    return@withContext aiGeneratedFile
+                }
+                AppLogger.w(tag, "AI generation failed, falling back to bundled assets")
             }
 
-            // If no direct match, try category-based selection
-            val keyword = matchedKeyword ?: run {
-                val categoryKeywords = categoryMappings[category.lowercase()] ?: emptyList()
-                categoryKeywords.firstOrNull { normalizedPrompt.contains(it, ignoreCase = true) }
-                    ?: categoryKeywords.firstOrNull()
-            }
-
-            if (keyword == null) {
-                AppLogger.w(tag, "No matching SFX found for prompt: '$soundPrompt', category: '$category'")
-                return@withContext null
-            }
-
-            val assetPath = sfxLibrary[keyword]
-            if (assetPath == null) {
-                AppLogger.w(tag, "No asset path found for keyword: '$keyword'")
-                return@withContext null
-            }
-
-            // Copy asset to cache directory for playback
-            val cachedFile = copyAssetToCache(assetPath, keyword)
-            if (cachedFile != null && cachedFile.exists()) {
-                AppLogger.d(tag, "Resolved SFX: '$soundPrompt' -> ${cachedFile.name}")
-                cachedFile
-            } else {
-                AppLogger.w(tag, "Failed to copy SFX asset: $assetPath")
-                null
-            }
+            // Fallback to bundled assets
+            resolveToBundledAsset(soundPrompt, category)
         } catch (e: Exception) {
             AppLogger.e(tag, "Error resolving SFX file", e)
+            null
+        }
+    }
+
+    /**
+     * Generate SFX using AI (Stable Audio Open Small).
+     */
+    private suspend fun generateWithAi(prompt: String, durationSeconds: Float): File? {
+        return try {
+            stableAudioEngine?.generateAudio(prompt, durationSeconds)
+        } catch (e: Exception) {
+            AppLogger.e(tag, "AI SFX generation error", e)
+            null
+        }
+    }
+
+    /**
+     * Resolve sound prompt to bundled asset file.
+     */
+    private fun resolveToBundledAsset(soundPrompt: String, category: String): File? {
+        val normalizedPrompt = soundPrompt.lowercase().trim()
+
+        // Try direct keyword match first
+        val matchedKeyword = sfxLibrary.keys.firstOrNull { keyword ->
+            normalizedPrompt.contains(keyword, ignoreCase = true)
+        }
+
+        // If no direct match, try category-based selection
+        val keyword = matchedKeyword ?: run {
+            val categoryKeywords = categoryMappings[category.lowercase()] ?: emptyList()
+            categoryKeywords.firstOrNull { normalizedPrompt.contains(it, ignoreCase = true) }
+                ?: categoryKeywords.firstOrNull()
+        }
+
+        if (keyword == null) {
+            AppLogger.w(tag, "No matching SFX found for prompt: '$soundPrompt', category: '$category'")
+            return null
+        }
+
+        val assetPath = sfxLibrary[keyword]
+        if (assetPath == null) {
+            AppLogger.w(tag, "No asset path found for keyword: '$keyword'")
+            return null
+        }
+
+        // Copy asset to cache directory for playback
+        val cachedFile = copyAssetToCache(assetPath, keyword)
+        return if (cachedFile != null && cachedFile.exists()) {
+            AppLogger.d(tag, "Resolved SFX: '$soundPrompt' -> ${cachedFile.name}")
+            cachedFile
+        } else {
+            AppLogger.w(tag, "Failed to copy SFX asset: $assetPath")
             null
         }
     }

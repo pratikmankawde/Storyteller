@@ -5,6 +5,8 @@ import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import com.dramebaz.app.utils.AppLogger
+import com.dramebaz.app.playback.engine.CharacterColorPalette
+import com.dramebaz.app.playback.engine.ColoredUnderlineSpanCompat
 
 /**
  * T6.3: Text-audio synchronization - maps text spans to audio segments.
@@ -153,6 +155,7 @@ object TextAudioSync {
 
     /**
      * Highlight the current segment in the text.
+     * Uses underline with character-specific colors instead of background highlight.
      */
     fun highlightCurrentSegment(
         text: String,
@@ -166,8 +169,12 @@ object TextAudioSync {
 
         currentSegment?.let { segment ->
             if (segment.startIndex < text.length && segment.endIndex <= text.length) {
+                // Get the underline color for the current speaker
+                val underlineColor = CharacterColorPalette.getColorForCharacter(segment.speaker)
+
+                // Use colored underline instead of background highlight
                 spannable.setSpan(
-                    BackgroundColorSpan(highlightColor),
+                    ColoredUnderlineSpanCompat(underlineColor, 4f),
                     segment.startIndex,
                     segment.endIndex,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE

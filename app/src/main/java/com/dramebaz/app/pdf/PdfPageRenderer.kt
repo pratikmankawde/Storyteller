@@ -10,7 +10,6 @@ import android.util.LruCache
 import com.dramebaz.app.utils.AppLogger
 import java.io.File
 import java.io.IOException
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 
 /**
@@ -49,8 +48,8 @@ class PdfPageRenderer(private val context: Context) {
         }
     }
 
-    // Per-page locks to allow concurrent rendering of different pages
-    private val pageLocks = ConcurrentHashMap<Int, ReentrantLock>()
+    // Single lock for all page rendering - PdfRenderer only allows one page open at a time
+    private val renderLock = ReentrantLock()
 
     /**
      * Open a PDF file for rendering.
@@ -136,9 +135,9 @@ class PdfPageRenderer(private val context: Context) {
             }
         }
 
-        // Acquire per-page lock to allow concurrent rendering of different pages
-        val pageLock = pageLocks.computeIfAbsent(pageIndex) { ReentrantLock() }
-        pageLock.lock()
+        // PdfRenderer only allows one page to be open at a time, so we need a single lock
+        // for the entire render operation (openPage -> render -> close)
+        renderLock.lock()
         try {
             // Double-check cache after acquiring lock (another thread may have rendered)
             if (useCache) {
@@ -150,18 +149,22 @@ class PdfPageRenderer(private val context: Context) {
                 }
             }
 
-            // PdfRenderer.openPage requires synchronization on the renderer itself
-            val page = synchronized(renderer) {
-                renderer.openPage(pageIndex)
+            // Re-check renderer is still valid after acquiring lock
+            val currentRenderer = pdfRenderer
+            if (currentRenderer == null) {
+                AppLogger.e(tag, "PdfRenderer was closed while waiting for lock")
+                return null
             }
+
+            val page = currentRenderer.openPage(pageIndex)
 
             // Calculate dimensions preserving aspect ratio
             val aspectRatio = page.width.toFloat() / page.height.toFloat()
             val targetHeight = (targetWidth / aspectRatio).toInt()
 
-            // Create bitmap with RGB_565 for 50% less memory (2 bytes vs 4 bytes per pixel)
-            // RGB_565 is sufficient for PDF pages which are typically text/graphics on white
-            val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.RGB_565)
+            // Create bitmap with ARGB_8888 - required by PdfRenderer.Page.render()
+            // RGB_565 is not supported on all devices for PDF rendering
+            val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
 
             // Fill with white background (PDF pages are typically white)
             val canvas = Canvas(bitmap)
@@ -182,13 +185,13 @@ class PdfPageRenderer(private val context: Context) {
                 bitmapCache.put(cacheKey, bitmap)
             }
 
-            AppLogger.d(tag, "Rendered page $pageIndex: ${targetWidth}x$targetHeight (RGB_565)")
+            AppLogger.d(tag, "Rendered page $pageIndex: ${targetWidth}x$targetHeight (ARGB_8888)")
             return bitmap
         } catch (e: Exception) {
             AppLogger.e(tag, "Failed to render page $pageIndex: ${e.message}", e)
             return null
         } finally {
-            pageLock.unlock()
+            renderLock.unlock()
         }
     }
 

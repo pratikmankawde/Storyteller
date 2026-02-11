@@ -199,15 +199,13 @@ class InsightsFragment : Fragment() {
             val characterList = app.db.characterDao().getByBookId(bookId).first()
             val chapters = chapterList.size
             val characters = characterList.size
-            // Estimate dialogs from chapter analysis
+            // Estimate dialogs from chapter analysis using ChapterAnalysisResponse
             var dialogCount = 0
             chapterList.forEach { chapter ->
                 chapter.fullAnalysisJson?.let { json ->
                     try {
-                        @Suppress("UNCHECKED_CAST")
-                        val analysis = gson.fromJson(json, Map::class.java) as? Map<String, Any>
-                        val dialogs = analysis?.get("dialogs") as? List<*>
-                        dialogCount += dialogs?.size ?: 0
+                        val analysis = gson.fromJson(json, com.dramebaz.app.ai.llm.ChapterAnalysisResponse::class.java)
+                        dialogCount += analysis?.dialogs?.size ?: 0
                     } catch (e: Exception) { }
                 }
             }

@@ -61,4 +61,21 @@ interface BookDao {
     /** Get books with incomplete analysis (PENDING or ANALYZING state, not COMPLETED). */
     @Query("SELECT * FROM books WHERE analysisStatus IN ('PENDING', 'ANALYZING') ORDER BY createdAt ASC")
     suspend fun getBooksWithIncompleteAnalysis(): List<Book>
+
+    // ============ NARRATOR-002: Per-book narrator settings ============
+
+    /** Update narrator voice settings for a book. */
+    @Query("UPDATE books SET narratorSpeakerId = :speakerId, narratorSpeed = :speed, narratorEnergy = :energy WHERE id = :bookId")
+	    suspend fun updateNarratorSettings(bookId: Long, speakerId: Int, speed: Float, energy: Float)
+
+	    // ============ COVER-001: Genre & placeholder cover updates ============
+
+	    /**
+	     * Update detected genre and placeholder cover for a book, but only when no embedded cover exists.
+	     *
+	     * The WHERE clause ensures we never overwrite an embedded cover that may have been
+	     * extracted from the book file after import.
+	     */
+	    @Query("UPDATE books SET detectedGenre = :genre, placeholderCoverPath = :coverPath WHERE id = :bookId AND embeddedCoverPath IS NULL")
+	    suspend fun updateGenreAndPlaceholderCover(bookId: Long, genre: String?, coverPath: String?)
 }

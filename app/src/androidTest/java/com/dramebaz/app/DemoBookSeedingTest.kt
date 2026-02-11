@@ -60,8 +60,8 @@ class DemoBookSeedingTest {
     fun testDemoBookTitlesContainsExpectedBooks() {
         // Verify DEMO_BOOK_TITLES contains expected books
         assertTrue(
-            "DEMO_BOOK_TITLES should contain 'Space story'",
-            DramebazApplication.DEMO_BOOK_TITLES.contains("Space story")
+            "DEMO_BOOK_TITLES should contain 'SpaceStory'",
+            DramebazApplication.DEMO_BOOK_TITLES.contains("SpaceStory")
         )
         assertTrue(
             "DEMO_BOOK_TITLES should contain 'Demo story 2'",
@@ -73,15 +73,15 @@ class DemoBookSeedingTest {
     @Test
     fun testMarkDemoBookAsDeleted() {
         // Mark a demo book as deleted
-        app.markDemoBookAsDeleted("Space story")
+        app.markDemoBookAsDeleted("SpaceStory")
 
         // Verify it's stored in SharedPreferences
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val deletedBooks = prefs.getStringSet(KEY_DELETED_DEMO_BOOKS, emptySet()) ?: emptySet()
 
         assertTrue(
-            "Deleted demo books should contain 'Space story'",
-            deletedBooks.contains("Space story")
+            "Deleted demo books should contain 'SpaceStory'",
+            deletedBooks.contains("SpaceStory")
         )
         android.util.Log.d(TAG, "Deleted demo books after marking: $deletedBooks")
     }
@@ -105,7 +105,7 @@ class DemoBookSeedingTest {
     @Test
     fun testMultipleDemoBooksCanBeMarkedAsDeleted() {
         // Mark multiple demo books as deleted
-        app.markDemoBookAsDeleted("Space story")
+        app.markDemoBookAsDeleted("SpaceStory")
         app.markDemoBookAsDeleted("Demo story 2")
 
         // Verify both are stored
@@ -113,7 +113,7 @@ class DemoBookSeedingTest {
         val deletedBooks = prefs.getStringSet(KEY_DELETED_DEMO_BOOKS, emptySet()) ?: emptySet()
 
         assertEquals("Should have 2 deleted demo books", 2, deletedBooks.size)
-        assertTrue("Should contain 'Space story'", deletedBooks.contains("Space story"))
+        assertTrue("Should contain 'SpaceStory'", deletedBooks.contains("SpaceStory"))
         assertTrue("Should contain 'Demo story 2'", deletedBooks.contains("Demo story 2"))
         android.util.Log.d(TAG, "Multiple deleted demo books: $deletedBooks")
     }
@@ -121,8 +121,8 @@ class DemoBookSeedingTest {
     @Test
     fun testMarkSameBookTwiceDoesNotDuplicate() {
         // Mark the same book twice
-        app.markDemoBookAsDeleted("Space story")
-        app.markDemoBookAsDeleted("Space story")
+        app.markDemoBookAsDeleted("SpaceStory")
+        app.markDemoBookAsDeleted("SpaceStory")
 
         // Verify it's only stored once (Set behavior)
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -144,15 +144,15 @@ class DemoBookSeedingTest {
     @Test
     fun testSpaceStoryBookExistsInDatabase() {
         runBlocking {
-            // Check if Space story exists (should be seeded on app start if PDF exists)
-            val book = bookRepository.findBookByTitle("Space story")
-            
+            // Check if SpaceStory exists (should be seeded on app start if PDF exists)
+            val book = bookRepository.findBookByTitle("SpaceStory")
+
             if (book != null) {
-                android.util.Log.d(TAG, "Space story found in database: id=${book.id}, title=${book.title}")
+                android.util.Log.d(TAG, "SpaceStory found in database: id=${book.id}, title=${book.title}")
                 assertNotNull("Book should have a title", book.title)
-                assertEquals("Title should be 'Space story'", "Space story", book.title)
+                assertEquals("Title should be 'SpaceStory'", "SpaceStory", book.title)
             } else {
-                android.util.Log.d(TAG, "Space story not found - PDF may not be in Downloads folder")
+                android.util.Log.d(TAG, "SpaceStory not found - PDF may not be in Downloads folder")
                 // This is acceptable - the PDF might not be on the device
             }
         }

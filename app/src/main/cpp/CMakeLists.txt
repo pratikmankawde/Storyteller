@@ -269,3 +269,135 @@ if(GGML_VULKAN)
 else()
   message(STATUS "==> Vulkan GPU acceleration: DISABLED (CPU-only inference)")
 endif()
+
+# =============================================================================
+# Stable Audio JNI Library (optional - requires TensorFlow Lite & SentencePiece)
+# =============================================================================
+# Native Stable Audio requires:
+#   1. TensorFlow Lite built with GPU delegate support for Android
+#   2. SentencePiece library for Android
+#
+# Libraries are expected at: app/libs/ai/native/{ABI}/lib/
+# Headers are expected at: app/libs/ai/native/include/ (shared across all ABIs)
+#
+# To enable: add -DSTABLE_AUDIO_ENABLED=ON to cmake.arguments in build.gradle.kts
+
+option(STABLE_AUDIO_ENABLED "Enable Stable Audio native implementation" OFF)
+
+# Native libraries directory: app/libs/ai/native/{ABI}/
+set(NATIVE_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ai/native/${ANDROID_ABI}")
+
+# Library paths - both are static libraries (.a)
+set(TFLITE_LIB_PATH "${NATIVE_LIBS_DIR}/lib/libtensorflow-lite.a")
+set(SENTENCEPIECE_LIB_PATH "${NATIVE_LIBS_DIR}/lib/libsentencepiece.a")
+
+# Include paths - headers are shared across all ABIs
+set(NATIVE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/ai/native/include")
+
+if(STABLE_AUDIO_ENABLED)
+  # Check if required files exist - gracefully skip if not available for this ABI
+  if(NOT EXISTS "${TFLITE_LIB_PATH}")
+    message(STATUS "==> Stable Audio: SKIPPED for ${ANDROID_ABI} (TensorFlow Lite not found)")
+    message(STATUS "    Expected: ${TFLITE_LIB_PATH}")
+    set(STABLE_AUDIO_ENABLED OFF)
+  elseif(NOT EXISTS "${SENTENCEPIECE_LIB_PATH}")
+    message(STATUS "==> Stable Audio: SKIPPED for ${ANDROID_ABI} (SentencePiece not found)")
+    message(STATUS "    Expected: ${SENTENCEPIECE_LIB_PATH}")
+    set(STABLE_AUDIO_ENABLED OFF)
+  endif()
+endif()
+
+if(STABLE_AUDIO_ENABLED)
+
+  message(STATUS "==> Stable Audio: ENABLED (native TensorFlow Lite)")
+  message(STATUS "    TensorFlow Lite: ${TFLITE_LIB_PATH}")
+  message(STATUS "    SentencePiece: ${SENTENCEPIECE_LIB_PATH}")
+  message(STATUS "    Include dir: ${NATIVE_INCLUDE_DIR}")
+
+  # Import TensorFlow Lite (static library)
+  add_library(tensorflow-lite STATIC IMPORTED)
+  set_target_properties(tensorflow-lite PROPERTIES
+    IMPORTED_LOCATION "${TFLITE_LIB_PATH}")
+
+  # Import SentencePiece (static library)
+  add_library(sentencepiece STATIC IMPORTED)
+  set_target_properties(sentencepiece PROPERTIES
+    IMPORTED_LOCATION "${SENTENCEPIECE_LIB_PATH}")
+
+  # Build the JNI library
+  add_library(stable_audio_jni SHARED stable_audio_jni.cpp)
+
+  target_include_directories(stable_audio_jni PRIVATE
+    ${NATIVE_INCLUDE_DIR}
+  )
+
+  # Check if GPU delegate header is available
+  if(EXISTS "${NATIVE_INCLUDE_DIR}/tensorflow/lite/delegates/gpu/delegate.h")
+    set(HAS_GPU_DELEGATE ON)
+    message(STATUS "    GPU delegate: ENABLED (header found)")
+  else()
+    set(HAS_GPU_DELEGATE OFF)
+    message(STATUS "    GPU delegate: DISABLED (header not found, CPU-only inference)")
+  endif()
+
+	  # Check if XNNPACK delegate header is available
+	  if(EXISTS "${NATIVE_INCLUDE_DIR}/tensorflow/lite/delegates/xnnpack/xnnpack_delegate.h")
+	    set(HAS_XNNPACK_DELEGATE ON)
+	    message(STATUS "    XNNPACK delegate: ENABLED (header found)")
+	    target_compile_definitions(stable_audio_jni PRIVATE TFLITE_XNNPACK_DELEGATE_ENABLED=1)
+	  else()
+	    set(HAS_XNNPACK_DELEGATE OFF)
+	    message(STATUS "    XNNPACK delegate: DISABLED (header not found)")
+	  endif()
+
+  # Link TensorFlow Lite
+  # EGL and GLESv3 are only required when GPU delegate is available
+  if(HAS_GPU_DELEGATE)
+    target_compile_definitions(stable_audio_jni PRIVATE TFLITE_GPU_DELEGATE_ENABLED=1)
+    target_link_libraries(stable_audio_jni PRIVATE
+      tensorflow-lite
+      sentencepiece
+      log
+      android
+      EGL         # Required for GPU delegate
+      GLESv3      # Required for GPU delegate (OpenGL ES 3.x)
+      z           # zlib for sentencepiece
+      atomic      # Required for atomic operations
+      m           # Math library
+    )
+  else()
+    target_link_libraries(stable_audio_jni PRIVATE
+      tensorflow-lite
+      sentencepiece
+      log
+      android
+      z           # zlib for sentencepiece
+      atomic      # Required for atomic operations
+      m           # Math library
+    )
+  endif()
+
+  target_compile_options(stable_audio_jni PRIVATE
+    -Wall -Wextra -O3 -DNDEBUG
+    -fvisibility=hidden
+    -ffunction-sections
+    -fdata-sections
+  )
+
+  target_link_options(stable_audio_jni PRIVATE
+    -Wl,--gc-sections
+    # Allow multiple definitions to resolve duplicate FFT2D and abseil symbols
+    -Wl,--allow-multiple-definition
+  )
+
+else()
+  # Stable Audio is disabled - no stub, native library simply not built
+  if(EXISTS "${TFLITE_LIB_PATH}" AND EXISTS "${SENTENCEPIECE_LIB_PATH}")
+    message(STATUS "==> Stable Audio: DISABLED (libraries found but STABLE_AUDIO_ENABLED=OFF)")
+    message(STATUS "    To enable, add -DSTABLE_AUDIO_ENABLED=ON to cmake.arguments")
+  else()
+    message(STATUS "==> Stable Audio: DISABLED (native libraries not found)")
+    message(STATUS "    Looked for: ${TFLITE_LIB_PATH}")
+    message(STATUS "    Looked for: ${SENTENCEPIECE_LIB_PATH}")
+  endif()
+endif()

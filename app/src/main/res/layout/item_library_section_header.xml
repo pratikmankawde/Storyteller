@@ -1,61 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- LIBRARY-001: Section header for library sections with collapsible functionality -->
-<LinearLayout
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="12dp"
-    android:background="?attr/selectableItemBackground"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+    style="@style/Widget.Material3.CardView.Filled"
     android:clickable="true"
     android:focusable="true">
 
-    <!-- Section Icon -->
-    <ImageView
-        android:id="@+id/section_icon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:contentDescription="@null"
-        app:tint="@color/primary"
-        tools:src="@android:drawable/star_on" />
-
-    <!-- Section Title -->
-    <TextView
-        android:id="@+id/section_title"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="12dp"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        tools:text="Favourites" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="14dp"
+        android:background="?attr/selectableItemBackground">
 
-    <!-- Book Count Badge -->
-    <TextView
-        android:id="@+id/section_count"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:textSize="12sp"
-        android:textColor="@color/text_secondary"
-        android:background="@drawable/badge_background"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="2dp"
-        tools:text="3" />
+        <!-- Section Icon -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/section_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:padding="2dp"
+            android:contentDescription="@null"
+            app:tint="?attr/colorPrimary"
+            tools:src="@android:drawable/star_on" />
 
-    <!-- Expand/Collapse Arrow -->
-    <ImageView
-        android:id="@+id/section_arrow"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:contentDescription="@string/expand_collapse"
-        app:srcCompat="@android:drawable/arrow_down_float"
-        app:tint="@color/text_secondary" />
+        <!-- Section Title -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/section_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="Favourites" />
 
-</LinearLayout>
+        <!-- Book Count Badge -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/section_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:background="@drawable/badge_background_m3"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            tools:text="3" />
+
+        <!-- Expand/Collapse Arrow -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/section_arrow"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@string/expand_collapse"
+            app:srcCompat="@android:drawable/arrow_down_float"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
 

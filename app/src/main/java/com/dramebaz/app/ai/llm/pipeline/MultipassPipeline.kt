@@ -68,7 +68,7 @@ class MultipassPipeline(
         
         for ((index, step) in steps.withIndex()) {
             if (index < startStep) continue
-            
+
             val stepProgress = PipelineProgress(
                 pipelineId = pipelineId,
                 currentStep = index + 1,
@@ -77,10 +77,24 @@ class MultipassPipeline(
                 message = "Executing ${step.name}..."
             )
             onProgress?.invoke(stepProgress)
-            
+
+            // Create segment progress callback that reports sub-progress
+            val segmentProgressCallback: StepProgressCallback = { currentSegment, totalSegments ->
+                val subProgress = if (totalSegments > 0) currentSegment.toFloat() / totalSegments else 0f
+                val segmentProgress = PipelineProgress(
+                    pipelineId = pipelineId,
+                    currentStep = index + 1,
+                    totalSteps = steps.size,
+                    stepName = step.name,
+                    message = "${step.name} (${currentSegment}/${totalSegments})",
+                    subProgress = subProgress
+                )
+                onProgress?.invoke(segmentProgress)
+            }
+
             try {
                 AppLogger.d(TAG, "Executing step ${index + 1}/${steps.size}: ${step.name}")
-                currentContext = step.execute(llmModel, currentContext, PassConfig())
+                currentContext = step.execute(llmModel, currentContext, PassConfig(), segmentProgressCallback)
                 completedSteps = index + 1
                 
                 // Save checkpoint after each step

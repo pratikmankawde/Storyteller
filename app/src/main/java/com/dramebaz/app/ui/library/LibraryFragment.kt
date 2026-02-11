@@ -53,6 +53,9 @@ class LibraryFragment : Fragment() {
         LibrarySection.UNREAD
     )
 
+    // Cache current books list for section toggle rebuilding (avoids spawning new collectors)
+    private var currentBooks: List<Book> = emptyList()
+
     private val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { vm.importFromUri(requireContext(), it) }
     }
@@ -117,10 +120,10 @@ class LibraryFragment : Fragment() {
         }
         recycler.layoutManager = gridLayoutManager
         recycler.adapter = sectionAdapter
-        recycler.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator().apply {
-            addDuration = 300
-            removeDuration = 300
-        }
+        // LIBRARY-FIX: Disable item animator to prevent overlay issues during list updates.
+        // The DefaultItemAnimator can cause visual glitches when items are added/removed/moved,
+        // especially when the same book appears in multiple sections.
+        recycler.itemAnimator = null
 
         // LIBRARY-001: Observe all books and build sectioned list
         viewLifecycleOwner.lifecycleScope.launch {
@@ -147,8 +150,11 @@ class LibraryFragment : Fragment() {
                     }
                 }
             }.collectLatest { books ->
+                currentBooks = books  // Cache for section toggle
                 val sectionedItems = buildSectionedList(books)
-                sectionAdapter?.submitList(sectionedItems)
+                // LIBRARY-FIX: Create a new ArrayList to ensure ListAdapter detects the change.
+                // submitList may skip updates if it detects the same list instance.
+                sectionAdapter?.submitList(ArrayList(sectionedItems))
 
                 emptyState.visibility = if (books.isEmpty()) View.VISIBLE else View.GONE
                 recycler.visibility = if (books.isEmpty()) View.GONE else View.VISIBLE
@@ -226,6 +232,7 @@ class LibraryFragment : Fragment() {
 
     /**
      * LIBRARY-001: Toggle section expand/collapse.
+     * Uses cached books list to rebuild sections without spawning new Flow collectors.
      */
     private fun toggleSection(section: LibrarySection, recycler: RecyclerView) {
         if (expandedSections.contains(section)) {
@@ -233,33 +240,9 @@ class LibraryFragment : Fragment() {
         } else {
             expandedSections.add(section)
         }
-        // Trigger a re-observe by getting current list and rebuilding
-        viewLifecycleOwner.lifecycleScope.launch {
-            vm.books.combine(AnalysisQueueManager.analysisStatus) { books, statusMap ->
-                books.map { book ->
-                    val liveStatus = statusMap[book.id]
-                    if (liveStatus != null) {
-                        val mappedState = when (liveStatus.state) {
-                            AnalysisQueueManager.AnalysisState.PENDING -> AnalysisState.PENDING
-                            AnalysisQueueManager.AnalysisState.ANALYZING -> AnalysisState.ANALYZING
-                            AnalysisQueueManager.AnalysisState.COMPLETE -> AnalysisState.COMPLETED
-                            AnalysisQueueManager.AnalysisState.FAILED -> AnalysisState.FAILED
-                        }
-                        book.copy(
-                            analysisStatus = mappedState.name,
-                            analysisProgress = liveStatus.progress,
-                            analyzedChapterCount = liveStatus.analyzedChapters,
-                            totalChaptersToAnalyze = liveStatus.totalChapters,
-                            analysisMessage = liveStatus.message
-                        )
-                    } else {
-                        book
-                    }
-                }
-            }.collectLatest { books ->
-                sectionAdapter?.submitList(buildSectionedList(books))
-            }
-        }
+        // Rebuild sectioned list from cached books (no new collector needed)
+        // LIBRARY-FIX: Wrap in ArrayList to ensure ListAdapter detects the change
+        sectionAdapter?.submitList(ArrayList(buildSectionedList(currentBooks)))
     }
 
     /**

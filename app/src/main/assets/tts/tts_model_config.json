@@ -1,0 +1,43 @@
+{
+  "models": [
+    {
+      "id": "vctk-en-gb-medium",
+      "displayName": "VCTK English GB (Medium)",
+      "modelType": "vits-piper",
+      "isExternal": true,
+      "sampleRate": 22050,
+      "modelPath": "/sdcard/Download/TTS/vctk/en_GB-vctk-medium.onnx",
+      "tokensPath": "/sdcard/Download/TTS/vctk/tokens.txt",
+      "espeakDataPath": "/sdcard/Download/TTS/vctk/espeak-ng-data",
+      "speakerCount": 109,
+      "defaultSpeakerId": 0
+    },
+    {
+      "id": "libritts-en-us-high",
+      "displayName": "LibriTTS English (High)",
+      "modelType": "vits-piper",
+      "isExternal": false,
+      "sampleRate": 22050,
+      "modelPath": "models/tts/sherpa/en_US-libritts-high.onnx",
+      "tokensPath": "models/tts/sherpa/tokens.txt",
+      "espeakDataPath": "models/tts/sherpa/espeak-ng-data",
+      "speakerCount": 904,
+      "defaultSpeakerId": 0
+    },
+    {
+      "id": "kokoro-int8-en",
+      "displayName": "Kokoro English (INT8)",
+      "modelType": "kokoro",
+      "isExternal": true,
+      "sampleRate": 24000,
+      "modelPath": "/sdcard/Download/TTS/kokoro/model.int8.onnx",
+      "tokensPath": "/sdcard/Download/TTS/kokoro/tokens.txt",
+      "voicesPath": "/sdcard/Download/TTS/kokoro/voices.bin",
+      "espeakDataPath": "/sdcard/Download/TTS/kokoro/espeak-ng-data",
+      "speakerCount": 10,
+      "defaultSpeakerId": 0,
+      "defaultSpeed": 1.0
+    }
+  ],
+  "selectedModelId": "vctk-en-gb-medium"
+}

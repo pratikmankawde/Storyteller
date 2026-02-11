@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * READ-003: Chapter Lookahead Analysis
- * 
- * Pre-analyzes next chapter when user reaches 80% of current chapter.
+ *
+ * Pre-analyzes next chapter when user reaches 50% of current chapter.
  * Runs LLM analysis in background to generate summary, characters, dialogs.
  * Caches results for instant access when user navigates to next chapter.
  */
@@ -36,9 +36,9 @@ class ChapterLookaheadManager(
     private val gson = Gson()
     
     companion object {
-        /** Progress threshold at which to trigger lookahead (80%) */
-        const val LOOKAHEAD_TRIGGER_PROGRESS = 0.8f
-        
+        /** Progress threshold at which to trigger lookahead (50%) */
+        const val LOOKAHEAD_TRIGGER_PROGRESS = 0.5f
+
         /** Minimum chapter length to trigger analysis */
         const val MIN_CHAPTER_LENGTH = 50
     }

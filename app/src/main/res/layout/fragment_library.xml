@@ -4,19 +4,35 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:background="?attr/colorSurface">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fitsSystemWindows="true">
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+        android:fitsSystemWindows="true"
+        style="@style/Widget.Material3.AppBarLayout">
+
+        <com.google.android.material.appbar.CollapsingToolbarLayout
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:title="Storyteller"
-            app:subtitleTextAppearance="@style/TextAppearance.MaterialComponents.Caption"
-            app:menu="@menu/library_menu" />
+            android:layout_height="wrap_content"
+            app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
+            app:contentScrim="?attr/colorPrimary"
+            app:expandedTitleTextAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+            app:collapsedTitleTextAppearance="@style/TextAppearance.Material3.TitleLarge">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                app:title="Storyteller"
+                app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
+                app:subtitleTextAppearance="@style/TextAppearance.Material3.LabelMedium"
+                app:menu="@menu/library_menu"
+                app:layout_collapseMode="pin" />
+
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
+
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -25,8 +41,9 @@
         android:layout_height="match_parent"
         android:padding="8dp"
         android:clipToPadding="false"
+        android:background="?attr/colorSurface"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-    
+
     <LinearLayout
         android:id="@+id/empty_state"
         android:layout_width="match_parent"
@@ -34,65 +51,81 @@
         android:orientation="vertical"
         android:gravity="center"
         android:padding="32dp"
-        android:visibility="gone">
-        
-        <ImageView
+        android:visibility="gone"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <com.google.android.material.imageview.ShapeableImageView
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:src="@android:drawable/ic_menu_gallery"
-            app:tint="@color/text_secondary"
-            android:layout_marginBottom="16dp" />
-        
-        <TextView
+            app:tint="?attr/colorOnSurfaceVariant"
+            android:layout_marginBottom="24dp"
+            app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full" />
+
+        <com.google.android.material.textview.MaterialTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/empty_library"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
+            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginBottom="8dp" />
-        
-        <TextView
+
+        <com.google.android.material.textview.MaterialTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/empty_library_subtitle"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary" />
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:gravity="center" />
+
     </LinearLayout>
-    
+
     <!-- Import Progress Indicator -->
     <FrameLayout
         android:id="@+id/import_progress_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone"
-        android:background="#80000000"
+        android:background="@color/m3_scrim"
         android:clickable="true"
         android:focusable="true"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
-        
-        <LinearLayout
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:padding="24dp"
-            android:background="@drawable/dialog_background">
-            
-            <com.google.android.material.progressindicator.CircularProgressIndicator
+            app:cardCornerRadius="28dp"
+            app:cardElevation="6dp"
+            style="@style/Widget.Material3.CardView.Elevated">
+
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:indeterminate="true"
-                android:layout_marginBottom="16dp" />
-            
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Importing book..."
-                android:textSize="16sp"
-                android:textColor="@color/text_primary" />
-        </LinearLayout>
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="32dp"
+                android:minWidth="200dp">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true"
+                    android:layout_marginBottom="16dp"
+                    app:indicatorSize="48dp"
+                    app:trackThickness="4dp" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Importing book..."
+                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                    android:textColor="?attr/colorOnSurface" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
     </FrameLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -103,5 +136,6 @@
         android:layout_margin="16dp"
         android:contentDescription="@string/import_book"
         app:srcCompat="@android:drawable/ic_input_add"
-        app:tint="@color/on_primary" />
+        style="@style/Widget.Material3.FloatingActionButton.Primary" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

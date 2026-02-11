@@ -52,6 +52,9 @@ class BookAdapter(
         // AUTO-ANALYSIS: Bind analysis progress and state
         bindAnalysisState(holder, b)
 
+	        // COVER-001: Load appropriate book cover (embedded or placeholder)
+	        BookCoverLoader.loadCoverInto(holder.cover, b)
+
         // UI-004: Set unique transitionName for shared element transitions
         val transitionName = "book_cover_${b.id}"
         ViewCompat.setTransitionName(holder.cover, transitionName)

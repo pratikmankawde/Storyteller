@@ -2,13 +2,14 @@ package com.dramebaz.app.ai.llm.models
 
 import android.content.Context
 import com.dramebaz.app.ai.llm.LiteRtLmEngine
+import com.dramebaz.app.ai.llm.ModelCapabilities
 import com.dramebaz.app.utils.AppLogger
 
 /**
  * Gemma 3n model implementation wrapping LiteRtLmEngine.
  *
  * This is a pure inference wrapper - all pass-specific logic (prompts, parsing) belongs
- * in the workflow classes (TwoPassWorkflow).
+ * in the workflow/service layer.
  *
  * Design Pattern: Adapter Pattern - wraps LiteRtLmEngine to implement LlmModel interface.
  *
@@ -20,6 +21,10 @@ class Gemma3nModel(private val context: Context) : LlmModel {
     }
 
     private val liteRtLmEngine = LiteRtLmEngine(context)
+    private var defaultParams = GenerationParams.DEFAULT
+    private var sessionParams = SessionParams.DEFAULT
+
+    // ==================== Lifecycle ====================
 
     override suspend fun loadModel(): Boolean {
         AppLogger.i(TAG, "Loading Gemma 3n model via LiteRT-LM...")
@@ -38,44 +43,73 @@ class Gemma3nModel(private val context: Context) : LlmModel {
         liteRtLmEngine.release()
     }
 
-    override fun getExecutionProvider(): String = liteRtLmEngine.getExecutionProvider()
+    // ==================== Configuration ====================
 
-    override fun isUsingGpu(): Boolean = liteRtLmEngine.isUsingGpu()
+    override fun getDefaultParams(): GenerationParams = defaultParams
 
-    // ==================== Core Inference Method ====================
+    override fun updateDefaultParams(params: GenerationParams) {
+        defaultParams = params.validated()
+    }
+
+    // ==================== Session Parameters ====================
+
+    override fun getSessionParams(): SessionParams = sessionParams
+
+    override fun updateSessionParams(params: SessionParams): Boolean {
+        sessionParams = params.validated()
+        // LiteRT-LM only supports accelerator selection, applied on next init
+        return true
+    }
+
+    override fun getSessionParamsSupport(): SessionParamsSupport = SessionParamsSupport.LITERTLM
+
+    // ==================== Core Inference ====================
 
     override suspend fun generateResponse(
         systemPrompt: String,
         userPrompt: String,
-        maxTokens: Int,
-        temperature: Float
+        params: GenerationParams
     ): String {
-        return liteRtLmEngine.generate(systemPrompt, userPrompt, maxTokens, temperature)
+        return liteRtLmEngine.generate(
+            systemPrompt,
+            userPrompt,
+            params.maxTokens,
+            params.temperature
+        )
     }
 
-    // ==================== Gemma-Specific Methods ====================
+    // ==================== Multimodal Methods ====================
 
     /**
-     * STORY-002: Generate a story from an inspiration image.
+     * Generate a story from an inspiration image.
      * Uses Gemma 3n multimodal capabilities to analyze the image and generate a story.
      *
      * @param imagePath Path to the image file on device
      * @param userPrompt Optional user prompt for story direction
      * @return Generated story text
      */
-    suspend fun generateStoryFromImage(imagePath: String, userPrompt: String = ""): String {
-        AppLogger.i(TAG, "generateStoryFromImage: image=$imagePath, prompt=${userPrompt.take(50)}...")
+    override suspend fun generateFromImage(imagePath: String, userPrompt: String): String {
+        AppLogger.i(TAG, "generateFromImage: image=$imagePath, prompt=${userPrompt.take(50)}...")
         return liteRtLmEngine.generateFromImage(imagePath, userPrompt)
     }
 
-    // ==================== Legacy Access ====================
-    // Get underlying engine for backward compatibility during migration
+    // ==================== Metadata & Capabilities ====================
 
-    /**
-     * Get the underlying LiteRtLmEngine for access to additional methods.
-     * @deprecated Use generateResponse() instead. This is kept for backward compatibility
-     * during migration to workflow-based architecture.
-     */
-    fun getUnderlyingEngine(): LiteRtLmEngine = liteRtLmEngine
+    override fun getExecutionProvider(): String = liteRtLmEngine.getExecutionProvider()
+
+    override fun isUsingGpu(): Boolean = liteRtLmEngine.isUsingGpu()
+
+    override fun getModelCapabilities(): ModelCapabilities {
+        return liteRtLmEngine.getModelCapabilities()
+    }
+
+    override fun getModelInfo(): ModelInfo {
+        val capabilities = liteRtLmEngine.getModelCapabilities()
+        return ModelInfo(
+            name = capabilities.modelName,
+            format = ModelFormat.LITERTLM,
+            filePath = null  // Gemma3nModel uses config-based discovery
+        )
+    }
 }
 

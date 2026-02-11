@@ -22,7 +22,7 @@ import java.io.File
  * Tests the full workflow:
  * 1. Load PDF from assets (Space story.pdf)
  * 2. Import book and extract chapters
- * 3. Run 3-pass character analysis (names, dialogs, traits+voice)
+ * 3. Run character analysis (names, traits, voice)
  * 4. Verify characters are extracted with traits
  * 5. Verify voice/speaker IDs are assigned
  */
@@ -34,7 +34,7 @@ class PdfCharacterExtractionTest {
     private lateinit var db: AppDatabase
     private lateinit var bookRepository: BookRepository
     private lateinit var importUseCase: ImportBookUseCase
-    private lateinit var threePassUseCase: ThreePassCharacterAnalysisUseCase
+    private lateinit var characterExtractionUseCase: ChapterCharacterExtractionUseCase
 
     companion object {
         private const val TAG = "PdfCharacterExtractionTest"
@@ -55,7 +55,7 @@ class PdfCharacterExtractionTest {
 
             // Create use cases
             importUseCase = ImportBookUseCase(bookRepository)
-            threePassUseCase = ThreePassCharacterAnalysisUseCase(db.characterDao())
+            characterExtractionUseCase = ChapterCharacterExtractionUseCase(db.characterDao())
 
             // Clean up any existing test book
             db.bookDao().deleteByTitle(TEST_BOOK_TITLE)
@@ -103,24 +103,24 @@ class PdfCharacterExtractionTest {
 
         // Collect progress messages
         val progressMessages = mutableListOf<String>()
-        val processedCharacters = mutableListOf<String>()
+        var pagesProcessed = 0
 
-        // Run 3-pass analysis on first chapter
+        // Run character extraction on first chapter
         val chapter = chapters.first()
         android.util.Log.i(TAG, "Analyzing chapter: ${chapter.title} (${chapter.body.length} chars)")
 
-        threePassUseCase.analyzeChapter(
+        characterExtractionUseCase.extractAndSave(
             bookId = bookId,
             chapterText = chapter.body,
             chapterIndex = 0,
             totalChapters = chapters.size,
-            onProgress = { msg ->
+            onProgress = { msg: String ->
                 progressMessages.add(msg)
                 android.util.Log.d(TAG, "Progress: $msg")
             },
-            onCharacterProcessed = { name ->
-                processedCharacters.add(name)
-                android.util.Log.d(TAG, "Processed character: $name")
+            onPageProcessed = {
+                pagesProcessed++
+                android.util.Log.d(TAG, "Processed page: $pagesProcessed")
             }
         )
 

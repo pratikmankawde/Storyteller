@@ -1,5 +1,6 @@
 package com.dramebaz.app.ai.llm
 
+import com.dramebaz.app.ai.llm.models.ExtractedDialog
 import com.dramebaz.app.data.models.Dialog
 import com.dramebaz.app.data.models.EmotionalSegment
 import com.dramebaz.app.data.models.ChapterSummary
@@ -194,8 +195,8 @@ object StubFallbacks {
      * Regex-based fallback for Pass-2 dialog extraction.
      * Uses pattern matching to find quoted text and attribute to nearest character.
      */
-    fun extractDialogsFromText(pageText: String, characterNames: List<String>): List<GgufEngine.ExtractedDialogEntry> {
-        val dialogs = mutableListOf<GgufEngine.ExtractedDialogEntry>()
+    fun extractDialogsFromText(pageText: String, characterNames: List<String>): List<ExtractedDialog> {
+        val dialogs = mutableListOf<ExtractedDialog>()
 
         val quotePattern = Regex(""""([^"]+)"|'([^']+)'""")
         val matches = quotePattern.findAll(pageText)
@@ -226,7 +227,7 @@ object StubFallbacks {
                 val narratorText = pageText.substring(lastNarratorEnd, quoteStart).trim()
                     .replace(Regex("\\s+"), " ")
                 if (narratorText.length > 20) {
-                    dialogs.add(GgufEngine.ExtractedDialogEntry(
+                    dialogs.add(ExtractedDialog(
                         speaker = "Narrator",
                         text = narratorText.take(500),
                         emotion = "neutral",
@@ -282,7 +283,7 @@ object StubFallbacks {
                 }
             }
 
-            dialogs.add(GgufEngine.ExtractedDialogEntry(
+            dialogs.add(ExtractedDialog(
                 speaker = speaker,
                 text = quoteText,
                 emotion = "neutral",
@@ -295,7 +296,7 @@ object StubFallbacks {
             val narratorText = pageText.substring(lastNarratorEnd).trim()
                 .replace(Regex("\\s+"), " ")
             if (narratorText.length > 20) {
-                dialogs.add(GgufEngine.ExtractedDialogEntry(
+                dialogs.add(ExtractedDialog(
                     speaker = "Narrator",
                     text = narratorText.take(500),
                     emotion = "neutral",

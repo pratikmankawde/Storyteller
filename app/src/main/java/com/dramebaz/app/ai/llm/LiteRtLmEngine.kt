@@ -2,6 +2,7 @@ package com.dramebaz.app.ai.llm
 
 import android.app.ActivityManager
 import android.content.Context
+import com.dramebaz.app.ai.llm.models.ModelNameUtils
 import com.dramebaz.app.utils.AppLogger
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Engine
@@ -18,6 +19,8 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.resume
@@ -100,6 +103,9 @@ User's additional direction: """
     private var isInitialized = false
     private var chosenBackend: Backend? = null
     private var modelConfig: LlmModelEntry? = null
+
+    // Mutex to serialize LLM calls - LiteRT-LM only supports one session at a time
+    private val sessionMutex = Mutex()
 
     // Preferred backend set by user settings (null = use config order)
     private var preferredBackend: Backend? = null
@@ -277,10 +283,18 @@ User's additional direction: """
                     val errorMsg = e.message ?: ""
                     AppLogger.w(TAG, "${backend.name} backend failed (vision=$useVision): $errorMsg")
 
-                    // If vision encoder not found, try without vision backend (fallback for misconfigured models)
-                    if (useVision && errorMsg.contains("TF_LITE_VISION_ENCODER", ignoreCase = true)) {
-                        AppLogger.i(TAG, "Model doesn't support vision, retrying as text-only...")
-                        continue  // Try again with useVision=false
+                    // If vision encoder fails, try without vision backend (fallback for misconfigured models or GPU memory issues)
+                    // Check for common vision-related error patterns
+                    val isVisionError = useVision && (
+                        errorMsg.contains("TF_LITE_VISION_ENCODER", ignoreCase = true) ||
+                        errorMsg.contains("vision_litert", ignoreCase = true) ||
+                        errorMsg.contains("vision", ignoreCase = true) ||
+                        errorMsg.contains("litert_tensor_buffer", ignoreCase = true)
+                    )
+
+                    if (isVisionError) {
+                        AppLogger.i(TAG, "Vision backend failed, retrying ${backend.name} as text-only...")
+                        continue  // Try again with useVision=false on same backend
                     }
 
                     // Log full stack trace for debugging
@@ -303,24 +317,17 @@ User's additional direction: """
 
     /**
      * Get the capabilities of the currently loaded model.
-     * @return ModelCapabilities with image/audio support flags
+     * Uses ModelNameUtils for consistent display name derivation across all engine types.
+     *
+     * @return ModelCapabilities with model name and feature support flags
      */
     fun getModelCapabilities(): ModelCapabilities {
         val entry = getSelectedModelEntry() ?: return ModelCapabilities.UNKNOWN
 
-        // If using an external model path, derive the model name from the file name
-        // This ensures we show the actual loaded model name, not the config display name
+        // If using an external model path, derive the model name using shared utility
+        // This ensures consistent naming across all engine types
         val modelName = if (externalModelPath != null) {
-            // Extract clean model name from file path (e.g., "Qwen2.5-1.5B-Instruct" from full path)
-            val fileName = java.io.File(externalModelPath).nameWithoutExtension
-            // Clean up common suffixes for a nicer display name
-            fileName.replace("_multi-prefill-seq", "")
-                .replace("_q8_ekv4096", " (Q8)")
-                .replace("_q4_ekv4096", " (Q4)")
-                .replace("_int4", " (int4)")
-                .replace("_int8", " (int8)")
-                .replace("_", " ")
-                .trim()
+            ModelNameUtils.deriveDisplayName(externalModelPath)
         } else {
             entry.displayName ?: entry.modelFileName
         }
@@ -394,29 +401,32 @@ User's additional direction: """
         )
 
         val t0 = System.nanoTime()
-        try {
-            engine!!.createConversation(conversationConfig).use { conversation ->
-                sendMessageAsyncAndCollect(conversation, sanitizedPrompt)
-            }.also { response ->
+        // Use mutex to serialize LLM calls - LiteRT-LM only supports one session at a time
+        sessionMutex.withLock {
+            try {
+                engine!!.createConversation(conversationConfig).use { conversation ->
+                    sendMessageAsyncAndCollect(conversation, sanitizedPrompt, maxTokens)
+                }.also { response ->
+                    val elapsedMs = (System.nanoTime() - t0) / 1_000_000
+                    LlmErrorHandler.logPostInference(
+                        operation = "LiteRtLmEngine.generate",
+                        outputLength = response.length,
+                        durationMs = elapsedMs
+                    )
+                    response
+                }
+            } catch (e: Throwable) {
                 val elapsedMs = (System.nanoTime() - t0) / 1_000_000
-                LlmErrorHandler.logPostInference(
+                val category = LlmErrorHandler.categorizeError(e)
+                LlmErrorHandler.logError(
+                    category = category,
                     operation = "LiteRtLmEngine.generate",
-                    outputLength = response.length,
-                    durationMs = elapsedMs
+                    message = "Error after ${elapsedMs}ms: ${e.message}",
+                    throwable = e,
+                    inputText = sanitizedPrompt
                 )
-                response
+                ""
             }
-        } catch (e: Throwable) {
-            val elapsedMs = (System.nanoTime() - t0) / 1_000_000
-            val category = LlmErrorHandler.categorizeError(e)
-            LlmErrorHandler.logError(
-                category = category,
-                operation = "LiteRtLmEngine.generate",
-                message = "Error after ${elapsedMs}ms: ${e.message}",
-                throwable = e,
-                inputText = sanitizedPrompt
-            )
-            ""
         }
     }
 
@@ -425,36 +435,69 @@ User's additional direction: """
      * Note: LiteRT-LM API requires Message.of() wrapper for the user prompt string.
      *
      * Enhanced with error logging in the callback to capture native errors.
+     * Implements soft token limiting - stops collecting tokens when maxTokens is reached.
+     *
+     * @param conversation The LiteRT-LM conversation
+     * @param userPrompt The prompt to send
+     * @param maxTokens Maximum tokens to collect (soft limit - SDK doesn't support native cancellation)
      */
-    private suspend fun sendMessageAsyncAndCollect(conversation: Conversation, userPrompt: String): String =
+    private suspend fun sendMessageAsyncAndCollect(
+        conversation: Conversation,
+        userPrompt: String,
+        maxTokens: Int = MAX_TOKENS_DEFAULT
+    ): String =
         suspendCancellableCoroutine { cont ->
             val sb = StringBuilder()
             var tokenCount = 0
+            var limitReached = false
             try {
                 conversation.sendMessageAsync(Message.of(userPrompt), object : MessageCallback {
                     override fun onMessage(message: Message) {
+                        // Skip if we already hit the limit
+                        if (limitReached) return
+
                         try {
-                            sb.append(message.toString())
                             tokenCount++
+
+                            // Check token limit before appending
+                            if (tokenCount > maxTokens) {
+                                if (!limitReached) {
+                                    limitReached = true
+                                    AppLogger.w(TAG, "Token limit reached ($maxTokens), stopping collection. Total collected: ${tokenCount - 1}")
+                                    // Resume with what we have so far
+                                    if (cont.isActive) cont.resume(sb.toString())
+                                }
+                                return
+                            }
+
+                            sb.append(message.toString())
                         } catch (e: Throwable) {
                             // Log but don't crash - native callback errors
                             AppLogger.e(TAG, "Error in onMessage callback (token $tokenCount)", e)
                         }
                     }
                     override fun onDone() {
-                        AppLogger.d(TAG, "sendMessageAsync completed: $tokenCount tokens received")
-                        if (cont.isActive) cont.resume(sb.toString())
+                        // Only resume if we haven't already (due to limit)
+                        if (!limitReached) {
+                            AppLogger.d(TAG, "sendMessageAsync completed: $tokenCount tokens received")
+                            if (cont.isActive) cont.resume(sb.toString())
+                        } else {
+                            AppLogger.d(TAG, "sendMessageAsync completed (after limit): $tokenCount total tokens generated")
+                        }
                     }
                     override fun onError(throwable: Throwable) {
-                        // Log the error with full context before resuming with exception
-                        LlmErrorHandler.logError(
-                            category = LlmErrorHandler.categorizeError(throwable),
-                            operation = "LiteRtLmEngine.sendMessageAsync.onError",
-                            message = "Callback error after $tokenCount tokens: ${throwable.message}",
-                            throwable = throwable,
-                            inputText = userPrompt.take(500)
-                        )
-                        if (cont.isActive) cont.resumeWithException(throwable)
+                        // Only resume with error if we haven't already resumed
+                        if (!limitReached) {
+                            // Log the error with full context before resuming with exception
+                            LlmErrorHandler.logError(
+                                category = LlmErrorHandler.categorizeError(throwable),
+                                operation = "LiteRtLmEngine.sendMessageAsync.onError",
+                                message = "Callback error after $tokenCount tokens: ${throwable.message}",
+                                throwable = throwable,
+                                inputText = userPrompt.take(500)
+                            )
+                            if (cont.isActive) cont.resumeWithException(throwable)
+                        }
                     }
                 })
             } catch (e: Throwable) {
@@ -876,28 +919,31 @@ $text
         )
 
         val t0 = System.nanoTime()
-        try {
-            engine!!.createConversation(conversationConfig).use { conversation ->
-                // Build multimodal message with image and text
-                val fullPrompt = "$IMAGE_STORY_USER_PROMPT_PREFIX$userPrompt"
+        // Use mutex to serialize LLM calls - LiteRT-LM only supports one session at a time
+        sessionMutex.withLock {
+            try {
+                engine!!.createConversation(conversationConfig).use { conversation ->
+                    // Build multimodal message with image and text
+                    val fullPrompt = "$IMAGE_STORY_USER_PROMPT_PREFIX$userPrompt"
 
-                // Use Contents.of() with Content.ImageFile() and Content.Text() for multimodal input
-                // LiteRT-LM Kotlin API supports multimodal via Contents.of(Content.ImageFile, Content.Text)
-                val multimodalContents = Contents.of(
-                    Content.ImageFile(imagePath),
-                    Content.Text(fullPrompt)
-                )
+                    // Use Contents.of() with Content.ImageFile() and Content.Text() for multimodal input
+                    // LiteRT-LM Kotlin API supports multimodal via Contents.of(Content.ImageFile, Content.Text)
+                    val multimodalContents = Contents.of(
+                        Content.ImageFile(imagePath),
+                        Content.Text(fullPrompt)
+                    )
 
-                sendMessageAsyncAndCollectMultimodal(conversation, multimodalContents)
-            }.also { response ->
+                    sendMessageAsyncAndCollectMultimodal(conversation, multimodalContents)
+                }.also { response ->
+                    val elapsedMs = (System.nanoTime() - t0) / 1_000_000
+                    AppLogger.d(TAG, "generateFromImage() took ${elapsedMs}ms, response length=${response.length}")
+                    response
+                }
+            } catch (e: Exception) {
                 val elapsedMs = (System.nanoTime() - t0) / 1_000_000
-                AppLogger.d(TAG, "generateFromImage() took ${elapsedMs}ms, response length=${response.length}")
-                response
+                AppLogger.e(TAG, "Error generating story from image after ${elapsedMs}ms", e)
+                ""
             }
-        } catch (e: Exception) {
-            val elapsedMs = (System.nanoTime() - t0) / 1_000_000
-            AppLogger.e(TAG, "Error generating story from image after ${elapsedMs}ms", e)
-            ""
         }
     }
 

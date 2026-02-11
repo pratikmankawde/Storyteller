@@ -25,7 +25,8 @@ data class LlmSettings(
 enum class LlmModelType(val displayName: String, val description: String) {
     AUTO("Auto", "Automatically select best available model"),
     LITERTLM("LiteRT-LM (.litertlm)", "LiteRT-LM format models (Gemma, Qwen, etc.)"),
-    GGUF("GGUF (.gguf)", "GGUF format models via llama.cpp");
+    GGUF("GGUF (.gguf)", "GGUF format models via llama.cpp"),
+    MEDIAPIPE("MediaPipe (.task)", "MediaPipe format models (Gemma 3n, etc.)");
 
     /**
      * Convert to factory model type (returns null for AUTO).
@@ -34,6 +35,7 @@ enum class LlmModelType(val displayName: String, val description: String) {
         AUTO -> null
         LITERTLM -> LlmModelFactory.ModelType.LITERTLM
         GGUF -> LlmModelFactory.ModelType.GGUF
+        MEDIAPIPE -> LlmModelFactory.ModelType.MEDIAPIPE
     }
 
     companion object {
@@ -43,6 +45,7 @@ enum class LlmModelType(val displayName: String, val description: String) {
         fun fromFactoryType(type: LlmModelFactory.ModelType): LlmModelType = when (type) {
             LlmModelFactory.ModelType.LITERTLM -> LITERTLM
             LlmModelFactory.ModelType.GGUF -> GGUF
+            LlmModelFactory.ModelType.MEDIAPIPE -> MEDIAPIPE
         }
     }
 }

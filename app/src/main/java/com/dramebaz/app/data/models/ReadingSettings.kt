@@ -3,18 +3,21 @@ package com.dramebaz.app.data.models
 /**
  * SETTINGS-002: Display settings for reading experience.
  * Controls theme, font size, line height, and font family.
- * 
+ *
  * From NovelReaderWeb settings-sheet.component.ts:
  * - Theme presets: Light, Sepia, Dark, OLED
  * - Font size: 0.8 - 2.0 (multiplier)
  * - Line height: 1.0 - 2.4
  * - Font family selection
+ * - BOLD-001: Character name bolding toggle
  */
 data class ReadingSettings(
     val theme: ReadingTheme = ReadingTheme.LIGHT,
     val fontSize: Float = 1.0f,
     val lineHeight: Float = 1.4f,
-    val fontFamily: FontFamily = FontFamily.SERIF
+    val fontFamily: FontFamily = FontFamily.SERIF,
+    /** BOLD-001: When enabled, character names are displayed in bold text */
+    val boldCharacterNames: Boolean = true
 ) {
     companion object {
         const val FONT_SIZE_MIN = 0.8f

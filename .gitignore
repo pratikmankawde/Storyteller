@@ -60,3 +60,4 @@ test_results.log
 
 #llama-cpp server
 scripts/llama-cpp/
+app/libs/ai/native/

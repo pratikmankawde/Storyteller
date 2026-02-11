@@ -22,11 +22,17 @@ object LlmModelFactory {
     // Supported model file extensions
     private val LITERTLM_EXTENSIONS = listOf(".litertlm")
     private val GGUF_EXTENSIONS = listOf(".gguf")
+    private val MEDIAPIPE_EXTENSIONS = listOf(".task")
 
-    // Download folder paths to scan
+    // MediaPipe max tokens configuration
+    private const val MEDIAPIPE_MAX_TOKENS = 8000
+
+    // Download folder paths to scan for all model types
     private val DOWNLOAD_PATHS = listOf(
         "/storage/emulated/0/Download",
-        "/sdcard/Download"
+        "/sdcard/Download",
+        "/storage/emulated/0/Download/LLM",
+        "/sdcard/Download/LLM"
     )
 
     /**
@@ -48,12 +54,14 @@ object LlmModelFactory {
      */
     enum class ModelType {
         GGUF,           // GGUF format via llama.cpp (GgufEngine)
-        LITERTLM        // LiteRT-LM format (LiteRtLmEngine)
+        LITERTLM,       // LiteRT-LM format (LiteRtLmEngine)
+        MEDIAPIPE       // MediaPipe .task format (MediaPipeEngineImpl)
     }
 
     // Cache for discovered models
     private var cachedLiteRtLmModels: List<DiscoveredModel>? = null
     private var cachedGgufModels: List<DiscoveredModel>? = null
+    private var cachedMediaPipeModels: List<DiscoveredModel>? = null
 
     /**
      * Scan download folders for LiteRT-LM model files (.litertlm).
@@ -150,6 +158,59 @@ object LlmModelFactory {
     }
 
     /**
+     * Scan download folders for MediaPipe model files (.task).
+     */
+    fun discoverMediaPipeModels(context: Context, forceRescan: Boolean = false): List<DiscoveredModel> {
+        if (!forceRescan && cachedMediaPipeModels != null) {
+            return cachedMediaPipeModels!!
+        }
+
+        val models = mutableListOf<DiscoveredModel>()
+
+        AppLogger.d(TAG, "Scanning for MediaPipe models in paths: $DOWNLOAD_PATHS")
+
+        for (downloadPath in DOWNLOAD_PATHS) {
+            val downloadDir = File(downloadPath)
+            AppLogger.d(TAG, "Checking path: $downloadPath - exists=${downloadDir.exists()}, isDir=${downloadDir.isDirectory}, canRead=${downloadDir.canRead()}")
+
+            if (downloadDir.exists() && downloadDir.isDirectory) {
+                val files = downloadDir.listFiles()
+                AppLogger.d(TAG, "  Files in $downloadPath: ${files?.size ?: "null (permission denied?)"}")
+                files?.forEach { file ->
+                    AppLogger.d(TAG, "    Found: ${file.name} (isFile=${file.isFile})")
+                    if (file.isFile && MEDIAPIPE_EXTENSIONS.any { file.name.endsWith(it, ignoreCase = true) }) {
+                        models.add(DiscoveredModel(
+                            path = file.absolutePath,
+                            fileName = file.name,
+                            type = ModelType.MEDIAPIPE,
+                            sizeBytes = file.length()
+                        ))
+                        AppLogger.i(TAG, "Discovered MediaPipe model: ${file.name} (${file.length() / (1024*1024)} MB)")
+                    }
+                }
+            }
+        }
+
+        // Also check app's files directory
+        val appFilesDir = context.filesDir
+        appFilesDir.listFiles()?.forEach { file ->
+            if (file.isFile && MEDIAPIPE_EXTENSIONS.any { file.name.endsWith(it, ignoreCase = true) }) {
+                models.add(DiscoveredModel(
+                    path = file.absolutePath,
+                    fileName = file.name,
+                    type = ModelType.MEDIAPIPE,
+                    sizeBytes = file.length()
+                ))
+                AppLogger.i(TAG, "Discovered MediaPipe model in app files: ${file.name}")
+            }
+        }
+
+        cachedMediaPipeModels = models
+        AppLogger.i(TAG, "Total MediaPipe models discovered: ${models.size}")
+        return models
+    }
+
+    /**
      * Discover all available models on the device.
      * Deduplicates by canonical path to avoid showing the same file twice
      * (e.g., /storage/emulated/0/Download and /sdcard/Download are often the same).
@@ -157,12 +218,13 @@ object LlmModelFactory {
     fun discoverAllModels(context: Context, forceRescan: Boolean = false): List<DiscoveredModel> {
         val liteRtLmModels = discoverLiteRtLmModels(context, forceRescan)
         val ggufModels = discoverGgufModels(context, forceRescan)
+        val mediaPipeModels = discoverMediaPipeModels(context, forceRescan)
 
         // Deduplicate by canonical path to handle symlinks like /sdcard -> /storage/emulated/0
         val seen = mutableSetOf<String>()
         val deduplicated = mutableListOf<DiscoveredModel>()
 
-        for (model in liteRtLmModels + ggufModels) {
+        for (model in liteRtLmModels + ggufModels + mediaPipeModels) {
             try {
                 val canonicalPath = File(model.path).canonicalPath
                 if (canonicalPath !in seen) {
@@ -200,17 +262,26 @@ object LlmModelFactory {
     }
 
     /**
+     * Get the first available MediaPipe model path.
+     */
+    fun getFirstMediaPipeModelPath(context: Context): String? {
+        val models = discoverMediaPipeModels(context)
+        return models.firstOrNull()?.path
+    }
+
+    /**
      * Clear the model cache to force re-discovery.
      */
     fun clearCache() {
         cachedLiteRtLmModels = null
         cachedGgufModels = null
+        cachedMediaPipeModels = null
         AppLogger.d(TAG, "Model cache cleared")
     }
 
     /**
      * Create the default/preferred model based on available model files.
-     * Priority: LiteRT-LM > GGUF
+     * Priority: MediaPipe > LiteRT-LM > GGUF
      *
      * @param context Android context for file access
      * @return LlmModel instance, or null if no model is available
@@ -218,7 +289,15 @@ object LlmModelFactory {
     fun createDefaultModel(context: Context): LlmModel? {
         AppLogger.d(TAG, "Creating default LLM model...")
 
-        // Check for LiteRT-LM models first (preferred)
+        // Check for MediaPipe models first (newest format, preferred)
+        val mediaPipeModels = discoverMediaPipeModels(context)
+        if (mediaPipeModels.isNotEmpty()) {
+            val model = mediaPipeModels.first()
+            AppLogger.i(TAG, "MediaPipe model available: ${model.fileName}, creating MediaPipeEngineImpl")
+            return MediaPipeEngineImpl(context, modelPath = model.path, maxTokens = MEDIAPIPE_MAX_TOKENS)
+        }
+
+        // Check for LiteRT-LM models second
         val liteRtLmModels = discoverLiteRtLmModels(context)
         if (liteRtLmModels.isNotEmpty()) {
             val model = liteRtLmModels.first()
@@ -255,6 +334,10 @@ object LlmModelFactory {
                 val path = getFirstLiteRtLmModelPath(context)
                 if (path != null) LiteRtLmEngineImpl(context, modelPath = path) else null
             }
+            ModelType.MEDIAPIPE -> {
+                val path = getFirstMediaPipeModelPath(context)
+                if (path != null) MediaPipeEngineImpl(context, modelPath = path, maxTokens = MEDIAPIPE_MAX_TOKENS) else null
+            }
         }
     }
 
@@ -285,6 +368,14 @@ object LlmModelFactory {
                         LlmBackend.CPU -> Backend.CPU
                     }
                     LiteRtLmEngineImpl(context, liteRtBackend, modelPath = path)
+                } else null
+            }
+            ModelType.MEDIAPIPE -> {
+                val path = getFirstMediaPipeModelPath(context)
+                if (path != null) {
+                    // MediaPipe handles GPU/CPU selection automatically
+                    AppLogger.d(TAG, "MediaPipe engine uses auto GPU/CPU selection (preference: $backendPreference)")
+                    MediaPipeEngineImpl(context, modelPath = path, maxTokens = MEDIAPIPE_MAX_TOKENS)
                 } else null
             }
         }
@@ -327,6 +418,16 @@ object LlmModelFactory {
                     null
                 }
             }
+            MEDIAPIPE_EXTENSIONS.any { modelPath.endsWith(it, ignoreCase = true) } -> {
+                val file = java.io.File(modelPath)
+                if (file.exists()) {
+                    AppLogger.d(TAG, "Creating MediaPipe engine from path: $modelPath")
+                    MediaPipeEngineImpl(context, modelPath = modelPath, maxTokens = MEDIAPIPE_MAX_TOKENS)
+                } else {
+                    AppLogger.w(TAG, "MediaPipe model file not found: $modelPath")
+                    null
+                }
+            }
             else -> {
                 AppLogger.w(TAG, "Unknown model file extension: $modelPath")
                 null
@@ -349,12 +450,20 @@ object LlmModelFactory {
     }
 
     /**
+     * Check if any MediaPipe model file exists on the device.
+     */
+    fun isMediaPipeModelAvailable(context: Context): Boolean {
+        return discoverMediaPipeModels(context).isNotEmpty()
+    }
+
+    /**
      * Get list of available model types on this device.
      */
     fun getAvailableModelTypes(context: Context): List<ModelType> {
         val available = mutableListOf<ModelType>()
         if (isGgufModelAvailable(context)) available.add(ModelType.GGUF)
         if (isLiteRtLmModelAvailable(context)) available.add(ModelType.LITERTLM)
+        if (isMediaPipeModelAvailable(context)) available.add(ModelType.MEDIAPIPE)
         return available
     }
 
@@ -364,7 +473,7 @@ object LlmModelFactory {
     fun getDiscoveredModelsDescription(context: Context): String {
         val allModels = discoverAllModels(context)
         if (allModels.isEmpty()) {
-            return "No models found. Place .litertlm or .gguf files in Downloads folder."
+            return "No models found. Place .litertlm, .gguf, or .task files in Downloads folder (or Downloads/LLM for .task)."
         }
 
         return allModels.joinToString("\n") { model ->

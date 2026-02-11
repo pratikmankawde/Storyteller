@@ -65,16 +65,18 @@ class BookDetailFragment : Fragment() {
         val chapterSummariesCard = view.findViewById<MaterialCardView>(R.id.chapter_summaries_card)
         val chapterSummariesContainer = view.findViewById<LinearLayout>(R.id.chapter_summaries_container)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            val book = vm.getBook(bookId)
-            book?.let {
-                title.text = it.title
-                format.text = it.format.uppercase()
-            }
+	        viewLifecycleOwner.lifecycleScope.launch {
+	            val book = vm.getBook(bookId)
+	            book?.let {
+	                title.text = it.title
+	                format.text = it.format.uppercase()
+	                // COVER-001: Load appropriate book cover into detail view
+	                BookCoverLoader.loadCoverInto(bookCover, it)
+	            }
 
-            // AUG-030: Load chapter summaries
-            loadChapterSummaries(chapterSummariesCard, chapterSummariesContainer)
-        }
+	            // AUG-030: Load chapter summaries
+	            loadChapterSummaries(chapterSummariesCard, chapterSummariesContainer)
+	        }
 
         // Setup action cards
         val actionsGrid = view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.actions_grid)
@@ -221,6 +223,8 @@ class BookDetailFragment : Fragment() {
                         btnAnalyze?.text = "✓ Analysis Complete"
                         btnAnalyze?.isEnabled = true
                         btnAnalyze?.alpha = 1.0f
+                        // Reload chapter summaries after analysis completes
+                        loadChapterSummaries(chapterSummariesCard, chapterSummariesContainer)
                     }
                     AnalysisQueueManager.AnalysisState.FAILED -> {
                         btnAnalyze?.text = "Analysis Failed - Tap to Retry"
@@ -246,9 +250,9 @@ class BookDetailFragment : Fragment() {
                     }
                     com.dramebaz.app.data.db.AnalysisState.FAILED,
                     com.dramebaz.app.data.db.AnalysisState.CANCELLED -> {
-                        // Failed/cancelled - re-enqueue
+                        // Failed/cancelled - re-enqueue for first chapter analysis
                         Toast.makeText(requireContext(), "Re-starting analysis...", Toast.LENGTH_SHORT).show()
-                        AnalysisQueueManager.enqueueBook(bookId)
+                        AnalysisQueueManager.enqueueFirstChapter(bookId)
                     }
                     com.dramebaz.app.data.db.AnalysisState.ANALYZING -> {
                         Toast.makeText(requireContext(),

@@ -18,4 +18,8 @@ interface CharacterDao {
     /** AUG-043: Get character by book ID and name for speaker ID lookup during audio generation. */
     @Query("SELECT * FROM characters WHERE bookId = :bookId AND name = :name LIMIT 1")
     suspend fun getByBookIdAndName(bookId: Long, name: String): Character?
+
+    /** Synchronous version for use in merge operations - returns list directly without Flow. */
+    @Query("SELECT * FROM characters WHERE bookId = :bookId ORDER BY name")
+    suspend fun getByBookIdDirect(bookId: Long): List<Character>
 }

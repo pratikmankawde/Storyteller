@@ -6,7 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import com.dramebaz.app.ai.llm.models.LlmModel
-import com.dramebaz.app.ai.llm.models.LlmModelFactory
+import com.dramebaz.app.ai.llm.models.LlmModelHolder
 import com.dramebaz.app.ai.llm.services.AnalysisBackgroundRunner
 import com.dramebaz.app.ai.llm.services.AnalysisForegroundService
 import com.dramebaz.app.ai.llm.tasks.AnalysisTask
@@ -55,14 +55,25 @@ class AnalysisExecutor(
 ) {
     companion object {
         private const val TAG = "AnalysisExecutor"
-        
+
         /** Duration threshold for choosing foreground vs background (seconds) */
         private const val FOREGROUND_THRESHOLD_SECONDS = 60
     }
-    
+
     private val modelMutex = Mutex()
     private var llmModel: LlmModel? = null
     private var backgroundRunner: AnalysisBackgroundRunner? = null
+
+    // Listener for model switch notifications
+    private val modelSwitchListener: () -> Unit = {
+        AppLogger.i(TAG, "Model switch notification received - clearing cached model reference")
+        llmModel = null
+    }
+
+    init {
+        // Register to receive model switch notifications
+        LlmModelHolder.addSwitchListener(modelSwitchListener)
+    }
     
     /**
      * Execution result returned to callers.
@@ -228,28 +239,27 @@ class AnalysisExecutor(
 
     /**
      * Ensure the LLM model is loaded and ready.
+     * Uses the singleton LlmModelHolder to avoid multiple model instances in GPU memory.
      */
     private suspend fun ensureModelLoaded(): LlmModel? = modelMutex.withLock {
+        // Check if we have a cached reference that's still valid
         llmModel?.let {
             if (it.isModelLoaded()) return@withLock it
         }
 
-        AppLogger.i(TAG, "Loading LLM model...")
-        val model = LlmModelFactory.createDefaultModel(context)
+        AppLogger.i(TAG, "Getting shared LLM model from LlmModelHolder...")
+
+        // Use the singleton model holder - this prevents multiple GPU memory allocations
+        val model = LlmModelHolder.getOrLoadModel(context)
         if (model == null) {
-            AppLogger.e(TAG, "Failed to create LLM model")
+            AppLogger.e(TAG, "Failed to get LLM model from holder")
             return@withLock null
         }
 
-        try {
-            model.loadModel()
-            llmModel = model
-            AppLogger.i(TAG, "LLM model loaded successfully")
-            return@withLock model
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "Failed to load LLM model", e)
-            return@withLock null
-        }
+        // Cache reference locally
+        llmModel = model
+        AppLogger.i(TAG, "Using shared LLM model: ${model.getExecutionProvider()}")
+        return@withLock model
     }
 
     /**
@@ -258,14 +268,17 @@ class AnalysisExecutor(
     fun isModelLoaded(): Boolean = llmModel?.isModelLoaded() == true
 
     /**
-     * Release resources including the LLM model.
+     * Release local resources.
+     * Note: Does NOT release the shared model from LlmModelHolder - that's managed separately.
      */
     fun release() {
         backgroundRunner?.shutdown()
         backgroundRunner = null
-        llmModel?.release()
+        // Just clear local reference, don't release the shared model
         llmModel = null
-        AppLogger.i(TAG, "AnalysisExecutor released")
+        // Unregister from model switch notifications
+        LlmModelHolder.removeSwitchListener(modelSwitchListener)
+        AppLogger.i(TAG, "AnalysisExecutor released (shared model retained in LlmModelHolder)")
     }
 }
 

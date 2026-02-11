@@ -1,10 +1,10 @@
 ---
 
-# Implementation Status (Updated 2026-01-30)
+# Implementation Status (Updated 2026-02-06)
 
 | Feature                            | Status            | Notes                                                               |
 | ---------------------------------- | ----------------- | ------------------------------------------------------------------- |
-| 1. AI Character Voices             | ✅ Implemented     | VITS-VCTK 109 speakers, VoiceProfile, SpeakerMatcher                |
+| 1. AI Character Voices             | ✅ Implemented     | Modular TTS: LibriTTS (904 speakers) + Kokoro (10 voices), VoiceProfile, SpeakerMatcher |
 | 2. Emotion-Aware Narration         | ✅ Implemented     | EmotionalSegment, prosody via VoiceProfileMapper                    |
 | 3. Sound Effects & Ambience        | ⚠️ Partial         | SoundCue entity exists, AudioMixer ready, needs SFX assets          |
 | 4. Chapter Summaries & Recaps      | ✅ Implemented     | GetRecapUseCase, ChapterSummary, "Previously on..."                 |

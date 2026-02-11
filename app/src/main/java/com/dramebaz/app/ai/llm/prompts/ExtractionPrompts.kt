@@ -117,6 +117,72 @@ DIALOGS/CONTEXT:
 $dialogContext"""
     }
 
+    // ==================== Explicit Trait Extraction (Background) ====================
+    // Token Budget: Prompt+Input 3000, Output 1000
+
+    val TRAITS_EXTRACTION_SYSTEM_PROMPT = """You are a trait extraction engine. Extract ONLY the explicitly stated traits for characters from the provided text."""
+
+    /**
+     * Build prompt for explicit trait extraction.
+     * @param characterNames List of character names to extract traits for
+     * @param textSegment Story text segment to analyze
+     */
+    fun buildTraitsExtractionPrompt(characterNames: List<String>, textSegment: String): String {
+        val characterNamesStr = characterNames.joinToString(", ")
+
+        return """Extract traits for: $characterNamesStr
+
+STRICT RULES:
+- Extract ONLY traits directly stated or shown in the text
+- Include physical descriptions if explicitly mentioned (e.g., "tall", "red hair", "scarred")
+- Include behavioral traits if explicitly shown (e.g., "spoke softly", "slammed the door", "laughed nervously")
+- Include speech patterns if demonstrated (e.g., "stutters", "uses formal language", "speaks with accent")
+- Include emotional states if explicitly described (e.g., "angry", "frightened", "cheerful")
+- Do NOT infer personality from actions
+- Do NOT add interpretations or assumptions
+- Do NOT include traits of other characters
+- If no traits are found for a character, return an empty list for that character
+
+OUTPUT FORMAT (valid JSON only):
+{"Traits": [{"<CHARACTER_NAME>": ["trait1", "trait2", "trait3"]}]}
+
+TEXT:
+$textSegment
+$JSON_VALIDITY_REMINDER"""
+    }
+
+    // ==================== Personality Inference (Background) ====================
+    // Token Budget: Prompt+Input 3000, Output 1000
+
+    val PERSONALITY_INFERENCE_SYSTEM_PROMPT = """You are a personality analysis engine. Infer personality based ONLY on the traits provided."""
+
+    /**
+     * Build prompt for personality inference from traits.
+     * @param characterName Character name to analyze
+     * @param traits List of extracted traits for this character
+     */
+    fun buildPersonalityInferencePrompt(characterName: String, traits: List<String>): String {
+        val traitsJson = gson.toJson(traits)
+
+        return """Infer personality for: "$characterName"
+
+TRAITS:
+$traitsJson
+
+STRICT RULES:
+- Base your inference ONLY on the provided traits
+- Do NOT introduce new traits not in the list
+- Do NOT contradict the provided traits
+- Synthesize the traits into coherent personality descriptors
+- Keep descriptions concise and grounded in the evidence
+- Provide 3-5 personality points maximum
+- If traits list is empty or insufficient, provide minimal inference (e.g., ["minor character", "limited information"])
+
+OUTPUT FORMAT (valid JSON only):
+{"character": "$characterName", "personality": ["personality_point1", "personality_point2", "personality_point3"]}
+$JSON_VALIDITY_REMINDER"""
+    }
+
     /**
      * Legacy method for backward compatibility with single character.
      */

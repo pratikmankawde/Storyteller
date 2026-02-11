@@ -160,4 +160,41 @@ class BookRepository(
     suspend fun markAsUnfinished(bookId: Long) {
         bookDao.updateFinished(bookId, false, System.currentTimeMillis())
     }
+
+	    // ============ COVER-001: Genre & placeholder cover handling ============
+
+	    /**
+	     * Update the detected genre and placeholder cover path for a book.
+	     *
+	     * This method:
+	     * - Never overwrites an embedded cover (if embeddedCoverPath is non-null).
+	     * - Avoids unnecessary writes when the values are unchanged.
+	     */
+	    suspend fun updateGenreAndPlaceholderCover(
+	        bookId: Long,
+	        genre: String?,
+	        coverPath: String?
+	    ) {
+	        val book = bookDao.getById(bookId) ?: return
+
+	        // If the book has an embedded cover, we never apply a placeholder cover.
+	        if (!book.embeddedCoverPath.isNullOrBlank()) {
+	            return
+	        }
+
+	        // Compute desired final values, keeping existing ones when nulls are passed.
+	        val desiredGenre = genre ?: book.detectedGenre
+	        val desiredCover = coverPath ?: book.placeholderCoverPath
+
+	        // No-op if nothing would change.
+	        if (desiredGenre == book.detectedGenre && desiredCover == book.placeholderCoverPath) {
+	            return
+	        }
+
+	        bookDao.updateGenreAndPlaceholderCover(
+	            bookId = bookId,
+	            genre = desiredGenre,
+	            coverPath = desiredCover
+	        )
+	    }
 }

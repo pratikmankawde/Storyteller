@@ -51,21 +51,38 @@ data class LlmPassOverride(
 /**
  * Model capabilities information for runtime feature checks.
  * Used to enable/disable UI features based on current model support.
+ *
+ * This is queried via LlmModel.getModelCapabilities() and allows the service layer
+ * to adapt behavior based on what the model supports, without type-checking.
  */
 data class ModelCapabilities(
     /** Model display name (e.g., "Gemma 3n E2B (int4)") */
     val modelName: String,
+
     /** If true, model supports image input (vision/multimodal) */
-    val supportsImage: Boolean,
+    val supportsImage: Boolean = false,
+
     /** If true, model supports audio input */
-    val supportsAudio: Boolean
+    val supportsAudio: Boolean = false,
+
+    /** If true, model supports streaming token output */
+    val supportsStreaming: Boolean = false,
+
+    /** Maximum context length in tokens (input + output) */
+    val maxContextLength: Int = 4096,
+
+    /** Recommended max output tokens for this model */
+    val recommendedMaxTokens: Int = 1024
 ) {
     companion object {
         /** Default capabilities for when no model is loaded */
         val UNKNOWN = ModelCapabilities(
             modelName = "Unknown",
             supportsImage = false,
-            supportsAudio = false
+            supportsAudio = false,
+            supportsStreaming = false,
+            maxContextLength = 0,
+            recommendedMaxTokens = 0
         )
     }
 }

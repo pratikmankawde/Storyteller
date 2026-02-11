@@ -9,15 +9,18 @@ import kotlinx.coroutines.flow.first
  * VOICE-002: Voice Consistency Check
  * Checks if assigned speaker IDs are still available in the TTS model.
  * Warns users about characters with missing/invalid voices and offers reassignment.
- * 
- * LibriTTS model supports speakers 0-903.
+ *
+ * Now model-aware: uses the active TTS model's speaker catalog.
  */
 class VoiceConsistencyChecker(private val characterDao: CharacterDao) {
-    
+
     companion object {
         private const val TAG = "VoiceConsistencyChecker"
     }
-    
+
+    /** Get the active speaker catalog for validation. */
+    private fun getActiveCatalog(): SpeakerCatalog = SpeakerMatcher.getActiveCatalog()
+
     /**
      * Result of a voice consistency check.
      */
@@ -31,7 +34,7 @@ class VoiceConsistencyChecker(private val characterDao: CharacterDao) {
     ) {
         /** True if all characters have valid voices */
         val isConsistent: Boolean get() = invalidCharacters.isEmpty()
-        
+
         /** Summary message for display */
         val summary: String get() = when {
             invalidCharacters.isEmpty() -> "All characters have valid voices"
@@ -39,7 +42,7 @@ class VoiceConsistencyChecker(private val characterDao: CharacterDao) {
             else -> "${invalidCharacters.size} characters have invalid voices"
         }
     }
-    
+
     /**
      * Represents a character with an invalid voice assignment.
      */
@@ -47,7 +50,7 @@ class VoiceConsistencyChecker(private val characterDao: CharacterDao) {
         val character: Character,
         val reason: InvalidReason,
         /** Suggested fallback speaker ID */
-        val suggestedFallback: Int = LibrittsSpeakerCatalog.MIN_SPEAKER_ID
+        val suggestedFallback: Int = 0
     )
     
     /**
@@ -69,30 +72,31 @@ class VoiceConsistencyChecker(private val characterDao: CharacterDao) {
      */
     suspend fun checkVoiceConsistency(bookId: Long): ConsistencyResult {
         val characters = characterDao.getByBookId(bookId).first()
-        AppLogger.d(TAG, "Checking voice consistency for ${characters.size} characters in book $bookId")
-        
+        val catalog = getActiveCatalog()
+        AppLogger.d(TAG, "Checking voice consistency for ${characters.size} characters in book $bookId (catalog: ${catalog.speakerCount} speakers)")
+
         val validCharacters = mutableListOf<Character>()
         val invalidCharacters = mutableListOf<InvalidVoice>()
-        
+
         for (character in characters) {
             val speakerId = character.speakerId
-            
+
             when {
                 speakerId == null -> {
                     // Speaker ID not assigned - suggest one based on traits
-                    val fallback = suggestFallbackSpeaker(character)
+                    val fallback = suggestFallbackSpeaker(character, catalog)
                     invalidCharacters.add(InvalidVoice(character, InvalidReason.NOT_ASSIGNED, fallback))
                     AppLogger.w(TAG, "Character '${character.name}' has no speaker ID assigned")
                 }
-                speakerId < LibrittsSpeakerCatalog.MIN_SPEAKER_ID || speakerId > LibrittsSpeakerCatalog.MAX_SPEAKER_ID -> {
-                    // Speaker ID out of range
-                    val fallback = suggestFallbackSpeaker(character)
+                speakerId < catalog.minSpeakerId || speakerId > catalog.maxSpeakerId -> {
+                    // Speaker ID out of range for current model
+                    val fallback = suggestFallbackSpeaker(character, catalog)
                     invalidCharacters.add(InvalidVoice(character, InvalidReason.OUT_OF_RANGE, fallback))
-                    AppLogger.w(TAG, "Character '${character.name}' has out-of-range speaker ID: $speakerId")
+                    AppLogger.w(TAG, "Character '${character.name}' has out-of-range speaker ID: $speakerId (valid: ${catalog.minSpeakerId}-${catalog.maxSpeakerId})")
                 }
-                !isValidSpeakerId(speakerId) -> {
+                !isValidSpeakerId(speakerId, catalog) -> {
                     // Speaker ID not in catalog (edge case for sparse catalogs)
-                    val fallback = suggestFallbackSpeaker(character)
+                    val fallback = suggestFallbackSpeaker(character, catalog)
                     invalidCharacters.add(InvalidVoice(character, InvalidReason.NOT_IN_CATALOG, fallback))
                     AppLogger.w(TAG, "Character '${character.name}' has invalid speaker ID: $speakerId")
                 }
@@ -102,34 +106,35 @@ class VoiceConsistencyChecker(private val characterDao: CharacterDao) {
                 }
             }
         }
-        
+
         val result = ConsistencyResult(
             validCharacters = validCharacters,
             invalidCharacters = invalidCharacters,
             totalChecked = characters.size
         )
-        
+
         AppLogger.i(TAG, "Voice consistency check: ${result.summary}")
         return result
     }
-    
+
     /**
-     * Check if a specific speaker ID is valid.
+     * Check if a specific speaker ID is valid for the given catalog.
      */
-    fun isValidSpeakerId(speakerId: Int): Boolean {
-        return speakerId in LibrittsSpeakerCatalog.MIN_SPEAKER_ID..LibrittsSpeakerCatalog.MAX_SPEAKER_ID
+    fun isValidSpeakerId(speakerId: Int, catalog: SpeakerCatalog = getActiveCatalog()): Boolean {
+        return speakerId in catalog.minSpeakerId..catalog.maxSpeakerId && catalog.getTraits(speakerId) != null
     }
-    
+
     /**
      * Suggest a fallback speaker ID based on character traits.
      */
-    private fun suggestFallbackSpeaker(character: Character): Int {
+    private fun suggestFallbackSpeaker(character: Character, catalog: SpeakerCatalog): Int {
         // Use SpeakerMatcher to find a suitable speaker based on traits
         return SpeakerMatcher.suggestSpeakerIdFromTraitList(
             traits = character.traits.split(",").map { it.trim() }.filter { it.isNotEmpty() },
             personalitySummary = character.personalitySummary,
-            name = character.name
-        ) ?: LibrittsSpeakerCatalog.allSpeakers().random().speakerId
+            name = character.name,
+            catalog = catalog
+        ) ?: catalog.allSpeakers().random().speakerId
     }
     
     /**

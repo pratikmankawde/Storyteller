@@ -12,10 +12,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
-import com.dramebaz.app.ai.tts.LibrittsSpeakerCatalog
 import com.dramebaz.app.ai.tts.SpeakerMatcher
 import com.dramebaz.app.data.db.Character
+import com.dramebaz.app.data.models.NarratorSettings
 import com.dramebaz.app.data.models.VoiceProfile
+import com.dramebaz.app.domain.usecases.AudioRegenerationManager
 import com.dramebaz.app.utils.AppLogger
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.button.MaterialButton
@@ -43,12 +44,28 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
         private const val TAG = "VoiceSelectorDialog"
         private const val ARG_CHARACTER_ID = "characterId"
         private const val ARG_BOOK_ID = "bookId"
-        
+        private const val ARG_IS_NARRATOR = "isNarrator"
+
+        /** Special ID to indicate Narrator (not in database) */
+        const val NARRATOR_ID = -1L
+
         fun newInstance(characterId: Long, bookId: Long): VoiceSelectorDialog {
             return VoiceSelectorDialog().apply {
                 arguments = Bundle().apply {
                     putLong(ARG_CHARACTER_ID, characterId)
                     putLong(ARG_BOOK_ID, bookId)
+                    putBoolean(ARG_IS_NARRATOR, characterId == NARRATOR_ID)
+                }
+            }
+        }
+
+        /** Create dialog for Narrator voice selection */
+        fun newInstanceForNarrator(bookId: Long): VoiceSelectorDialog {
+            return VoiceSelectorDialog().apply {
+                arguments = Bundle().apply {
+                    putLong(ARG_CHARACTER_ID, NARRATOR_ID)
+                    putLong(ARG_BOOK_ID, bookId)
+                    putBoolean(ARG_IS_NARRATOR, true)
                 }
             }
         }
@@ -61,6 +78,7 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
     private val app get() = requireContext().applicationContext as DramebazApplication
     private var characterId: Long = 0L
     private var bookId: Long = 0L
+    private var isNarrator: Boolean = false
     private var character: Character? = null
     private var selectedSpeakerId: Int? = null
     private var currentSpeed = 1.0f
@@ -85,6 +103,7 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
         super.onCreate(savedInstanceState)
         characterId = arguments?.getLong(ARG_CHARACTER_ID, 0L) ?: 0L
         bookId = arguments?.getLong(ARG_BOOK_ID, 0L) ?: 0L
+        isNarrator = arguments?.getBoolean(ARG_IS_NARRATOR, false) ?: false
     }
     
     override fun onCreateView(
@@ -97,10 +116,14 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        AppLogger.d(TAG, "Voice selector dialog created for character: $characterId")
-        
+        AppLogger.d(TAG, "Voice selector dialog created for character: $characterId, isNarrator: $isNarrator")
+
         setupUI(view)
-        loadCharacter()
+        if (isNarrator) {
+            loadNarrator()
+        } else {
+            loadCharacter()
+        }
     }
     
     private fun setupUI(view: View) {
@@ -164,10 +187,10 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
                 val traitsDisplay = parseTraitsForDisplay(char.traits, char.voiceProfileJson)
                 findViewById<TextView>(R.id.character_traits).text = traitsDisplay
 
-                // Current voice label
+                // Current voice label - use active model's catalog for correct gender info
                 val currentVoiceText = char.speakerId?.let { sid ->
-                    val traits = LibrittsSpeakerCatalog.getTraits(sid)
-                    "Current: Speaker #$sid (${traits?.gender ?: "?"})"
+                    val traits = SpeakerMatcher.getActiveCatalog().getTraits(sid)
+                    "Current: Speaker #$sid (${traits?.genderLabel ?: "?"})"
                 } ?: "No voice assigned"
                 findViewById<TextView>(R.id.current_voice_label).text = currentVoiceText
 
@@ -190,6 +213,72 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
             // Load speakers sorted by match score
             loadSpeakers(char)
         }
+    }
+
+    /**
+     * NARRATOR-002: Load narrator settings from Book entity (per-book settings).
+     */
+    private fun loadNarrator() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            AppLogger.d(TAG, "Loading narrator settings for bookId=$bookId")
+            val book = withContext(Dispatchers.IO) {
+                app.db.bookDao().getById(bookId)
+            }
+            AppLogger.d(TAG, "Loaded book: id=${book?.id}, narratorSpeakerId=${book?.narratorSpeakerId}, narratorSpeed=${book?.narratorSpeed}")
+
+            // Get narrator settings from book, with defaults
+            val speakerId = book?.narratorSpeakerId ?: 0
+            val speed = book?.narratorSpeed ?: NarratorSettings.DEFAULT_SPEED
+            val energy = book?.narratorEnergy ?: 1.0f
+
+            // Create a pseudo-character for Narrator
+            character = Character(
+                id = NARRATOR_ID,
+                bookId = bookId,
+                name = "Narrator",
+                traits = "Story narrator",
+                personalitySummary = "The voice that tells the story",
+                speakerId = speakerId
+            )
+
+            selectedSpeakerId = speakerId
+            currentSpeed = speed
+            currentEnergy = energy
+
+            // Update UI with narrator info
+            view?.apply {
+                findViewById<TextView>(R.id.character_name).text = "Narrator"
+                findViewById<TextView>(R.id.character_traits).text = "Story narrator"
+
+                // Current voice label
+                val currentVoiceText = if (speakerId > 0) "Current: Speaker #$speakerId" else "No voice assigned"
+                findViewById<TextView>(R.id.current_voice_label).text = currentVoiceText
+
+                // Load voice profile settings
+                findViewById<Slider>(R.id.speed_slider).value = currentSpeed.coerceIn(0.5f, 2.0f)
+                findViewById<Slider>(R.id.energy_slider).value = currentEnergy.coerceIn(0.5f, 1.5f)
+                findViewById<TextView>(R.id.speed_value).text = String.format("%.1f", currentSpeed)
+                findViewById<TextView>(R.id.energy_value).text = String.format("%.1f", currentEnergy)
+            }
+
+            // Load all speakers (no character-based scoring for narrator)
+            loadSpeakersForNarrator()
+        }
+    }
+
+    /**
+     * Load all speakers without character-based scoring for narrator.
+     */
+    private suspend fun loadSpeakersForNarrator() {
+        allSpeakers = withContext(Dispatchers.IO) {
+            SpeakerMatcher.getSimilarSpeakers(
+                traits = "",
+                personalitySummary = "Story narrator",
+                name = "Narrator",
+                topN = 100
+            )
+        }
+        filterVoices()
     }
 
     private fun parseTraitsForDisplay(traits: String, voiceProfileJson: String?): String {
@@ -248,7 +337,8 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
 
         previewJob = viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val sampleText = "Hello, I am ${character?.name ?: "a character"}. This is how I sound."
+                val speakerName = if (isNarrator) "Narrator" else (character?.name ?: "a character")
+                val sampleText = "Hello, I am $speakerName. This is how I sound."
                 val voiceProfile = VoiceProfile(speed = currentSpeed, energy = currentEnergy)
 
                 val result = withContext(Dispatchers.IO) {
@@ -289,6 +379,60 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
+                if (isNarrator) {
+                    // NARRATOR-002: Save narrator settings to Book entity (per-book)
+                    AppLogger.d(TAG, "Saving narrator settings: bookId=$bookId, speakerId=$speakerId, speed=$currentSpeed, energy=$currentEnergy")
+                    app.db.bookDao().updateNarratorSettings(
+                        bookId = bookId,
+                        speakerId = speakerId,
+                        speed = currentSpeed,
+                        energy = currentEnergy
+                    )
+
+                    // Verify the save worked by reading back
+                    val savedBook = app.db.bookDao().getById(bookId)
+                    AppLogger.d(TAG, "After save - bookId=$bookId, narratorSpeakerId=${savedBook?.narratorSpeakerId}, narratorSpeed=${savedBook?.narratorSpeed}")
+
+                    // Invalidate all narrator audio segments for this book
+                    app.pageAudioStorage.deleteSegmentsForCharacter(bookId, "Narrator")
+
+                    // AUDIO-REGEN-001: Enqueue background regeneration for current page
+                    val session = app.db.readingSessionDao().getCurrent()
+                    val pageNumber = session?.lastPageIndex ?: 1
+                    var chapterId = session?.chapterId ?: 0L
+
+                    // Fallback: if no valid session, get the first chapter of the book
+                    if (chapterId == 0L || (session != null && session.bookId != bookId)) {
+                        val chapters = app.db.chapterDao().getChaptersList(bookId)
+                        if (chapters.isNotEmpty()) {
+                            chapterId = chapters.first().id
+                            AppLogger.d(TAG, "No valid session, using first chapter: $chapterId")
+                        }
+                    }
+
+                    if (chapterId > 0) {
+                        AudioRegenerationManager.enqueueRegeneration(
+                            bookId = bookId,
+                            chapterId = chapterId,
+                            pageNumber = pageNumber,
+                            characterName = "Narrator",
+                            newSpeakerId = speakerId,
+                            speed = currentSpeed,
+                            energy = currentEnergy
+                        )
+                        AppLogger.i(TAG, "Enqueued narrator audio regeneration for page $pageNumber, chapterId=$chapterId")
+                    } else {
+                        AppLogger.w(TAG, "No chapters found for book $bookId, skipping audio regeneration")
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Narrator voice saved", Toast.LENGTH_SHORT).show()
+                        listener?.onVoiceChanged(NARRATOR_ID, speakerId)
+                        dismiss()
+                    }
+                    return@launch
+                }
+
                 val char = character ?: return@launch
 
                 // Update voice profile with new speed/energy
@@ -306,6 +450,35 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
                 // Update CharacterPageMapping and invalidate audio cache
                 app.db.characterPageMappingDao().updateSpeakerForCharacter(bookId, char.name, speakerId)
                 app.pageAudioStorage.deleteSegmentsForCharacter(bookId, char.name)
+
+                // AUDIO-REGEN-001: Enqueue background regeneration for current page
+                val session = app.db.readingSessionDao().getCurrent()
+                val pageNumber = session?.lastPageIndex ?: 1
+                var charChapterId = session?.chapterId ?: 0L
+
+                // Fallback: if no valid session, get the first chapter of the book
+                if (charChapterId == 0L || (session != null && session.bookId != bookId)) {
+                    val chapters = app.db.chapterDao().getChaptersList(bookId)
+                    if (chapters.isNotEmpty()) {
+                        charChapterId = chapters.first().id
+                        AppLogger.d(TAG, "No valid session for character, using first chapter: $charChapterId")
+                    }
+                }
+
+                if (charChapterId > 0) {
+                    AudioRegenerationManager.enqueueRegeneration(
+                        bookId = bookId,
+                        chapterId = charChapterId,
+                        pageNumber = pageNumber,
+                        characterName = char.name,
+                        newSpeakerId = speakerId,
+                        speed = currentSpeed,
+                        energy = currentEnergy
+                    )
+                    AppLogger.i(TAG, "Enqueued character audio regeneration for ${char.name} on page $pageNumber, chapterId=$charChapterId")
+                } else {
+                    AppLogger.w(TAG, "No chapters found for book $bookId, skipping audio regeneration for ${char.name}")
+                }
 
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Voice saved for ${char.name}", Toast.LENGTH_SHORT).show()
@@ -347,7 +520,7 @@ class VoiceSelectorDialog : BottomSheetDialogFragment() {
             val speakerId = traits.speakerId
 
             holder.speakerName.text = "Speaker #$speakerId"
-            holder.speakerTraits.text = "${traits.gender}, ${traits.ageYears ?: "?"}yrs, ${traits.region}"
+            holder.speakerTraits.text = "${traits.genderLabel}, ${traits.ageYears ?: "?"}yrs, ${traits.region}"
             holder.speakerPitch.text = "Pitch: ${traits.pitchLevel.name.lowercase().replaceFirstChar { it.uppercase() }}"
 
             // Match score badge

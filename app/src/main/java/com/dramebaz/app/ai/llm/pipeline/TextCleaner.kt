@@ -86,13 +86,78 @@ object TextCleaner {
      */
     fun cleanPageIntoParagraphs(pageText: String): List<String> {
         val cleaned = cleanPage(pageText)
-        
+
         // Split into paragraphs
         val rawParagraphs = cleaned.split(Regex("""\n\s*\n"""))
-        
+
         return rawParagraphs
             .map { it.trim().replace(Regex("""\s+"""), " ") }
             .filter { it.length > 10 }
+    }
+
+    /**
+     * INCREMENTAL-001: Clean and split pages into paragraphs while tracking page-to-paragraph mapping.
+     * Returns a pair of (paragraphs, pageBoundaries) where pageBoundaries[i] is the paragraph index
+     * where page i starts.
+     *
+     * @param pages List of raw page texts
+     * @return Pair of (all paragraphs, page boundaries array where pageBoundaries[i] = first paragraph index of page i)
+     */
+    fun cleanAndSplitWithPageMapping(pages: List<String>): Pair<List<String>, IntArray> {
+        val allParagraphs = mutableListOf<String>()
+        val pageBoundaries = IntArray(pages.size + 1) // +1 for end marker
+
+        for ((pageIndex, pageText) in pages.withIndex()) {
+            pageBoundaries[pageIndex] = allParagraphs.size
+            val pageParagraphs = cleanPageIntoParagraphs(pageText)
+            allParagraphs.addAll(pageParagraphs)
+        }
+        pageBoundaries[pages.size] = allParagraphs.size // End marker
+
+        AppLogger.d(TAG, "Split ${pages.size} pages into ${allParagraphs.size} paragraphs with page mapping")
+        return Pair(allParagraphs, pageBoundaries)
+    }
+
+    /**
+     * INCREMENTAL-001: Find which pages are covered by a paragraph range.
+     *
+     * @param startParagraphIndex Start paragraph index (inclusive)
+     * @param endParagraphIndex End paragraph index (inclusive)
+     * @param pageBoundaries Page boundary array from cleanAndSplitWithPageMapping
+     * @return IntRange of page indices (0-based) covered by the paragraph range
+     */
+    fun findPagesForParagraphRange(
+        startParagraphIndex: Int,
+        endParagraphIndex: Int,
+        pageBoundaries: IntArray
+    ): IntRange {
+        var startPage = 0
+        var endPage = 0
+
+        // Find start page
+        for (i in 0 until pageBoundaries.size - 1) {
+            if (pageBoundaries[i] <= startParagraphIndex && startParagraphIndex < pageBoundaries[i + 1]) {
+                startPage = i
+                break
+            }
+            // Handle case where startParagraphIndex >= last boundary
+            if (startParagraphIndex >= pageBoundaries[i]) {
+                startPage = i
+            }
+        }
+
+        // Find end page
+        for (i in 0 until pageBoundaries.size - 1) {
+            if (pageBoundaries[i] <= endParagraphIndex && endParagraphIndex < pageBoundaries[i + 1]) {
+                endPage = i
+                break
+            }
+            if (endParagraphIndex >= pageBoundaries[i]) {
+                endPage = i
+            }
+        }
+
+        return startPage..endPage
     }
     
     /**
