@@ -11,6 +11,7 @@ import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.repositories.BookRepository
 import com.dramebaz.app.data.repositories.SettingsRepository
 import com.dramebaz.app.domain.usecases.AnalysisQueueManager
+import com.dramebaz.app.domain.usecases.AudioRegenerationManager
 import com.dramebaz.app.domain.usecases.GetRecapUseCase
 import com.dramebaz.app.domain.usecases.ImportBookUseCase
 import com.dramebaz.app.utils.AppLogger
@@ -83,6 +84,14 @@ class DramebazApplication : Application() {
         AnalysisQueueManager.initialize(applicationContext, bookRepository, db)
         // AUG-043: Set segment audio generator for initial audio generation
         AnalysisQueueManager.setSegmentAudioGenerator(segmentAudioGenerator)
+
+        // AUDIO-REGEN-001: Initialize audio regeneration manager for voice changes
+        AudioRegenerationManager.initialize(
+            applicationContext,
+            db,
+            segmentAudioGenerator,
+            pageAudioStorage
+        )
 
         // SETTINGS-001: Load settings on app startup
         appScope.launch {

@@ -119,17 +119,27 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             }
 
             audioService?.setOnCompleteListener {
+                AppLogger.d(tag, "Audio playback completed - currentPageIndex=$currentPageIndex, totalPages=${novelPages.size}")
                 playerBottomSheet?.updatePlaybackState(false)
                 view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_play)?.text = "Play"
                 if (isNovelFormat) novelPageAdapter?.clearHighlighting()
                 playingPageIndex = -1
                 // Auto-continue to next page when current page finishes
                 if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex + 1 < novelPages.size) {
+                    val nextPage = currentPageIndex + 1
+                    AppLogger.d(tag, "Auto-continuing to next page: $nextPage")
                     view?.post {
-                        goToPage(currentPageIndex + 1, smooth = true)
-                        playCurrentPage()
+                        // Always turn the page first (independent of audio availability)
+                        goToPage(nextPage, smooth = true)
+                        // Then attempt to play audio (non-blocking)
+                        try {
+                            playCurrentPage()
+                        } catch (e: Exception) {
+                            AppLogger.e(tag, "Error playing next page audio, but page turn succeeded", e)
+                        }
                     }
                 } else {
+                    AppLogger.d(tag, "No more pages to auto-continue (last page or empty)")
                     updateFabPlayCurrentPageVisibility()
                 }
             }
@@ -374,17 +384,27 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 playerBottomSheet?.updateProgress(position, duration)
             }
             setOnCompleteListener {
+                AppLogger.d(tag, "PlaybackEngine completed - currentPageIndex=$currentPageIndex, totalPages=${novelPages.size}")
                 playerBottomSheet?.updatePlaybackState(false)
                 btnPlay?.text = "Play"
                 if (isNovelFormat) novelPageAdapter?.clearHighlighting()
                 playingPageIndex = -1
                 // AUG-044: Auto-continue to next page when current page finishes (same as AudioPlaybackService)
                 if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex + 1 < novelPages.size) {
+                    val nextPage = currentPageIndex + 1
+                    AppLogger.d(tag, "PlaybackEngine: Auto-continuing to next page: $nextPage")
                     view?.post {
-                        goToPage(currentPageIndex + 1, smooth = true)
-                        playCurrentPage()
+                        // Always turn the page first (independent of audio availability)
+                        goToPage(nextPage, smooth = true)
+                        // Then attempt to play audio (non-blocking)
+                        try {
+                            playCurrentPage()
+                        } catch (e: Exception) {
+                            AppLogger.e(tag, "PlaybackEngine: Error playing next page audio, but page turn succeeded", e)
+                        }
                     }
                 } else {
+                    AppLogger.d(tag, "PlaybackEngine: No more pages to auto-continue")
                     updateFabPlayCurrentPageVisibility()
                 }
             }
@@ -2217,9 +2237,16 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
             if (!isAdded) return@launch
-            // Only hide if not showing lookahead progress
-            if (!isAnalyzingNextChapter) {
+            // If lookahead is analyzing, switch the banner to show lookahead progress
+            // instead of leaving the stale audio generation message
+            if (isAnalyzingNextChapter) {
+                // Update banner to show lookahead progress (it was showing audio gen before)
+                audioGenText?.text = "Preparing next chapter..."
+                audioGenProgress?.isIndeterminate = true
+                AppLogger.d(tag, "Audio gen complete, showing lookahead progress instead")
+            } else {
                 audioGenBanner?.visibility = View.GONE
+                audioGenProgress?.isIndeterminate = false
             }
         }
     }

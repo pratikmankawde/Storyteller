@@ -45,7 +45,6 @@
                 android:textColor="@color/text_primary"
                 android:fontFamily="serif"
                 android:gravity="top"
-                android:textIsSelectable="true"
                 android:breakStrategy="high_quality"
                 android:hyphenationFrequency="none" />
 
