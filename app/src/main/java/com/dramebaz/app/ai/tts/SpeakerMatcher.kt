@@ -283,4 +283,73 @@ object SpeakerMatcher {
         if (pitchLevel == null) return speakers
         return speakers.filter { it.pitchLevel == pitchLevel }
     }
+
+    /**
+     * Convert a pitch value (0.5-1.5) from voice profile to PitchLevel enum.
+     * - pitch >= 1.2 → HIGH
+     * - pitch <= 0.8 → LOW
+     * - else → MEDIUM
+     */
+    fun pitchValueToLevel(pitch: Float): SpeakerCatalog.PitchLevel {
+        return when {
+            pitch >= 1.2f -> SpeakerCatalog.PitchLevel.HIGH
+            pitch <= 0.8f -> SpeakerCatalog.PitchLevel.LOW
+            else -> SpeakerCatalog.PitchLevel.MEDIUM
+        }
+    }
+
+    /**
+     * Enhanced speaker suggestion that uses pitch level from voice profile.
+     * Filters candidates by pitch level first, then applies trait-based scoring.
+     *
+     * @param traits Character traits list
+     * @param personalitySummary Character personality summary
+     * @param name Character name
+     * @param pitchLevel Target pitch level from voice profile (null = no pitch filtering)
+     * @param catalog Speaker catalog to use
+     * @return Best matching speaker ID, or null if no match
+     */
+    fun suggestSpeakerIdWithPitch(
+        traits: List<String>?,
+        personalitySummary: String?,
+        name: String?,
+        pitchLevel: SpeakerCatalog.PitchLevel?,
+        catalog: SpeakerCatalog = getActiveCatalog()
+    ): Int? {
+        val traitTokens = parseTraits(traits?.joinToString(",")).toMutableList()
+        personalitySummary?.split(Regex("\\s+"))?.map { it.trim().lowercase() }?.filter { it.length > 2 }?.let { traitTokens.addAll(it) }
+        name?.lowercase()?.let { traitTokens.add(it) }
+
+        // Get all speakers, optionally filtered by pitch level
+        var candidates = catalog.allSpeakers()
+        if (pitchLevel != null) {
+            val pitchFiltered = candidates.filter { it.pitchLevel == pitchLevel }
+            // Only use pitch-filtered list if it has candidates; otherwise fall back to all
+            if (pitchFiltered.isNotEmpty()) {
+                candidates = pitchFiltered
+                AppLogger.d(TAG, "Filtered to ${candidates.size} speakers with pitch=$pitchLevel")
+            } else {
+                AppLogger.d(TAG, "No speakers with pitch=$pitchLevel, using all ${candidates.size} speakers")
+            }
+        }
+
+        if (candidates.isEmpty()) return null
+
+        // Score each candidate
+        val scored = candidates.map { speaker ->
+            speaker to calculateMatchScore(speaker, traitTokens)
+        }
+
+        val maxScore = scored.maxOfOrNull { it.second } ?: 0
+        if (maxScore <= 0) {
+            // No trait matches - use deterministic selection from candidates
+            val nameHash = (name?.hashCode() ?: 0).let { kotlin.math.abs(it) }
+            return candidates[nameHash % candidates.size].speakerId
+        }
+
+        val best = scored.filter { it.second == maxScore }.map { it.first }
+        // Use deterministic selection based on character name hash
+        val nameHash = (name?.hashCode() ?: 0).let { kotlin.math.abs(it) }
+        return best[nameHash % best.size].speakerId
+    }
 }

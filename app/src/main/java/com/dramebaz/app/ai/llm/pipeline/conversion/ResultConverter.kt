@@ -1,7 +1,9 @@
 package com.dramebaz.app.ai.llm.pipeline.conversion
 
 import com.dramebaz.app.ai.llm.pipeline.IncrementalMerger
+import com.dramebaz.app.ai.tts.SpeakerCatalog
 import com.dramebaz.app.ai.tts.SpeakerMatcher
+import com.dramebaz.app.utils.AppLogger
 
 /**
  * Adapter interface for converting between different result formats.
@@ -20,16 +22,29 @@ interface ResultConverter<TInput, TOutput> {
  */
 class MergedToAccumulatedConverter : ResultConverter<IncrementalMerger.MergedCharacterData, Map<String, Any?>> {
 
+    companion object {
+        private const val TAG = "ResultConverter"
+    }
+
     override fun convert(input: IncrementalMerger.MergedCharacterData): Map<String, Any?> {
         // Build traits list from voice profile and extracted traits for speaker matching
         val traitsForMatching = buildTraitsForMatching(input)
 
-        // Compute speaker ID using SpeakerMatcher
-        val speakerId = SpeakerMatcher.suggestSpeakerIdFromTraitList(
+        // Extract pitch level from voice profile for pitch-aware speaker selection
+        val pitchLevel = input.voiceProfile?.let { vp ->
+            SpeakerMatcher.pitchValueToLevel(vp.pitch)
+        }
+
+        // Compute speaker ID using pitch-aware SpeakerMatcher
+        val speakerId = SpeakerMatcher.suggestSpeakerIdWithPitch(
             traitsForMatching,
             null,
-            input.name
+            input.name,
+            pitchLevel
         ) ?: 0  // Default to speaker 0 if no match found
+
+        AppLogger.d(TAG, "Speaker selection for '${input.name}': pitch=${input.voiceProfile?.pitch}, " +
+            "pitchLevel=$pitchLevel, speakerId=$speakerId")
 
         return mapOf(
             "name" to input.name,

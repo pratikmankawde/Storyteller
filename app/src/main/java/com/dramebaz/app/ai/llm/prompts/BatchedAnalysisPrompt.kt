@@ -33,29 +33,36 @@ class BatchedAnalysisPrompt : PromptDefinition<BatchedAnalysisInput, BatchedAnal
     override val tokenBudget: TokenBudget = BATCHED_ANALYSIS_BUDGET
     override val temperature: Float = BatchedPipelineConfig.TEMPERATURE
 
-    override val systemPrompt: String = """You are a JSON extraction engine. Output EXACTLY ONE valid JSON object containing all characters. Extract ONLY characters who SPEAK dialog. Ignore locations, objects, creatures, and non-speaking entities."""
+    override val systemPrompt: String = """You are a Story analysis engine. Output one complete and valid JSON object as requested in the user prompt, from the given Story excerpt."""
 
     override fun buildUserPrompt(input: BatchedAnalysisInput): String {
-        return """Extract characters from the story text below.
-
+        return """Extract all the characters, dialogs spoken by them, their traits and inferred voice profile from the given Story excerpt.
 RULES:
 1. ONLY include characters who have quoted dialogs
-2. DO NOT include locations, objects, creatures or entities that don't speak
-3. Each character appears EXACTLY ONCE in the output
-4. Output EXACTLY ONE JSON object containing ALL characters
+2. DO NOT classify locations, objects, creatures or entities that don't speak as characters.
+3. Each character appears EXACTLY ONCE in the output.
+4. Attribute dialogs by character name and pronouns.
+5. Identify character traits explicitly mentioned in the story.
+6. Based on the traits, infer a voice profile.
 
-OUTPUT FORMAT (single JSON object with all characters):
+Keys for output:
+D:Array of exact quoted dialogs spoken by current character
+T:Array of character traits (personalities, adjectives)
+V:Voice profile as a tuple of "Gender,Age,Accent,Pitch,Speed".
+Possible values:
+Gender: male|female
+Age: child|young|young-adult|middle-aged|elderly
+Accent: neutral|british|american|asian
+Pitch(of voice) range: 0.5-1.5
+Speed(speed of speaking) range: 0.5-2.0
+
+OUTPUT FORMAT:
 {
-  "CharacterName1": {"D": ["dialog1", "dialog2"], "T": ["trait1", "trait2"], "V": "male,young,neutral"},
-  "CharacterName2": {"D": ["dialog1"], "T": ["trait1"], "V": "female,middle-aged,neutral"}
+  "CharacterName1": {"D": ["this character's first dialog", "their next dialog"], "T": ["trait", "another trait"], "V": "Gender,Age,Accent,Pitch,Speed"},
+  "CharacterName2": {"D": ["this character's first dialog"], "T": ["trait"], "V": "Gender,Age,Accent,Pitch,Speed"}
 }
 
-KEYS:
-- D = Array of exact quoted dialogs spoken by this character
-- T = Array of character traits (age, gender, personality)
-- V = Voice profile as "Gender,Age,Accent" (e.g. "male,young,neutral" or "female,elderly,British")
-
-TEXT:
+Story Excerpt:
 ${input.text}
 
 JSON:"""
@@ -183,21 +190,33 @@ JSON:"""
 
     /**
      * Parse voice profile from character data map.
-     * Supports both new "v" string format ("male,young,neutral") and old "voice" object format.
+     * Supports:
+     * - New 5-part "V" string format: "Gender,Age,Accent,Pitch,Speed" (e.g., "male,young,neutral,1.0,1.2")
+     * - Legacy 3-part "V" string format: "Gender,Age,Accent" (e.g., "male,young,neutral")
+     * - Old "voice" object format with individual fields
      */
     @Suppress("UNCHECKED_CAST")
     private fun parseVoiceProfile(charMap: Map<String, Any>): ExtractedVoiceProfile? {
-        // Try new "V" or "v" string format: "male,young,neutral"
+        // Try "V" or "v" string format
         val vString = (charMap["V"] ?: charMap["v"])?.toString()
         if (vString != null && vString.contains(",")) {
             val parts = vString.split(",").map { it.trim() }
             if (parts.size >= 3) {
+                // Extract pitch (4th part) and speed (5th part) if available
+                val pitch = if (parts.size >= 4) {
+                    parseFloatInRange(parts[3], default = 1.0f, min = 0.5f, max = 1.5f)
+                } else 1.0f
+
+                val speed = if (parts.size >= 5) {
+                    parseFloatInRange(parts[4], default = 1.0f, min = 0.5f, max = 2.0f)
+                } else 1.0f
+
                 return ExtractedVoiceProfile(
-                    gender = parts[0].ifBlank { "male" },
-                    age = parts[1].ifBlank { "middle-aged" },
-                    accent = parts[2].ifBlank { "neutral" },
-                    pitch = 1.0f,
-                    speed = 1.0f
+                    gender = normalizeGender(parts[0]),
+                    age = normalizeAge(parts[1]),
+                    accent = normalizeAccent(parts[2]),
+                    pitch = pitch,
+                    speed = speed
                 )
             }
         }
@@ -206,15 +225,67 @@ JSON:"""
         val voiceMap = charMap["voice"] as? Map<String, Any>
         if (voiceMap != null) {
             return ExtractedVoiceProfile(
-                gender = voiceMap["gender"]?.toString() ?: "male",
-                age = voiceMap["age"]?.toString() ?: "middle-aged",
-                accent = voiceMap["accent"]?.toString() ?: "neutral",
+                gender = normalizeGender(voiceMap["gender"]?.toString()),
+                age = normalizeAge(voiceMap["age"]?.toString()),
+                accent = normalizeAccent(voiceMap["accent"]?.toString()),
                 pitch = (voiceMap["pitch"] as? Number)?.toFloat() ?: 1.0f,
                 speed = (voiceMap["speed"] as? Number)?.toFloat() ?: 1.0f
             )
         }
 
         return null
+    }
+
+    /**
+     * Parse a float value with range validation.
+     * Returns the parsed value clamped to [min, max], or default if parsing fails.
+     */
+    private fun parseFloatInRange(value: String, default: Float, min: Float, max: Float): Float {
+        return try {
+            val parsed = value.toFloat()
+            parsed.coerceIn(min, max)
+        } catch (e: NumberFormatException) {
+            AppLogger.w(TAG, "Failed to parse float value '$value', using default $default")
+            default
+        }
+    }
+
+    /**
+     * Normalize gender value to expected format.
+     */
+    private fun normalizeGender(value: String?): String {
+        return when (value?.lowercase()?.trim()) {
+            "male", "m" -> "male"
+            "female", "f" -> "female"
+            else -> "male" // Default
+        }
+    }
+
+    /**
+     * Normalize age value to expected format.
+     */
+    private fun normalizeAge(value: String?): String {
+        return when (value?.lowercase()?.trim()) {
+            "child" -> "child"
+            "young" -> "young"
+            "young-adult", "youngadult", "young adult" -> "young-adult"
+            "middle-aged", "middleaged", "middle aged", "adult" -> "middle-aged"
+            "elderly", "old" -> "elderly"
+            else -> "middle-aged" // Default
+        }
+    }
+
+    /**
+     * Normalize accent value to expected format.
+     */
+    private fun normalizeAccent(value: String?): String {
+        return when (value?.lowercase()?.trim()) {
+            "neutral", "none", "" -> "neutral"
+            "british", "uk" -> "british"
+            "american", "us" -> "american"
+            "asian" -> "asian"
+            else -> value?.trim()?.ifBlank { "neutral" } ?: "neutral"
+        }
     }
 
     /**

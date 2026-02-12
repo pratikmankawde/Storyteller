@@ -21,8 +21,8 @@
     <!-- Inner ConstraintLayout with 2:3 aspect ratio -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintDimensionRatio="2:3"
+        android:layout_height="wrap_content"
+        android:minHeight="200dp"
         android:padding="12dp">
 
         <!-- Character Avatar - circular, inside card at top -->
