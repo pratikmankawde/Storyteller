@@ -1,0 +1,14 @@
+# LLM Prompt Tester - Dependencies
+# Install with: pip install -r requirements.txt
+
+# LLM inference (for GGUF models)
+# Note: For GPU support, you may need to install with specific CUDA flags:
+#   CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
+llama-cpp-python>=0.2.0
+
+# PDF text extraction
+pymupdf>=1.24.0
+
+# Optional: For enhanced JSON handling
+# (standard library json is sufficient for most cases)
+
