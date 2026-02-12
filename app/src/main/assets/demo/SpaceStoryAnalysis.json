@@ -1,42 +1,106 @@
 {
-  "characters": ["Jax", "Zane", "Kael", "Mina", "Lyra", "Crystalline Hydra"],
+  "characters": [
+    "Jax",
+    "Zane",
+    "Kael",
+    "Mina",
+    "Lyra"
+  ],
   "chapters": [
     {
       "chapter": 1,
       "title": "Chapter 1",
-      "characters": ["Jax", "Zane", "Kael", "Mina", "Crystalline Hydra"],
+      "characters": [
+        "Jax",
+        "Zane",
+        "Kael",
+        "Mina"
+      ],
       "dialogs": [
-        {"speaker": "Jax", "text": "See? I told you the landing gear was optional."},
-        {"speaker": "Zane", "text": "We're missing a wing, Jax,"},
-        {"speaker": "Kael", "text": "Movement at twelve o'clock,"},
-        {"speaker": "Mina", "text": "You seek the Pulse,"},
-        {"speaker": "Mina", "text": "But the path is guarded by the Crystalline Hydra. If you want to live, follow the silence, not the light."}
+        {
+          "speaker": "Jax",
+          "text": "See? I told you the landing gear was optional."
+        },
+        {
+          "speaker": "Zane",
+          "text": "We're missing a wing, Jax,"
+        },
+        {
+          "speaker": "Kael",
+          "text": "Movement at twelve o'clock,"
+        },
+        {
+          "speaker": "Mina",
+          "text": "You seek the Pulse,"
+        },
+        {
+          "speaker": "Mina",
+          "text": "But the path is guarded by the Crystalline Hydra. If you want to live, follow the silence, not the light."
+        }
       ]
     },
     {
       "chapter": 2,
       "title": "Chapter 2",
-      "characters": ["Lyra", "Jax", "Zane", "Kael", "Crystalline Hydra"],
+      "characters": [
+        "Lyra",
+        "Jax",
+        "Zane",
+        "Kael"
+      ],
       "dialogs": [
-        {"speaker": "Lyra", "text": "Don't listen to it, Zane!"},
-        {"speaker": "Kael", "text": "Standard protocol?"},
-        {"speaker": "Jax", "text": "Standard protocol,"},
-        {"speaker": "Jax", "text": "Zane, cause a distraction. Lyra, find its weak spot. Kael, try not to get shattered."},
-        {"speaker": "Lyra", "text": "It's not attacking!"},
-        {"speaker": "Lyra", "text": "It's harmonizing! We're out of tune!"}
+        {
+          "speaker": "Lyra",
+          "text": "Don't listen to it, Zane!"
+        },
+        {
+          "speaker": "Kael",
+          "text": "Standard protocol?"
+        },
+        {
+          "speaker": "Jax",
+          "text": "Standard protocol,"
+        },
+        {
+          "speaker": "Jax",
+          "text": "Zane, cause a distraction. Lyra, find its weak spot. Kael, try not to get shattered."
+        },
+        {
+          "speaker": "Lyra",
+          "text": "It's not attacking!"
+        },
+        {
+          "speaker": "Lyra",
+          "text": "It's harmonizing! We're out of tune!"
+        }
       ]
     },
     {
       "chapter": 3,
       "title": "Chapter 3",
-      "characters": ["Mina", "Jax", "Kael", "Void-Griffin"],
+      "characters": [
+        "Mina",
+        "Jax",
+        "Kael"
+      ],
       "dialogs": [
-        {"speaker": "Mina", "text": "It requires a trade,"},
-        {"speaker": "Mina", "text": "The Griffin doesn't want gold. It wants a memory. Something heavy enough to ground it to this world."},
-        {"speaker": "Jax", "text": "Let's get out of here,"},
-        {"speaker": "Jax", "text": "I think the Rambler has had enough adventure for one day."}
+        {
+          "speaker": "Mina",
+          "text": "It requires a trade,"
+        },
+        {
+          "speaker": "Mina",
+          "text": "The Griffin doesn't want gold. It wants a memory. Something heavy enough to ground it to this world."
+        },
+        {
+          "speaker": "Jax",
+          "text": "Let's get out of here,"
+        },
+        {
+          "speaker": "Jax",
+          "text": "I think the Rambler has had enough adventure for one day."
+        }
       ]
     }
   ]
 }
-

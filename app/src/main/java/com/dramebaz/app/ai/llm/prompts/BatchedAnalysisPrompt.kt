@@ -33,22 +33,27 @@ class BatchedAnalysisPrompt : PromptDefinition<BatchedAnalysisInput, BatchedAnal
     override val tokenBudget: TokenBudget = BATCHED_ANALYSIS_BUDGET
     override val temperature: Float = BatchedPipelineConfig.TEMPERATURE
 
-    override val systemPrompt: String = """You are a JSON extraction engine. Extract ONLY characters who SPEAK dialog. Ignore locations, objects, creatures, and non-speaking entities."""
+    override val systemPrompt: String = """You are a JSON extraction engine. Output EXACTLY ONE valid JSON object containing all characters. Extract ONLY characters who SPEAK dialog. Ignore locations, objects, creatures, and non-speaking entities."""
 
     override fun buildUserPrompt(input: BatchedAnalysisInput): String {
-        return """Extract Character names, their Dialogs(D), their Traits(T) and their inferred Voice/Speaking Profile(V) from the story text below.
+        return """Extract characters from the story text below.
+
 RULES:
 1. ONLY include characters who have quoted dialogs
 2. DO NOT include locations, objects, creatures or entities that don't speak
-3. In the output json, each discovered character must appears EXACTLY ONCE
-4. Read the ENTIRE text before outputting
+3. Each character appears EXACTLY ONCE in the output
+4. Output EXACTLY ONE JSON object containing ALL characters
 
-FORMAT: {"<Character-Name>":{"D":["dialog1","dialog2", ...],"T":["trait1", "trait2", ...],"V":"Gender,Age,Accent,Pitch,Speed"}, ... }
+OUTPUT FORMAT (single JSON object with all characters):
+{
+  "CharacterName1": {"D": ["dialog1", "dialog2"], "T": ["trait1", "trait2"], "V": "male,young,neutral"},
+  "CharacterName2": {"D": ["dialog1"], "T": ["trait1"], "V": "female,middle-aged,neutral"}
+}
 
 KEYS:
-- D = Array of ALL quoted dialogs spoken by the keyed Character
-- T = Array of Character's physical traits and personality
-- V = Their [Gender,Age,Accent]. Options: (male|female, child|young|middle-aged|elderly, neutral|English|American|Asian...)
+- D = Array of exact quoted dialogs spoken by this character
+- T = Array of character traits (age, gender, personality)
+- V = Voice profile as "Gender,Age,Accent" (e.g. "male,young,neutral" or "female,elderly,British")
 
 TEXT:
 ${input.text}
@@ -343,6 +348,14 @@ JSON:"""
             }
         }
 
+        // Check for multiple JSON objects (JSONL format - one object per line)
+        // This happens when LLM outputs each character as a separate JSON object
+        val jsonObjects = extractMultipleJsonObjects(json)
+        if (jsonObjects.size > 1) {
+            AppLogger.d(TAG, "Found ${jsonObjects.size} separate JSON objects, merging them")
+            return mergeJsonObjects(jsonObjects)
+        }
+
         // Find the JSON object boundaries
         val objStart = json.indexOf('{')
         val objEnd = json.lastIndexOf('}')
@@ -357,6 +370,87 @@ JSON:"""
             AppLogger.w(TAG, "Could not find JSON object boundaries in response")
             "{}"
         }
+    }
+
+    /**
+     * Extract multiple JSON objects from a response.
+     * Handles JSONL format (one JSON object per line) or multiple objects separated by whitespace.
+     */
+    private fun extractMultipleJsonObjects(text: String): List<String> {
+        val objects = mutableListOf<String>()
+        var depth = 0
+        var inString = false
+        var escape = false
+        var objectStart = -1
+
+        for (i in text.indices) {
+            val c = text[i]
+
+            if (escape) {
+                escape = false
+                continue
+            }
+
+            if (c == '\\' && inString) {
+                escape = true
+                continue
+            }
+
+            if (c == '"') {
+                inString = !inString
+                continue
+            }
+
+            if (inString) continue
+
+            when (c) {
+                '{' -> {
+                    if (depth == 0) {
+                        objectStart = i
+                    }
+                    depth++
+                }
+                '}' -> {
+                    depth--
+                    if (depth == 0 && objectStart >= 0) {
+                        val obj = text.substring(objectStart, i + 1)
+                        objects.add(obj)
+                        objectStart = -1
+                    }
+                }
+            }
+        }
+
+        return objects
+    }
+
+    /**
+     * Merge multiple JSON objects into a single object.
+     * Each input object should have character names as keys.
+     * {"Jax": {...}} + {"Zane": {...}} -> {"Jax": {...}, "Zane": {...}}
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun mergeJsonObjects(jsonObjects: List<String>): String {
+        val merged = mutableMapOf<String, Any>()
+
+        for (jsonStr in jsonObjects) {
+            try {
+                val obj = gson.fromJson(jsonStr, Map::class.java) as? Map<String, Any>
+                if (obj != null) {
+                    for ((key, value) in obj) {
+                        if (!merged.containsKey(key)) {
+                            merged[key] = value
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.w(TAG, "Failed to parse individual JSON object: ${jsonStr.take(100)}", e)
+            }
+        }
+
+        val result = gson.toJson(merged)
+        AppLogger.d(TAG, "Merged ${jsonObjects.size} JSON objects into single object with ${merged.size} keys")
+        return result
     }
 }
 

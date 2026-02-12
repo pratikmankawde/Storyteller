@@ -265,7 +265,7 @@
                     android:layout_height="wrap_content"
                     android:valueFrom="0.5"
                     android:valueTo="2.0"
-                    android:stepSize="0.1"
+                    android:stepSize="0.05"
                     android:value="0.9" />
 
             </LinearLayout>
