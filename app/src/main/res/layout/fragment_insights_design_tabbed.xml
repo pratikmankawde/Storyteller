@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?attr/colorSurface">
+
+    <!-- Book Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+        <TextView android:id="@+id/book_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="20sp" android:textStyle="bold" android:textColor="?attr/colorOnSurface" />
+        <TextView android:id="@+id/book_author" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="14sp" android:textColor="?attr/colorOnSurfaceVariant" />
+    </LinearLayout>
+
+    <!-- Tab Layout -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:tabMode="scrollable"
+        app:tabGravity="start" />
+
+    <!-- Content Container -->
+    <FrameLayout
+        android:id="@+id/tab_content_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Overview Tab Content -->
+        <ScrollView android:id="@+id/overview_content" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="visible">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <TextView android:id="@+id/stat_chapters" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="24sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/stat_characters" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="24sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/stat_dialogs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textSize="24sp" android:textStyle="bold" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="4dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="Chapters" android:textSize="12sp" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="Characters" android:textSize="12sp" />
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="Dialogs" android:textSize="12sp" />
+                </LinearLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reading Level" android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="24dp" />
+                <TextView android:id="@+id/reading_level_value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Emotions Tab Content -->
+        <ScrollView android:id="@+id/emotions_content" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Emotional Journey" android:textSize="16sp" android:textStyle="bold" />
+                <com.dramebaz.app.ui.insights.EmotionalArcView android:id="@+id/emotional_arc_view"
+                    android:layout_width="match_parent" android:layout_height="200dp" android:layout_marginTop="16dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sentiment" android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="24dp" />
+                <TextView android:id="@+id/sentiment_tone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" android:layout_marginTop="4dp" />
+                <com.dramebaz.app.ui.insights.SentimentDistributionView android:id="@+id/sentiment_view"
+                    android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Story Tab Content -->
+        <ScrollView android:id="@+id/story_content" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Story Arc" android:textSize="16sp" android:textStyle="bold" />
+                <com.dramebaz.app.ui.insights.PlotOutlineView android:id="@+id/plot_outline_view"
+                    android:layout_width="match_parent" android:layout_height="180dp" android:layout_marginTop="16dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Themes" android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="24dp" />
+                <com.google.android.material.chip.ChipGroup android:id="@+id/themes_chip_group"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Vocabulary Tab Content -->
+        <ScrollView android:id="@+id/vocabulary_content" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Vocabulary Builder" android:textSize="16sp" android:textStyle="bold" />
+                <LinearLayout android:id="@+id/vocabulary_container" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:layout_marginTop="16dp" />
+            </LinearLayout>
+        </ScrollView>
+
+    </FrameLayout>
+</LinearLayout>
+

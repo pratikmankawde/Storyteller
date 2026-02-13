@@ -27,8 +27,8 @@
             android:textColor="@color/text_secondary"
             android:layout_marginBottom="8dp" />
 
-        <!-- Full page text in ScrollView so all content is visible without clipping -->
-        <ScrollView
+        <!-- Full page text in custom ScrollView that allows horizontal swipes for ViewPager2 -->
+        <com.dramebaz.app.ui.widget.ViewPager2CompatibleScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
@@ -48,7 +48,7 @@
                 android:breakStrategy="high_quality"
                 android:hyphenationFrequency="none" />
 
-        </ScrollView>
+        </com.dramebaz.app.ui.widget.ViewPager2CompatibleScrollView>
 
     </LinearLayout>
 

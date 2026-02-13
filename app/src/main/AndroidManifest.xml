@@ -59,6 +59,16 @@
 	            android:exported="true"
 	            android:theme="@style/Theme.Dramebaz"
 	            android:label="PDF Viewer Test" />
+        <activity
+            android:name=".ui.test.LibraryTestActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Dramebaz"
+            android:label="Library Design Variations" />
+        <activity
+            android:name=".ui.test.InsightsTestActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Dramebaz"
+            android:label="Insights Design Variations" />
 
         <service
             android:name=".playback.service.AudioPlaybackService"

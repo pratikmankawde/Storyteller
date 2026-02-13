@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="?attr/colorSurface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Book Header -->
+        <TextView android:id="@+id/book_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="22sp" android:textStyle="bold" android:textColor="?attr/colorOnSurface" />
+        <TextView android:id="@+id/book_author" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="14sp" android:textColor="?attr/colorOnSurfaceVariant" android:layout_marginBottom="24dp" />
+
+        <!-- Timeline Container -->
+        <LinearLayout android:id="@+id/timeline_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp">
+
+            <!-- Statistics Section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="20dp">
+                <View android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="-30dp" android:layout_marginEnd="18dp" android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_primary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Overview" android:textSize="16sp" android:textStyle="bold" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
+                        <TextView android:id="@+id/stat_chapters" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" • " />
+                        <TextView android:id="@+id/stat_characters" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" • " />
+                        <TextView android:id="@+id/stat_dialogs" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Reading Level Section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="20dp">
+                <View android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="-30dp" android:layout_marginEnd="18dp" android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_secondary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reading Level" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/reading_level_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="14sp" android:textColor="?attr/colorPrimary" android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Sentiment Section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="20dp">
+                <View android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="-30dp" android:layout_marginEnd="18dp" android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_tertiary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sentiment Analysis" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/sentiment_tone" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="14sp" android:textColor="?attr/colorSecondary" android:layout_marginTop="4dp" />
+                    <com.dramebaz.app.ui.insights.SentimentDistributionView android:id="@+id/sentiment_view"
+                        android:layout_width="match_parent" android:layout_height="32dp" android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Emotional Arc Section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="20dp">
+                <View android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="-30dp" android:layout_marginEnd="18dp" android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_primary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Emotional Journey" android:textSize="16sp" android:textStyle="bold" />
+                    <com.dramebaz.app.ui.insights.EmotionalArcView android:id="@+id/emotional_arc_view"
+                        android:layout_width="match_parent" android:layout_height="150dp" android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Plot Section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="20dp">
+                <View android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="-30dp" android:layout_marginEnd="18dp" android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_secondary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Story Arc" android:textSize="16sp" android:textStyle="bold" />
+                    <com.dramebaz.app.ui.insights.PlotOutlineView android:id="@+id/plot_outline_view"
+                        android:layout_width="match_parent" android:layout_height="120dp" android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Themes Section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="20dp">
+                <View android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="-30dp" android:layout_marginEnd="18dp" android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_tertiary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Themes" android:textSize="16sp" android:textStyle="bold" />
+                    <com.google.android.material.chip.ChipGroup android:id="@+id/themes_chip_group"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Vocabulary Section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <View android:layout_width="12dp" android:layout_height="12dp" android:layout_marginStart="-30dp" android:layout_marginEnd="18dp" android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_primary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Vocabulary" android:textSize="16sp" android:textStyle="bold" />
+                    <LinearLayout android:id="@+id/vocabulary_container" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
+

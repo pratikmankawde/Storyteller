@@ -16,12 +16,13 @@
         android:background="#FFFEF7">
 
         <!-- PDF Page as rendered bitmap -->
+        <!-- BUG-001-FIX: Use centerInside to maintain aspect ratio without stretching -->
         <ImageView
             android:id="@+id/pdf_page_image"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scaleType="fitCenter"
-            android:adjustViewBounds="true"
+            android:scaleType="centerInside"
+            android:adjustViewBounds="false"
             android:contentDescription="@string/pdf_page_content_description"
             tools:src="@drawable/ic_launcher_background" />
 

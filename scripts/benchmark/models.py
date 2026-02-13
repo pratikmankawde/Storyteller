@@ -64,6 +64,9 @@ class LlamaServerModel(BaseModel):
             "temperature": temperature,
             "stop": self.stop_tokens,
             "cache_prompt": self.cache_prompt,
+            # Repetition penalties to prevent loops
+            "repeat_penalty": 1.1,
+            "repeat_last_n": 64,
         }
         try:
             resp = self.session.post(

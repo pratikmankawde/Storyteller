@@ -58,4 +58,14 @@
 
     <!-- Material 3 Scrim Color -->
     <color name="m3_scrim">#52000000</color>
+
+    <!-- Insights Design Colors -->
+    <color name="glass_chip_bg">#60FFFFFF</color>
+    <color name="dark_accent">#00FF88</color>
+    <color name="dark_card_bg">#1A1A1A</color>
+    <color name="gradient_chip_bg">#D84315</color>
+    <color name="white">#FFFFFF</color>
+    <color name="md_theme_primary">@color/primary</color>
+    <color name="md_theme_onSurface">@color/on_surface</color>
+    <color name="md_theme_primaryContainer">@color/primary_light</color>
 </resources>

@@ -38,23 +38,23 @@ class BatchedAnalysisPrompt : PromptDefinition<BatchedAnalysisInput, BatchedAnal
     override fun buildUserPrompt(input: BatchedAnalysisInput): String {
         return """Extract all the characters, dialogs spoken by them, their traits and inferred voice profile from the given Story excerpt.
 RULES:
-1. ONLY include characters who have quoted dialogs
-2. DO NOT classify locations, objects, creatures or entities that don't speak as characters.
-3. Each character appears EXACTLY ONCE in the output.
-4. Attribute dialogs by character name and pronouns.
-5. Identify character traits explicitly mentioned in the story.
+1. ONLY include Characters who have quoted dialogs.
+2. DO NOT classify locations, objects, creatures or entities that don't speak as Characters.
+3. Do not repeat Characters in the output.
+4. Attribute dialogs by Character name and pronouns referring them. Each dialog belongs to only one Character.
+5. Identify Character traits explicitly mentioned in the story by the Narrator.
 6. Based on the traits, infer a voice profile.
 
 Keys for output:
-D:Array of exact quoted dialogs spoken by current character
-T:Array of character traits (personalities, adjectives)
+D:Array of exact quoted dialogs spoken by current Character
+T:Array of Character traits (personalities, adjectives)
 V:Voice profile as a tuple of "Gender,Age,Accent,Pitch,Speed".
 Possible values:
-Gender: male|female
-Age: child|young|young-adult|middle-aged|elderly
-Accent: neutral|british|american|asian
-Pitch(of voice) range: 0.5-1.5
-Speed(speed of speaking) range: 0.5-2.0
+Gender (inferred from pronouns): male|female
+Age (explicitly mentioned or inferred): child|young|young-adult|middle-aged|elderly
+Accent (inferred from the dialogs): neutral|british|american|asian
+Pitch (of voice) within the range: 0.5-1.5
+Speed (speed of speaking) within the range: 0.5-2.0
 
 OUTPUT FORMAT:
 {

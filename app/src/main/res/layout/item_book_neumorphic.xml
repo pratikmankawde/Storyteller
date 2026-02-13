@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Neumorphic soft UI book card -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:background="@drawable/neumorphic_raised"
+    android:padding="12dp"
+    android:orientation="horizontal"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <!-- Book cover with soft inset -->
+    <FrameLayout
+        android:layout_width="70dp"
+        android:layout_height="105dp"
+        android:background="@drawable/neumorphic_inset">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/book_cover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="4dp"
+            android:scaleType="centerCrop"
+            android:background="#D1D9E6"
+            app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Medium"
+            tools:src="@android:drawable/ic_menu_gallery" />
+
+    </FrameLayout>
+
+    <!-- Book details -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="16dp"
+        android:layout_gravity="center_vertical"
+        android:orientation="vertical">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/book_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textColor="#2D4059"
+            android:maxLines="2"
+            android:ellipsize="end"
+            tools:text="The Great Adventure" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/book_format"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:textColor="#6B7B8C"
+            tools:text="PDF • Fantasy" />
+
+        <!-- Progress bar with neumorphic style -->
+        <FrameLayout
+            android:id="@+id/progress_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/reading_progress"
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                android:progressTint="#6B7B8C"
+                android:progressBackgroundTint="#C4CCD9"
+                tools:progress="65" />
+
+        </FrameLayout>
+
+        <!-- Favorite indicator -->
+        <ImageView
+            android:id="@+id/favorite_indicator"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginTop="8dp"
+            android:src="@drawable/ic_favorite"
+            android:visibility="gone"
+            app:tint="#EA5455"
+            android:contentDescription="@string/toggle_favorite" />
+
+    </LinearLayout>
+
+</LinearLayout>
+

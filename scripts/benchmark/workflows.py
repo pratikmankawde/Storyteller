@@ -264,6 +264,189 @@ class ThreePassWorkflow(BaseWorkflow):
         return result
 
 
+class BatchedWorkflow(BaseWorkflow):
+    """Batched single-pass workflow: extracts characters, dialogs, traits, and voice in one call."""
+
+    def run(
+        self,
+        pdf_path: str,
+        segment_size: int = 4000,
+        max_segments: int = 10,
+        **kwargs,
+    ) -> WorkflowResult:
+        """Run batched analysis workflow.
+
+        Single pass per segment: Extract characters + dialogs + traits + voice profiles
+        Output format: {"CharacterName": {"D": [...], "T": [...], "V": "..."}}
+
+        Args:
+            pdf_path: Path to PDF file
+            segment_size: Characters per segment (default 4000 to fit in 6K context)
+            max_segments: Maximum segments to process
+        """
+        result = WorkflowResult()
+        timing = {}
+
+        # Extract text and split into segments
+        t0 = time.time()
+        text = extract_pdf_text(pdf_path)
+        segments = split_into_segments(text, segment_size)[:max_segments]
+        timing["extraction"] = time.time() - t0
+        result.metadata["num_segments"] = len(segments)
+
+        # Process each segment with batched analysis
+        t0 = time.time()
+        all_characters: dict[str, CharacterResult] = {}
+        all_dialogs = []
+        raw_outputs: list[str] = []  # Collect raw LLM outputs
+
+        verbose = kwargs.get("verbose", False)
+        raw_output_file = kwargs.get("raw_output_file", None)
+
+        for i, segment in enumerate(segments):
+            prompt = self.prompt_builder.build_batched_analysis_prompt(segment)
+            response = self.model.generate(prompt)
+
+            # Collect raw output
+            raw_outputs.append(f"=== Segment {i+1}/{len(segments)} ===\n{response}\n")
+
+            if verbose:
+                print(f"\n[BatchedWorkflow] Segment {i+1}/{len(segments)} response ({len(response)} chars):")
+                print(response[:2000] + ("..." if len(response) > 2000 else ""))
+
+            data = self._parse_batched_response(response, verbose=verbose)
+
+            if verbose:
+                print(f"[BatchedWorkflow] Parsed {len(data)} characters: {list(data.keys())}")
+
+            # Process each character from the batched response
+            for char_name, char_data in data.items():
+                if char_name not in all_characters:
+                    all_characters[char_name] = CharacterResult(name=char_name)
+
+                char_result = all_characters[char_name]
+
+                # Extract dialogs (D key)
+                dialogs = char_data.get("dialogs", [])
+                for dialog_text in dialogs:
+                    dialog_entry = {
+                        "speaker": char_name,
+                        "text": dialog_text,
+                        "segment": i,
+                    }
+                    char_result.dialogs.append(dialog_entry)
+                    all_dialogs.append(dialog_entry)
+
+                # Extract traits (T key)
+                traits = char_data.get("traits", [])
+                for trait in traits:
+                    if trait not in char_result.traits:
+                        char_result.traits.append(trait)
+
+                # Extract voice profile (V key)
+                voice_str = char_data.get("voice", "")
+                if voice_str and not char_result.voice_profile:
+                    char_result.voice_profile = self._parse_voice_string(voice_str)
+
+        timing["batched_analysis"] = time.time() - t0
+
+        # Save raw outputs to file if requested
+        if raw_output_file:
+            from pathlib import Path
+            Path(raw_output_file).write_text("\n".join(raw_outputs), encoding="utf-8")
+            if verbose:
+                print(f"[BatchedWorkflow] Raw LLM outputs saved to: {raw_output_file}")
+
+        # Ensure Narrator is included
+        if "Narrator" not in all_characters:
+            all_characters["Narrator"] = CharacterResult(name="Narrator")
+
+        result.characters = list(all_characters.values())
+        result.dialogs = all_dialogs
+        result.timing = timing
+        return result
+
+    def _parse_batched_response(self, response: str, verbose: bool = False) -> dict[str, dict]:
+        """Parse batched analysis response.
+
+        Expected format:
+        {"CharacterName": {"D": ["dialog1"], "T": ["trait1"], "V": "male,young,neutral,1.0,1.0"}}
+
+        Returns:
+            Dict mapping character names to normalized data with keys: dialogs, traits, voice
+        """
+        json_str = extract_json_from_text(response)
+        if not json_str:
+            if verbose:
+                print("[BatchedWorkflow] extract_json_from_text returned empty")
+            return {}
+
+        if verbose:
+            print(f"[BatchedWorkflow] Extracted JSON ({len(json_str)} chars): {json_str[:500]}...")
+
+        result = validate_json(json_str)
+        if not result["valid"]:
+            if verbose:
+                print(f"[BatchedWorkflow] validate_json failed: {result.get('error', 'unknown')}")
+            return {}
+
+        data = result["data"]
+        normalized = {}
+
+        for name, char_data in data.items():
+            if not isinstance(char_data, dict):
+                continue
+
+            normalized[name] = {
+                "dialogs": [],
+                "traits": [],
+                "voice": ""
+            }
+
+            # Handle different key formats (D/d/dialogs, T/t/traits, V/v/voice)
+            for key, value in char_data.items():
+                key_lower = key.lower()
+                if key_lower in ('d', 'dialogs', 'dialogue', 'dialogues'):
+                    if isinstance(value, list):
+                        normalized[name]["dialogs"] = value
+                elif key_lower in ('t', 'traits', 'trait'):
+                    if isinstance(value, list):
+                        normalized[name]["traits"] = value
+                elif key_lower in ('v', 'voice', 'voice_profile'):
+                    if isinstance(value, str):
+                        normalized[name]["voice"] = value
+
+        return normalized
+
+    def _parse_voice_string(self, voice_str: str) -> dict:
+        """Parse voice profile string into structured dict.
+
+        Expected format: "Gender,Age,Accent,Pitch,Speed"
+        Example: "male,young,neutral,1.0,1.2"
+        """
+        parts = [p.strip() for p in voice_str.split(",")]
+        profile = {}
+
+        if len(parts) >= 1:
+            profile["gender"] = parts[0].lower()
+        if len(parts) >= 2:
+            profile["age"] = parts[1].lower()
+        if len(parts) >= 3:
+            profile["accent"] = parts[2].lower()
+        if len(parts) >= 4:
+            try:
+                profile["pitch"] = float(parts[3])
+            except ValueError:
+                profile["pitch"] = 1.0
+        if len(parts) >= 5:
+            try:
+                profile["speed"] = float(parts[4])
+            except ValueError:
+                profile["speed"] = 1.0
+
+        return profile
+
+
 class FivePassWorkflow(BaseWorkflow):
     """Full 5-pass workflow for comprehensive character analysis."""
 

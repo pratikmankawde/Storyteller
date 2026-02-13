@@ -310,25 +310,59 @@ def extract_json_from_text(text: str) -> str:
     text = re.sub(r'<think>.*', '', text, flags=re.DOTALL)
     text = text.replace('/no_think', '').strip()
 
-    # Pattern 1: JSON with arrays inside
-    json_match = re.search(r'\{[^{}]*\[[^\]]*\][^{}]*\}', text, re.DOTALL)
-    if json_match:
-        return json_match.group(0)
+    # Strip markdown code blocks (```json...``` or ```...```)
+    code_block_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+    if code_block_match:
+        text = code_block_match.group(1).strip()
 
-    # Pattern 2: Nested JSON with voice_profile object
-    json_match = re.search(r'\{[^{}]*"voice_profile"\s*:\s*\{[^{}]*\}[^{}]*\}', text, re.DOTALL)
-    if json_match:
-        return json_match.group(0)
+    # Find the outermost JSON object by brace matching
+    start_idx = text.find('{')
+    if start_idx == -1:
+        return ""
 
-    # Pattern 3: Any JSON object with nested braces
-    json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
-    if json_match:
-        return json_match.group(0)
+    # Count braces to find matching closing brace
+    depth = 0
+    in_string = False
+    escape_next = False
+    end_idx = -1
+    last_valid_end = -1  # Track last position where we could close
 
-    # Pattern 4: Simple JSON object (greedy, last resort)
-    json_match = re.search(r'\{.*\}', text, re.DOTALL)
-    if json_match:
-        return json_match.group(0)
+    for i in range(start_idx, len(text)):
+        char = text[i]
+
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == '\\' and in_string:
+            escape_next = True
+            continue
+
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+
+        if not in_string:
+            if char == '{':
+                depth += 1
+            elif char == '}':
+                depth -= 1
+                if depth == 0:
+                    end_idx = i
+                    break
+                elif depth == 1:
+                    # Track last complete character entry
+                    last_valid_end = i
+
+    if end_idx != -1:
+        return text[start_idx:end_idx + 1]
+
+    # If JSON is incomplete (LLM got cut off), try to salvage by closing braces
+    if last_valid_end != -1 and depth > 0:
+        # Extract up to last valid entry and close the JSON
+        partial = text[start_idx:last_valid_end + 1]
+        # Add closing brace for outer object
+        return partial + "\n}"
 
     return ""
 

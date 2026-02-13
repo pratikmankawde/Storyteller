@@ -160,31 +160,38 @@ class PromptDefinitions:
     # Batched Analysis Prompt (EXACT COPY from BatchedAnalysisPrompt.kt)
     # -------------------------------------------------------------------------
 
-    BATCHED_SYSTEM_PROMPT = """You are a JSON extraction engine. Output EXACTLY ONE valid JSON object containing all characters. Extract ONLY characters who SPEAK dialog. Ignore locations, objects, creatures, and non-speaking entities."""
+    BATCHED_SYSTEM_PROMPT = """You are a Story analysis engine. Output one complete and valid JSON object as requested in the user prompt, from the given Story excerpt."""
 
     @classmethod
     def build_batched_analysis_prompt(cls, text: str) -> str:
         """Build the batched analysis prompt (matching BatchedAnalysisPrompt.kt)."""
-        return f'''Extract characters from the story text below.
-
+        return f'''Extract all the characters, dialogs spoken by them, their traits and inferred voice profile from the given Story excerpt.
 RULES:
-1. ONLY include characters who have quoted dialogs
-2. DO NOT include locations, objects, creatures or entities that don't speak
-3. Each character appears EXACTLY ONCE in the output
-4. Output EXACTLY ONE JSON object containing ALL characters
+1. ONLY include Characters who have quoted dialogs.
+2. DO NOT classify locations, objects, creatures or entities that don't speak as Characters.
+3. Do not repeat Characters in the output.
+4. Attribute dialogs by Character name and pronouns referring them. Each dialog belongs to only one Character.
+5. Identify Character traits explicitly mentioned in the story by the Narrator.
+6. Based on the traits, infer a voice profile.
 
-OUTPUT FORMAT (single JSON object with all characters):
-{{
-  "CharacterName1": {{"D": ["dialog1", "dialog2"], "T": ["trait1", "trait2"], "V": "male,young,neutral"}},
-  "CharacterName2": {{"D": ["dialog1"], "T": ["trait1"], "V": "female,middle-aged,neutral"}}
-}}
+Keys for output:
+D:Array of exact quoted dialogs spoken by current Character
+T:Array of Character traits (personalities, adjectives)
+V:Voice profile as a tuple of "Gender,Age,Accent,Pitch,Speed".
+Possible values:
+Gender (inferred from pronouns): male|female
+Age (explicitly mentioned or inferred): child|young|young-adult|middle-aged|elderly
+Accent (inferred from the dialogs): neutral|british|american|asian
+Pitch (of voice) within the range: 0.5-1.5
+Speed (speed of speaking) within the range: 0.5-2.0
 
-KEYS:
-- D = Array of exact quoted dialogs spoken by this character
-- T = Array of character traits (age, gender, personality)
-- V = Voice profile as "Gender,Age,Accent" (e.g. "male,young,neutral" or "female,elderly,British")
+OUTPUT FORMAT:
+{
+  "CharacterName1": {"D": ["this character's first dialog", "their next dialog"], "T": ["trait", "another trait"], "V": "Gender,Age,Accent,Pitch,Speed"},
+  "CharacterName2": {"D": ["this character's first dialog"], "T": ["trait"], "V": "Gender,Age,Accent,Pitch,Speed"}
+}
 
-TEXT:
+Story Excerpt:
 {text}
 
 JSON:'''

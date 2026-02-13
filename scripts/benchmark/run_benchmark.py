@@ -25,7 +25,7 @@ from pathlib import Path
 
 from .models import BaseModel, GGUFModel, LlamaServerModel, LiteRTModel
 from .prompts import PromptBuilder
-from .workflows import FivePassWorkflow, ThreePassWorkflow, TwoPassWorkflow, WorkflowResult
+from .workflows import BatchedWorkflow, FivePassWorkflow, ThreePassWorkflow, TwoPassWorkflow, WorkflowResult
 
 
 def validate_litert_args(args) -> None:
@@ -126,7 +126,9 @@ def create_workflow(args, model: BaseModel):
     """Create workflow instance based on arguments."""
     prompt_builder = PromptBuilder(args.model_type)
 
-    if args.workflow == "2pass":
+    if args.workflow == "batched":
+        return BatchedWorkflow(model, prompt_builder)
+    elif args.workflow == "2pass":
         return TwoPassWorkflow(model, prompt_builder)
     elif args.workflow == "3pass":
         return ThreePassWorkflow(model, prompt_builder)
@@ -164,9 +166,9 @@ For LiteRT troubleshooting, see scripts/benchmark/TROUBLESHOOTING.md
     # Workflow selection
     parser.add_argument(
         "--workflow",
-        choices=["2pass", "3pass", "5pass"],
+        choices=["batched", "2pass", "3pass", "5pass"],
         default="3pass",
-        help="Workflow type (default: 3pass)",
+        help="Workflow type: batched (single-pass), 2pass, 3pass, 5pass (default: 3pass)",
     )
 
     # Model backend selection
@@ -222,6 +224,7 @@ For LiteRT troubleshooting, see scripts/benchmark/TROUBLESHOOTING.md
 
     # Output options
     parser.add_argument("--output", "-o", help="Output JSON file (default: stdout)")
+    parser.add_argument("--raw-output", help="Save raw LLM outputs to this file (batched workflow only)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     # Utility commands
@@ -267,6 +270,8 @@ For LiteRT troubleshooting, see scripts/benchmark/TROUBLESHOOTING.md
         result: WorkflowResult = workflow.run(
             str(pdf_path),
             max_pages=args.max_pages,
+            verbose=args.verbose,
+            raw_output_file=getattr(args, 'raw_output', None),
         )
 
     result.timing["total"] = time.time() - t_start

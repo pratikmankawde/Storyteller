@@ -1,0 +1,533 @@
+=== Segment 1/10 ===
+```json
+{
+  "Mr Dursley": {
+    "D": [
+      "Mr Dursley hummed as he picked out his most boring tie for work",
+      "He got into his car and backed out of number four’s drive",
+      "He jerked his head around to look again",
+      "Mr Dursley gave himself a little shake and put the cat out of his mind",
+      "As he drove towards town he thought of nothing except a large order of drills he was hoping to get that day",
+      "As he sat in the usual morning traffic jam, he couldn’t help noticing that there seemed to be a lot of strangely dressed people about",
+      "Mr Dursley couldn’t bear people who dressed in funny clothes – the get-ups you saw on young people!"
+    ],
+    "T": [
+      "big, beefy",
+      "boring",
+      "unDursleyish",
+      "peculiar",
+      "boring",
+      "strange",
+      "funny"
+    ],
+    "V": "male,middle-aged,british,0.6,1.0"
+  },
+  "Mrs Dursley": {
+    "D": [
+      "Mrs Dursley gossiped away happily as she wrestled a screaming Dudley into his high chair",
+      "Mrs Dursley pretended she didn’t have a sister",
+      "Mrs Dursley gossiped away happily as she wrestled a screaming Dudley into his high chair"
+    ],
+    "T": [
+      "thin",
+      "blonde",
+      "craning",
+      "unDursleyish",
+      "gossipy"
+    ],
+    "V": "female,middle-aged,british,0.7,1.2"
+  },
+  "Dudley": {
+    "D": [
+      "Mrs Dursley wrestled a screaming Dudley into his high chair",
+      "Dudley was now having a tantrum and throwing his cereal at the walls",
+      "Dudley was now having a tantrum and throwing his cereal at the walls"
+    ],
+    "T": [
+      "good-for-nothing",
+      "tantrum",
+      "small"
+    ],
+    "V": "male,child,neutral,0.8,1.0"
+  },
+  "Mr Potter": {
+    "D": [],
+    "T": [],
+    "V": "male,child,neutral,0.7,1.0"
+  },
+  "Mrs Potter": {
+    "D": [],
+    "T": [],
+    "V": "female,child,neutral,0.7,1.0"
+  }
+}
+```
+
+=== Segment 2/10 ===
+```json
+{
+  "Mr Dursley": {
+    "D": [
+      "The nerve of him!",
+      "He yelled at five different people.",
+      "He put the receiver back down and stroked his moustache, thinking … no, he was being stupid.",
+      "Sorry,",
+      "Shoo!"
+    ],
+    "T": ["middle-aged", "angry", "nervous", "worried", "selfish"],
+    "V": "male,middle-aged,british,0.6,1.0"
+  },
+  "The Boy Who Lived (Harry Potter)": {
+    "D": [],
+    "T": ["innocent", "happy", "cheerful"],
+    "V": "male,young,british,0.7,1.2"
+  },
+  "The old man": {
+    "D": [
+      "Don’t be sorry, my dear sir, for nothing could upset me today!",
+      "Even Muggles like yourself should be celebrating, this happy, happy day!"
+    ],
+    "T": ["old", "cheerful", "enthusiastic", "squeaky-voiced"],
+    "V": "male,elderly,british,0.8,1.3"
+  }
+}
+```
+
+=== Segment 3/10 ===
+```json
+{
+  "Mr Dursley": {
+    "D": [
+      "this character's first dialog",
+      "Er – Petunia, dear – you haven’t heard from your sister lately, have you?",
+      "Funny stuff on the news, Owls … shooting stars … and there were a lot of funny-looking people in town today …",
+      "Well, I just thought … maybe … it was something to do with … you know … her lot.",
+      "Their son – he’d be about Dudley’s age now, wouldn’t he?",
+      "I quite agree.",
+      "Yes, I quite agree.",
+      "It couldn’t affect them …",
+      "How very wrong he was."
+    ],
+    "T": [
+      "determined",
+      "nervously",
+      "mumbled",
+      "casually",
+      "stiffly",
+      "agree",
+      "agree",
+      "wrong"
+    ],
+    "V": "male,middle-aged,british,0.6,1.0"
+  },
+  "Mrs Dursley": {
+    "D": [
+      "No, Why?",
+      "No good.",
+      "Why?",
+      "No.",
+      "I suppose so.",
+      "Nasty, common name, if you ask me.",
+      "I suppose so.",
+      "No good."
+    ],
+    "T": [
+      "shocked",
+      "angry",
+      "snapped",
+      "stiffly"
+    ],
+    "V": "female,middle-aged,british,0.7,1.2"
+  },
+  "The Cat": {
+    "D": [],
+    "T": [],
+    "V": "neutral,child,neutral,0.8,1.0"
+  },
+  "News Reader": {
+    "D": [
+      "Most mysterious.",
+      "Going to be any more showers of owls tonight, Jim?"
+    ],
+    "T": [],
+    "V": "neutral,middle-aged,american,0.9,1.5"
+  },
+  "Jim McGuffin": {
+    "D": [
+      "Well, I don’t know about that, but it’s not only the owls that have been acting oddly today. Viewers as far apart as Kent, Yorkshire and Dundee have been phoning in to tell me that instead of the rain I promised yesterday, they’ve had a downpour of shooting stars! Perhaps people have been celebrating Bonfire Night early – it’s not until next week, folks! But I can promise a wet night tonight."
+    ],
+    "T": [],
+    "V": "neutral,young,american,0.8,1.5"
+  },
+  "Dudley": {
+    "D": [],
+    "T": [],
+    "V": "neutral,child,neutral,0.8,1.0"
+  },
+  "Potter": {
+    "D": [],
+    "T": [],
+    "V": "neutral,child,neutral,0.8,1.0"
+  }
+}
+```
+
+=== Segment 4/10 ===
+```json
+{
+  "Mr Dursley": {
+    "D": [],
+    "T": [],
+    "V": "neutral,middle-aged,neutral,neutral,neutral"
+  },
+  "The Cat": {
+    "D": [],
+    "T": [],
+    "V": "neutral,child,neutral,neutral,neutral"
+  },
+  "Albus Dumbledore": {
+    "D": [
+      "I should have known.",
+      "Fancy seeing you here, Professor McGonagall.",
+      "My dear Professor, I’ve never seen a cat sit so stiffly.",
+      "You’d be stiff if you’d been sitting on a brick wall all day.",
+      "All day? When you could have been celebrating? I must have passed a dozen feasts and parties on my way here.",
+      "You can’t blame them.",
+      "We’ve had precious little to celebrate for eleven years."
+    ],
+    "T": ["old", "wise", "enigmatic", "observant", "compassionate"],
+    "V": "male,elderly,british,neutral,neutral,neutral,neutral"
+  },
+  "Professor McGonagall": {
+    "D": [
+      "How did you know it was me?",
+      "You’d be stiff if you’d been sitting on a brick wall all day.",
+      "All day? When you could have been celebrating?",
+      "Oh yes, everyone’s celebrating, all right.",
+      "I heard it. Flocks of owls … shooting stars …",
+      "You’d think they’d be a bit more careful, but no – even the Muggles have noticed something’s going on.",
+      "I’ll bet that was Dedalus Diggle. He never had much sense."
+    ],
+    "T": ["stern", "irritated", "observant", "traditional", "intelligent"],
+    "V": "female,middle-aged,british,british,british,british,british"
+  },
+  "Mrs Dursley": {
+    "D": [],
+    "T": [],
+    "V": "neutral,middle-aged,neutral,neutral,neutral"
+  }
+}
+```
+
+=== Segment 5/10 ===
+```json
+{
+  "Harry Potter": {
+    "D": [
+      "A fine thing it would be if, on the very day You-Know-Who seems to have disappeared at last, the Muggles found out about us all.",
+      "No, thank you.",
+      "I have never seen any reason to be frightened of saying Voldemort’s name.",
+      "What they’re saying, is that last night Voldemort turned up in Godric’s Hollow. He went to find the Potters. The rumour is that Lily and James Potter are – are – that they’re – dead.",
+      "I know … I know …"
+    ],
+    "T": ["young", "neutral"],
+    "V": "male,100,american,0.8,1.0"
+  },
+  "Professor McGonagall": {
+    "D": [
+      "A what?",
+      "The owls are nothing to the rumours that are flying around. You know what everyone’s saying? About why he’s disappeared? About what finally stopped him?",
+      "What they’re saying, is that last night Voldemort turned up in Godric’s Hollow. He went to find the Potters. The rumour is that Lily and James Potter are – are – that they’re – dead.",
+      "It’s – it’s true?",
+      "I can’t believe it … I didn’t want to believe it … Oh, Albus …"
+    ],
+    "T": ["middle-aged", "coldly", "admiring", "anxious"],
+    "V": "female,50,british,0.7,1.2"
+  },
+  "Dumbledore": {
+    "D": [
+      "It certainly seems so,",
+      
+      "A sherbet lemon. They’re a kind of Muggle sweet I’m rather fond of.",
+      "It certainly seems so,",
+      "Would you care for a sherbet lemon?",
+      "It all gets so confusing if we keep saying “You-Know-Who”.",
+      "I know you haven’t,",
+      "Voldly,",
+      "It’s lucky it’s dark. I haven’t blushed so much since Madam Pomfrey told me liked my new earmuffs.",
+      "The Boy Who Lived",
+    ],
+    "T": ["elderly", "noble"],
+    "V": "male,elderly,british,0.6,1.0"
+  }
+}
+```
+
+=== Segment 6/10 ===
+```json
+{
+  "Dumbledore": {
+    "D": [
+      "Hagrid’s late. I suppose it was he who told you I’d be here, by the way?",
+      "It’s the best place for him, said Dumbledore firmly. His aunt and uncle will be able to explain everything to him when he’s older. I’ve written them a letter.",
+      "Exactly, said Dumbledore, looking very seriously over the top of his half-moon glasses. It would be enough to turn any boy’s head. Famous before he can walk and talk! Famous for something he won’t even remember! Can’t you see how much better off he’ll be, growing up away from all that until he’s ready to take it?",
+      "I would trust Hagrid with my life.",
+      "At last. And where did you get that motorbike?",
+      "No problems, were there?",
+      "Couldn’t you do something about it, Dumbledore?",
+      "Even if I could, I wouldn’t. Scars can come in useful."
+    ],
+    "T": [
+      "wise",
+      "serious",
+      "firmly",
+      "trustworthy",
+      "relieved",
+      "grateful",
+      "paternal",
+      "philosophical"
+    ],
+    "V": "neutral,middle-aged,british,0.8,1.0"
+  },
+  "McGonagall": {
+    "D": [
+      "Yes, said Professor McGonagall. And I don’t suppose you’re going to tell me why you’re here, of all places?",
+      "You don’t mean – you can’t mean the people who live here?",
+      "A letter?",
+      "Really, Dumbledore, you think you can explain all this in a letter? These people will never understand him! He’ll be famous – a legend – I wouldn’t be surprised if today was known as Harry Potter Day in future – there will be books written about Harry – every child in our world will know his name!",
+      "I’m not saying his heart isn’t in the right place, said Professor McGonagall grudgingly, but you can’t pretend he’s not careless. He does tend to – what was that?",
+      "Yes – yes, you’re right, of course. But how is the boy getting here, Dumbledore?",
+      "You think it – wise to trust Hagrid with something as important as this?",
+      "Couldn’t you do something about it, Dumbledore?"
+    ],
+    "T": [
+      "skeptical",
+      "observant",
+      "realistic",
+      "grudgingly",
+      "cautious",
+      "inquisitive",
+      "realistic"
+    ],
+    "V": "british,middle-aged,neutral,0.6,1.2"
+  },
+  "Hagrid": {
+    "D": [
+      "Borrowed it, Professor Dumbledore, sir. Young Sirius Black lent it me. I’ve got him, sir.",
+      "No, sir – house was almost destroyed but I got him out all right before the Muggles started swarmin’ around. He fell asleep as we was flyin’ over Bristol."
+    ],
+    "T": [
+      "enthusiastic",
+      "careless",
+      "helpful"
+    ],
+    "V": "asian,young,neutral,0.7,1.0"
+  },
+  "Sirius Black": {
+    "D": [
+      "Young Sirius Black lent it me."
+    ],
+    "T": [
+      "helpful",
+      "generous"
+    ],
+    "V": "british,young,neutral,0.7,1.0"
+  },
+  "Harry Potter": {
+    "D": [
+      "Couldn’t you do something about it, Dumbledore?",
+      "Couldn’t you do something about it, Dumbledore?"
+    ],
+    "T": [
+      "innocent",
+      "vulnerable"
+    ],
+    "V": "neutral,child,0.5,1.0"
+  }
+}
+```
+
+=== Segment 7/10 ===
+```json
+{
+  "Dumbledore": {
+    "D": [
+      "Well – give him here, Hagrid – we’d better get this over with.",
+      "I shall see you soon, I expect, Professor McGonagall.",
+      "Good luck, Harry.",
+      "That’s that. We’ve no business staying here. We may as well go and join the celebrations."
+    ],
+    "T": ["wise", "respected", "compassionate", "enigmatic"],
+    "V": "neutral,middle-aged,british,slow"
+  },
+  "Hagrid": {
+    "D": [
+      "Could I – could I say goodbye to him, sir?",
+      "Shhh! hissed Professor McGonagall. 'You’ll wake the Muggles!'",
+      "S-s-sorry, sobbed Hagrid, taking out a large spotted handker-chief and burying his face in it. 'But I c-c-can’t stand it – Lily an’ James dead – an’ poor little Harry off ter live with Muggles –'",
+      "Yeah, said Hagrid in a very muffled voice. 'I’d best get this bike away. G’night, Professor McGonagall – Professor Dumbledore, sir.'"
+    ],
+    "T": ["enthusiastic", "compassionate", "gentle", "awkward"],
+    "V": "male,young,british,medium,slow"
+  },
+  "Professor McGonagall": {
+    "D": [
+      "‘S-s-sorry,’ sobbed Hagrid, taking out a large spotted handker-chief and burying his face in it. ‘But I c-c-can’t stand it – Lily an’ James dead – an’ poor little Harry off ter live with Muggles –'",
+      "‘Shhh!’ hissed Professor McGonagall. ‘You’ll wake the Muggles!’",
+      "‘Yes, yes, it’s all very sad, but get a grip on yourself, Hagrid, or we’ll be found,’ Professor McGonagall whispered, patting Hagrid gingerly on the arm as Dumbledore stepped over the low garden wall and walked to the front door.",
+      "Professor McGonagall blew her nose in reply."
+    ],
+    "T": ["stern", "strict", "compassionate", "observant"],
+    "V": "female,middle-aged,british,medium,medium"
+  },
+  "Mrs. Dursley": {
+    "D": [
+      "Could I – could I say goodbye to him, sir?"
+    ],
+    "T": ["unobservant", "distant", "unemotional"],
+    "V": "female,middle-aged,british,slow"
+  },
+  "Mr. Dursley": {
+    "D": [],
+    "T": ["distant", "unobservant"],
+    "V": "male,middle-aged,british,slow"
+  }
+}
+```
+
+=== Segment 8/10 ===
+```json
+{
+  "Dudley Dursley": {
+    "D": [
+      "Exactly why Dudley wanted a racing bike was a mystery to Harry, as Dudley was very fat and hated exercise – unless of course it involved punching somebody.",
+      "Exactly why Dudley wanted a racing bike was a mystery to Harry, as Dudley was very fat and hated exercise – unless of course of course it involved punching somebody."
+    ],
+    "T": ["fat,
+    "V": "male,child,american,0.8,1.0"
+     with a thin face, knobbly knees, black hair and bright-green eyes. He wore round glasses held together with a lot of Sellotape because of all the times Dudley had punched him on the nose. The only thing Harry liked about his own appearance was a very thin scar forehead shaped bolt of lightning. He had had it as long as remember and the first question could ever remember asking Aunt Petunia how had got it. 'In the car crash when parents died,’ she had said. ‘And don’t ask questions.’"
+  },
+  },
+  "Harry Potter": {
+    "D": [
+      "Nearly,’ said Harry.",
+      "What did you say?’ his aunt snapped through the door.",
+      "Perhaps it had something to do with living in a dark cupboard, but Harry had always been small and skinny for his age. He looked even smaller and skinnier than he really was because all he had to wear old clothes of Dudley’s and Dudley was about four times bigger than he was. Harry had a__":
+      
+    ],
+    "T": "male,young,neutral,0.7,0.7,1.2",
+    "T: ["small", "thin", "fast"],
+
+=== Segment 9/10 ===
+```json
+{
+  "Harry Potter": {
+    "D": [
+      "Harry put the plates of egg and bacon on the table, which was difficult as there wasn’t much room.",
+      "Harry, who could see a huge Dudley tantrum coming on, began wolfing down his bacon as fast as possible in case Dudley turned the table over.",
+      "Harry put in hopefully (he’d be able to watch what he wanted on television for a change and maybe even have a go on Dudley’s computer).",
+      "I won’t blow up the house,"
+      "Dinky Duddydums, don’t cry, Mummy won’t let him spoil your special day!"
+    ],
+    "T": [
+      "observant",
+      "resourceful",
+      "hopeful",
+      "responsible",
+      "brave"
+    ],
+    "V": "neutral,10,british,1.2,1.0"
+  },
+  "Dudley Dursley": {
+    "D": [
+      "'Thirty-six,’ he said, looking up at his mother and father. ‘That’s two less than last year.’",
+      "'Thirty-seven then,’ said Dudley, going red in the face.",
+      "'Thirty-nine, sweetums,’ said Aunt Petunia.",
+      "'All right then.’",
+      
+      "'I … don’t … want … him … t-t-to come!’ Dudley yelled between huge pretend sobs. ‘He always sp-spoils everything!’ He shot  Harry a nasty grin through the gap in his mother’s arms."
+    ],
+    "T": [
+      "spoiled",
+      "sensitive",
+      "tantrum-prone",
+      "selfish",
+      "vulnerable"
+    ],
+    "V": "male,10,american,0.8,1.5"
+  },
+  "Aunt Petunia Dursley": {
+    "D": [
+      "'Darling, you haven’t counted Auntie Marge’s present, see, it’s here under this big one from Mummy and Daddy.’",
+      
+      "'And we’ll buy you another two presents while we’re out today. How’s that, popkin? Two more presents. Is that all right?’",
+      "'Thirty-nine, sweetums,’ said Aunt Petunia.",
+      "'Bad news, Vernon,’ she said. ‘Mrs Figg’s broken her leg. She can’t take him.’ She jerked her head in Harry’s direction.",
+      "'Don’t be silly, Vernon, she hates the boy.’",
+      "'What about what’s-her-name, your friend – Yvonne?’",
+      "'And come back and find the house in ruins?’",
+      "'I suppose we could take him to the zoo, … and leave him in the car …’",
+      "'Dinky Duddydums, don’t cry, Mummy won’t let him spoil your special day!’",
+      "'Oh, Good Lord, they’re here!’ said Aunt Petunia frantically – and a moment later, Dudley’s best friend, Piers Polkiss, walked in with his mother."
+    ],
+    "T": [
+      "stern",
+      "controlling",
+      "angry",
+      "distant",
+      "manipulative"
+    ],
+    "V": "female,5,british,0.9,1.3"
+  },
+  "Uncle Vernon Dursley": {
+    "D": [
+      "'Thirty-six,’ he said, looking up at his mother and father. ‘That’s two less than last year.’",
+      "'Darling, you haven’t counted Auntie Marge’s present, see, it’s here under this big one from Mummy and Daddy.’",
+      "'And we’ll buy you another two presents while we’re out today. How’s that, popkin? Two more presents. Is that all right?’",
+      "'Thirty-nine, sweetums,’ said Aunt Petunia.",
+      "'I suppose we could take him to the zoo, … and leave him in the car …’",
+      "'Dinky Duddydums, don’t cry, Mummy won’t let him spoil your special day!’",
+      "'I … don’t … want … him … t-t-to come!’ Dudley yelled between huge pretend sobs. ‘He always sp-spoils everything!’ He shot  Harry a nasty grin through the gap in his mother’s arms."
+    ],
+    "T": [
+      "authoritarian",
+      "possessive",
+      "uncompromising",
+      "stern"
+    ],
+    "V": "male,5,british,0.7,1.0"
+  },
+  "Mrs Figg": {
+    "D": [
+      "'Mrs Figg’s broken her leg. She can’t take him.’ She jerked her head in Harry’s direction."
+    ],
+    "T": [
+      "eccentric",
+      "old-fashioned",
+      "unpredictable"
+    ],
+    "V": "elderly,7,british,0.6,1.1"
+  },
+  "Piers Polkiss": {
+    "D": [
+      "'Dinky Duddydums, don’t cry, Mummy won’t let him spoil your special day!’"
+    ],
+    "T": [
+      "friendly",
+      "helpful"
+    ],    "V": "male,10,american,0.7,1.0"
+  }
+}
+```
+
+=== Segment 10/10 ===
+```json
+{
+  "Piers": {"D": ["", ""], "T": ["scrawny", "rat-faced"], "V": "male,young,neutral,0.6,1.0"},
+  "Dudley": {"D": ["", "", ""], "T": ["scrawny", "laughter"], "V": "male,young,neutral,0.7,1.2"},
+  "Harry": {"D": ["I’m not going to do anything,", "It was only a dream."], "T": ["innocent", "curious", "resilient"], "V": "male,young,neutral,0.8,1.0"},
+  "Uncle Vernon": {"D": ["I’m warning you,", "MOTORBIKES DON’T FLY!"], "T": ["angry", "authoritarian", "annoying"], "V": "male,middle-aged,british,0.9,1.3"},
+  "Aunt Petunia": {"D": [""], "T": ["tired", "controlling"], "V": "female,middle-aged,british,0.7,1.1"},
+  "Mrs Figg": {"D": [""], "T": ["smelly"], "V": "female,elderly,british,0.6,1.0"}
+}
+```

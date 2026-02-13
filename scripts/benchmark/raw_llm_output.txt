@@ -1,0 +1,160 @@
+=== Segment 1/10 ===
+{
+  "Mr Dursley": {
+    "D": ["hummed as he picked out his most boring tie for work", "gossiped away happily as he wrestled a screaming Dudley into his high chair"],
+    "T": ["beefy", "large moustache"],
+    "V": "male, middle-aged, neutral, 0.75-1.2, 0.6-1.4"
+  },
+  "Mrs Dursley": {
+    "D": [],
+    "T": ["thin and blonde", "nearly twice the usual amount of neck"],
+    "V": "female, middle-aged, neutral, 0.75-1.2, 0.6-1.4"
+  },
+  "Dudley Dursley": {
+    "D": [],
+    "T": ["small", "unusual for a child"],
+    "V": "child, young, neutral, 0.8-1.3, 0.5-1.2"
+  }
+}
+
+=== Segment 2/10 ===
+{
+  "Mr_Dursley": {
+    "D": ["He yelled at five different people.", "He made several important telephone calls and shouted a bit more.", "He was in a very good mood until lunch-time, when he thought he’d stretch his legs and walk across the road to buy himself a bun from the baker’s opposite."],
+    "T": ["angry", "annoyed", "worried"],
+    "V": "male,middle-aged,national,neutral,slow"
+  },
+  "The_Boy_Who_Lived": {
+    "D": [],
+    "T": [],
+    "V": "unknown,unknown,unknown,unknown,unknown"
+  }
+}
+
+=== Segment 3/10 ===
+{
+  "Mr Dursley": {
+    "D": ["He let himself into the house.", "He tried to act normally when Dudley had been put to bed."],
+    "T": ["determined", "trying to avoid mentioning anything about his sister"],
+    "V": "male, middle-aged, neutral, 1.0, 1.5"
+  },
+  "Mrs Dursley": {
+    "D": ["She told him over dinner all about Mrs Next Door’s problems with her daughter and how Dudley had learnt a new word (‘Shan’t!’).", "She came into the living-room carrying two cups of tea."],
+    "T": ["angry, shocked"],
+    "V": "female, elderly, neutral, 1.0, 2.0"
+  },
+  "Petunia Dursley": {
+    "D": ["He cleared his throat nervously.", "He didn’t say another word on the subject as they went upstairs to bed."],
+    "T": ["determined"],
+    "V": "female, middle-aged, neutral, 1.0, 2.0"
+  },
+  "Mrs Dursley": {
+    "D": ["She sipped her tea through pursed lips.", "She fell asleep quickly but Mr Dursley lay awake."],
+    "T": ["angry", "stiff"],
+    "V": "female, elderly, neutral, 1.0, 2.0"
+  },
+  "Mr Dursley": {
+    "D": ["He crept to the bedroom window and peered down into the front garden.", "He turned it all over in his mind."],
+    "T": ["determined", "worried"],
+    "V": "male, middle-aged, neutral, 1.0, 2.0"
+  },
+  "Harry Potter": {
+    "D": [],
+    "T": ["nasty, common name"],
+    "V": "male, young, neutral, 0.5, 1.5"
+  }
+}
+
+=== Segment 4/10 ===
+{
+  "Mr Dursley": {"D": [], "T": ["elderly", "neutral"], "V": "male, elderly, neutral"},
+  "The cat": {"D": [], "T": ["curious", "observant"], "V": "neutral"},
+  "Albus Dumbledore": {"D": ["I should have known.", "Fancy seeing you here, Professor McGonagall."], "T": ["wise", "kind-hearted"], "V": "male, middle-aged, British, neutral, slow"},
+  "Professor McGonagall": {"D": [], "T": ["serious", "severe-looking"], "V": "female, elderly, British, neutral"}
+}
+
+=== Segment 5/10 ===
+{
+  "Dumbledore": {"D": ["‘It certainly seems so,’ said Dumbledore.", "'I know you haven’t', said Professor McGonagall, sounding half-exasperated, half-admiring."], "T": ["wise", "calm"], "V": "Male,Middle-aged,National Accent,Pitch: 1.0,Speed: 1.5"},
+  "Professor McGonagall": {"D": ["‘No, thank you,’ said Professor McGonagall coldly, as though she didn’t think this was the moment for sherbet lemons.", "'As I say, even if You-Know-Who has gone –'", "‘My dear Professor, surely a sensible person like yourself can call him by his name? All this “You-Know-Who” nonsense – for eleven years I have been trying to persuade people to call him by his proper name: Voldemort.'"], "T": ["cold", "admirative", "frightened"], "V": "Female,Aged,Neutral,Pitch: 0.8,Speed: 1.2"}
+}
+
+=== Segment 6/10 ===
+{
+  "Dumbledore": {
+    "D": ["Hagrid’s late. I suppose it was he who told you I’d be here, by the way?", "I’ve come to bring Harry to his aunt and uncle. They’re the only family he has left now.", "It would be enough to turn any boy's head. Famous before he can walk and talk! Famous for something he won't even remember!", "Hagrid’s bringing him."],
+    "T": ["wise", "strong-willed", "compassionate", "resilient"],
+    "V": "male, middle-aged, neutral, 1.0, 2.0"
+  },
+  "Professor McGonagall": {
+    "D": ["Yes – yes, you’re right, of course.", "How is the boy getting here, Dumbledore?", "I’m not saying his heart isn’t in the right place", "A low rumbling sound had broken the silence around them."],
+    "T": ["resolute", "concerned", "curious"],
+    "V": "female, elderly, neutral, 0.5, 1.5"
+  },
+  "Hagrid": {
+    "D": ["I’ve got him, sir.", "No problems, were there?", "House was almost destroyed but I got him out all right before the Muggles started swarmin' around."],
+    "T": ["loyal", "resourceful", "strong"],
+    "V": "male, middle-aged, american, 1.0, 2.0"
+  }
+}
+
+=== Segment 7/10 ===
+{
+  "Dumbledore": {"D": ["I have one myself above my left knee which is a perfect map of the London Underground.", "We’ve no business staying here. We may as well go and join the celebrations."], "T": ["wise", "kind"], "V": "male, middle-aged, neutral, 1.0, 1.5"},
+  "Hagrid": {"D": ["I could say goodbye to him, sir?", "But I can't stand it – Lily and James dead – and poor little Harry off to live with Muggles."], "T": ["loyal", "protective"], "V": "male, middle-aged, British, 0.8, 1.2"},
+  "Professor McGonagall": {"D": ["Yes, yes, it’s all very sad, but get a grip on yourself, Hagrid, or we’ll be found."], "T": ["responsible", "strong"], "V": "female, middle-aged, neutral, 1.0, 1.5"}
+}
+
+=== Segment 8/10 ===
+{
+  "Harry Potter": {
+    "D": ["Nearly", "Nothing …"],
+    "T": ["small", "thin", "fast"],
+    "V": "Male,Middle-aged,Neutral,Pitch=1.0,Speed=1.2"
+  },
+  "Uncle Vernon": {
+    "D": [],
+    "T": [],
+    "V": "Male,Age not specified,Neutral,Pitch=1.0,Speed=1.2"
+  }
+}
+
+=== Segment 9/10 ===
+{
+  "Harry": {
+    "D": ["‘Thirty-nine, sweetums,’ said Aunt Petunia.", "‘Now what?’ said Aunt Petunia, looking furiously at Harry as though he’d planned this."],
+    "T": ["brave", "optimistic"],
+    "V": "Male,Middle-aged,National accent,Neutral,Pitch 1.0,Speed 1.5"
+  },
+  "Dudley": {
+    "D": ["‘Thirty-nine, sweetums,’ said Aunt Petunia.", "‘Oh.’ Dudley sat down heavily and grabbed the nearest parcel."],
+    "T": ["irritable", "annoyed"],
+    "V": "Male,Middle-aged,National accent,Neutral,Pitch 1.0,Speed 1.5"
+  },
+  "Aunt Petunia": {
+    "D": ["‘Bad news, Vernon,’ she said.", "‘We could phone Marge,' Uncle Vernon suggested."],
+    "T": ["concerned", "annoyed"],
+    "V": "Female,Age 30s,National accent,Neutral,Pitch 1.0,Speed 1.5"
+  },
+  "Uncle Vernon": {
+    "D": ["‘Little tyke wants his money’s worth, just like his father.'", "‘I won’t blow up the house,’ said Harry, but they weren’t listening."],
+    "T": ["strict", "humorous"],
+    "V": "Male,Age 40s,National accent,Neutral,Pitch 1.0,Speed 1.5"
+  },
+  "Mrs Figg": {
+    "D": ["‘Bad news, Vernon,’ she said.", "‘We could take him to the zoo,' said Aunt Petunia."],
+    "T": ["mean", "annoyed"],
+    "V": "Female,Age 60s,National accent,Neutral,Pitch 1.0,Speed 1.5"
+  },
+  "Piers Polkiss": {
+    "D": ["‘Oh, Good Lord, they’re here!’ said Aunt Petunia frantically.", "‘I … don’t … want … him … t-t-to come!' Dudley yelled between huge pretend sobs."],
+    "T": ["friendly", "annoyed"],
+    "V": "Male,Age 20s,National accent,Neutral,Pitch 1.0,Speed 1.5"
+  }
+}
+
+=== Segment 10/10 ===
+{
+  "Piers": {"D": ["He was usually the one who"], "T": ["scrawny", "face like a rat"], "V": "male, middle-aged, neutral"},
+  "Harry": {"D": ["I’m not going to do anything","I’ve been found on the roof of the school kitchens"], "T": ["innocent", "unaware of danger"], "V": "male, child, neutral"}
+}

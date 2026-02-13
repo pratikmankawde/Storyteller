@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="?attr/colorSurface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- Book Title -->
+        <TextView android:id="@+id/book_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="20sp" android:textStyle="bold" android:textColor="?attr/colorOnSurface" android:layout_marginBottom="12dp" />
+
+        <!-- Stats Grid Row 1 -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp" app:cardBackgroundColor="?attr/colorPrimaryContainer">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:gravity="center">
+                    <TextView android:id="@+id/stat_chapters" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="32sp" android:textStyle="bold" android:textColor="?attr/colorOnPrimaryContainer" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Chapters" android:textSize="11sp" android:textColor="?attr/colorOnPrimaryContainer" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp" app:cardBackgroundColor="?attr/colorSecondaryContainer">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:gravity="center">
+                    <TextView android:id="@+id/stat_characters" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="32sp" android:textStyle="bold" android:textColor="?attr/colorOnSecondaryContainer" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Characters" android:textSize="11sp" android:textColor="?attr/colorOnSecondaryContainer" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp" app:cardBackgroundColor="?attr/colorTertiaryContainer">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:gravity="center">
+                    <TextView android:id="@+id/stat_dialogs" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="32sp" android:textStyle="bold" android:textColor="?attr/colorOnTertiaryContainer" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Dialogs" android:textSize="11sp" android:textColor="?attr/colorOnTertiaryContainer" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Reading Level & Sentiment Row -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="4dp">
+            <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reading Level" android:textSize="11sp" android:textColor="?attr/colorOnSurfaceVariant" />
+                    <TextView android:id="@+id/reading_level_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="16sp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                    <TextView android:id="@+id/reading_ease_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="12sp" android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tone" android:textSize="11sp" android:textColor="?attr/colorOnSurfaceVariant" />
+                    <TextView android:id="@+id/sentiment_tone" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="16sp" android:textStyle="bold" android:textColor="?attr/colorSecondary" />
+                    <com.dramebaz.app.ui.insights.SentimentDistributionView android:id="@+id/sentiment_view"
+                        android:layout_width="match_parent" android:layout_height="24dp" android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Emotional Arc Widget -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_margin="4dp" android:layout_marginTop="8dp" app:cardCornerRadius="8dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Emotional Arc" android:textSize="14sp" android:textStyle="bold" />
+                <com.dramebaz.app.ui.insights.EmotionalArcView android:id="@+id/emotional_arc_view"
+                    android:layout_width="match_parent" android:layout_height="140dp" android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Plot Outline Widget -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_margin="4dp" app:cardCornerRadius="8dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Story Arc" android:textSize="14sp" android:textStyle="bold" />
+                <com.dramebaz.app.ui.insights.PlotOutlineView android:id="@+id/plot_outline_view"
+                    android:layout_width="match_parent" android:layout_height="120dp" android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Themes & Vocab Row -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Themes" android:textSize="12sp" android:textStyle="bold" />
+                    <com.google.android.material.chip.ChipGroup android:id="@+id/themes_chip_group"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:gravity="center">
+                    <TextView android:id="@+id/vocab_count" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="20sp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Vocabulary" android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
+

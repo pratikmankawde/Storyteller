@@ -272,35 +272,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         // VOICE-002: Initialize voice consistency checker
         voiceConsistencyChecker = VoiceConsistencyChecker(app.db.characterDao())
 
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val book = vm.getBook(bookId)
-            bookTitle = book?.title ?: "Storyteller"
-            AppLogger.d(tag, "Book format: ${book?.format}, displaying as Novel with 3D page turning")
-
-            // Check if this is a PDF book and initialize the PDF renderer
-            if (book?.format == "pdf" && book.filePath.isNotEmpty()) {
-                isPdfBook = true
-                pdfFilePath = book.filePath
-                val pdfFile = File(book.filePath)
-                if (pdfFile.exists()) {
-                    pdfPageRenderer = PdfPageRenderer.create(requireContext(), pdfFile)
-                    AppLogger.d(tag, "PDF renderer initialized for: ${book.filePath}")
-                } else {
-                    AppLogger.w(tag, "PDF file not found: ${book.filePath}")
-                    isPdfBook = false
-                }
-            } else {
-                isPdfBook = false
-            }
-
-            withContext(Dispatchers.Main) {
-                toolbar.title = bookTitle
-                // Set the PDF renderer on the adapter after it's created
-                if (isPdfBook && pdfPageRenderer != null) {
-                    novelPageAdapter?.setPdfRenderer(pdfPageRenderer)
-                }
-            }
-        }
+        // PDF-FIX: Book info and PDF renderer initialization moved to chapter loading coroutine
+        // to ensure PDF renderer is ready before pages are created and avoid duplicate DB fetch.
 
         // Initialize novel page view
         viewPager = view.findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.viewpager_novel)
@@ -475,6 +448,37 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             // READ-001: Load saved reading mode preference first
             loadSavedReadingMode()
 
+            // PDF-FIX: Initialize PDF renderer BEFORE loading chapter content
+            // This ensures pdfPageRenderer is ready when pages are created
+            val book = vm.getBook(bookId)
+            bookTitle = book?.title ?: "Storyteller"
+            AppLogger.d(tag, "Book format: ${book?.format}, displaying as Novel with 3D page turning")
+
+            // Update toolbar title on main thread
+            withContext(Dispatchers.Main) {
+                view.findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)?.title = bookTitle
+            }
+
+            if (book?.format == "pdf" && book.filePath.isNotEmpty()) {
+                isPdfBook = true
+                pdfFilePath = book.filePath
+                val pdfFile = File(book.filePath)
+                if (pdfFile.exists()) {
+                    pdfPageRenderer = PdfPageRenderer.create(requireContext(), pdfFile)
+                    AppLogger.d(tag, "PDF-FIX: PDF renderer initialized BEFORE chapter load for: ${book.filePath}")
+                    // Set renderer on adapter immediately (on main thread)
+                    withContext(Dispatchers.Main) {
+                        novelPageAdapter?.setPdfRenderer(pdfPageRenderer)
+                        AppLogger.d(tag, "PDF-FIX: Renderer set on adapter, isOpen=${pdfPageRenderer?.isOpen()}")
+                    }
+                } else {
+                    AppLogger.w(tag, "PDF file not found: ${book.filePath}")
+                    isPdfBook = false
+                }
+            } else {
+                isPdfBook = false
+            }
+
             val startTime = System.currentTimeMillis()
             val cid = if (chapterId != 0L) chapterId else vm.firstChapterId(bookId)
             AppLogger.d(tag, "Loading chapter: chapterId=$cid")
@@ -633,6 +637,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         com.dramebaz.app.pdf.PdfChapterDetector.pdfPagesFromJson(json)
                     } ?: emptyList()
 
+                    // AUG-045: Enhanced logging to diagnose progress bar always showing 100%
+                    AppLogger.d(tag, "Chapter pdfPagesJson: ${ch?.pdfPagesJson?.take(200) ?: "null"}")
+                    AppLogger.d(tag, "pdfPages parsed count: ${pdfPages.size}, chapterText length: ${chapterText.length}")
+
                     if (pdfPages.isNotEmpty()) {
                         // Use PDF pages directly - one PDF page per screen
                         var cumulativeOffset = 0
@@ -648,11 +656,21 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             cumulativeOffset += pdfPageInfo.text.length
                             page
                         }
-                        AppLogger.i(tag, "Loaded ${novelPages.size} PDF pages (native rendering: ${isPdfBook && pdfPageRenderer != null})")
+                        AppLogger.i(tag, "Loaded ${novelPages.size} PDF pages (native rendering: ${isPdfBook && pdfPageRenderer != null}, isPdfBook=$isPdfBook, rendererOpen=${pdfPageRenderer?.isOpen()})")
+                        // BUG-002-DEBUG: Log all page numbers to verify correct mapping
+                        novelPages.forEachIndexed { idx, p ->
+                            AppLogger.d(tag, "  Page[$idx]: pageNumber=${p.pageNumber}, pdfPageNumber=${p.pdfPageNumber}, usePdfRendering=${p.usePdfRendering}")
+                        }
                     } else {
                         // Fallback: dynamically split text for non-PDF or older books without PDF page info
+                        AppLogger.w(tag, "AUG-045: No PDF pages found - using NovelPageSplitter fallback")
                         novelPages = NovelPageSplitter.splitIntoPages(chapterText, requireContext())
                         AppLogger.i(tag, "Split chapter (${chapterText.length} chars) into ${novelPages.size} screen pages (no PDF info)")
+                        // AUG-045: If only 1 page created, log warning for debugging progress bar issue
+                        if (novelPages.size == 1) {
+                            AppLogger.w(tag, "AUG-045 WARNING: Only 1 page created! Progress bar will always show 100%. " +
+                                "Chapter text preview: ${chapterText.take(200).replace("\n", " ")}")
+                        }
                     }
 
                     // AUG-044: Submit a copy of the list to ensure ListAdapter detects the change

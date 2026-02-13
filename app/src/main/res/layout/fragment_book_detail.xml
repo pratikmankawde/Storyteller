@@ -46,13 +46,13 @@
                 <!-- FAV-001: Favorite button in header -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_favorite"
-                    style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                    style="@style/Widget.Material3.Button.IconButton.Outlined"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:contentDescription="@string/toggle_favorite"
                     app:icon="@drawable/ic_favorite_border"
                     app:iconSize="24dp"
-                    app:iconTint="?attr/colorOnSurfaceVariant"
+                    app:iconTint="@null"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 

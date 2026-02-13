@@ -68,6 +68,8 @@ class TestActivity : AppCompatActivity() {
         addTest("M5: Stable Audio SFX Test") { startActivity(Intent(this, StableAudioTestActivity::class.java)) }
         addTest("LLM Benchmark (SpaceStory)") { startActivity(Intent(this, LlmBenchmarkActivity::class.java)) }
         addTest("PDF Viewer Test") { startActivity(Intent(this, PdfViewerTestActivity::class.java)) }
+        addTest("Library Design Variations") { startActivity(Intent(this, LibraryTestActivity::class.java)) }
+        addTest("Insights Design Variations") { startActivity(Intent(this, InsightsTestActivity::class.java)) }
     }
 
     private fun addTest(name: String, block: () -> Unit) {

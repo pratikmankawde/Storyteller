@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#F5F5F0">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Hero Header -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp" android:background="?attr/colorPrimary">
+            <TextView android:id="@+id/book_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="32sp" android:textStyle="bold" android:textColor="@android:color/white" android:lineSpacingMultiplier="0.9" />
+            <TextView android:id="@+id/book_author" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="16sp" android:textColor="@android:color/white" android:alpha="0.9" android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Feature Stat -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:gravity="center" android:padding="32dp" android:background="@android:color/white">
+            <TextView android:id="@+id/feature_stat_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="72sp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+            <TextView android:id="@+id/feature_stat_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="14sp" android:textColor="#888888" android:textAllCaps="true" android:letterSpacing="0.2" />
+        </LinearLayout>
+
+        <!-- Secondary Stats Row -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:padding="16dp" android:background="#EEEEEE">
+            <TextView android:id="@+id/stat_characters" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:gravity="center" android:textSize="14sp" android:textColor="#333333" android:lineSpacingMultiplier="1.4" />
+            <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#CCCCCC" />
+            <TextView android:id="@+id/stat_dialogs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:gravity="center" android:textSize="14sp" android:textColor="#333333" android:lineSpacingMultiplier="1.4" />
+            <View android:layout_width="1dp" android:layout_height="match_parent" android:background="#CCCCCC" />
+            <TextView android:id="@+id/stat_reading_level" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:gravity="center" android:textSize="14sp" android:textColor="#333333" android:lineSpacingMultiplier="1.4" />
+        </LinearLayout>
+
+        <!-- Emotional Journey Section -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp" android:background="@android:color/white" android:layout_marginTop="2dp">
+            <TextView android:id="@+id/section_emotional_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:textColor="#888888" android:textAllCaps="true" android:letterSpacing="0.15" />
+            <com.dramebaz.app.ui.insights.EmotionalArcView android:id="@+id/emotional_arc_view"
+                android:layout_width="match_parent" android:layout_height="160dp" android:layout_marginTop="16dp" />
+        </LinearLayout>
+
+        <!-- Sentiment Section -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp" android:background="#F0F0E8" android:layout_marginTop="2dp">
+            <TextView android:id="@+id/sentiment_headline" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="20sp" android:textStyle="italic" android:textColor="#333333" />
+            <com.dramebaz.app.ui.insights.SentimentDistributionView android:id="@+id/sentiment_view"
+                android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="16dp" />
+        </LinearLayout>
+
+        <!-- Story Arc Section -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp" android:background="@android:color/white" android:layout_marginTop="2dp">
+            <TextView android:id="@+id/section_story_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:textColor="#888888" android:textAllCaps="true" android:letterSpacing="0.15" />
+            <com.dramebaz.app.ui.insights.PlotOutlineView android:id="@+id/plot_outline_view"
+                android:layout_width="match_parent" android:layout_height="140dp" android:layout_marginTop="16dp" />
+        </LinearLayout>
+
+        <!-- Themes Pull Quote -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="32dp" android:background="?attr/colorPrimaryContainer" android:layout_marginTop="2dp">
+            <TextView android:id="@+id/themes_quote" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="18sp" android:textStyle="italic" android:textColor="?attr/colorOnPrimaryContainer" android:gravity="center" android:layout_gravity="center" />
+        </LinearLayout>
+
+        <!-- Vocabulary Section -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp" android:background="@android:color/white" android:layout_marginTop="2dp">
+            <TextView android:id="@+id/section_vocab_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:textColor="#888888" android:textAllCaps="true" android:letterSpacing="0.15" />
+            <LinearLayout android:id="@+id/vocabulary_container" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:layout_marginTop="16dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
+

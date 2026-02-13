@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@drawable/bg_gradient_purple_blue">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Book Header -->
+        <TextView android:id="@+id/book_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="24sp" android:textStyle="bold" android:textColor="@android:color/white" />
+        <TextView android:id="@+id/book_author" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="14sp" android:textColor="@android:color/white" android:alpha="0.8" android:layout_marginBottom="20dp" />
+
+        <!-- Glass Card: Statistics -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" app:cardCornerRadius="16dp" app:cardBackgroundColor="#40FFFFFF" app:strokeWidth="1dp" app:strokeColor="#60FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="16dp">
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center">
+                    <TextView android:id="@+id/stat_chapters" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="28sp" android:textStyle="bold" android:textColor="@android:color/white" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="\nChapters" android:textSize="12sp" android:textColor="@android:color/white" android:gravity="center" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center">
+                    <TextView android:id="@+id/stat_characters" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="28sp" android:textStyle="bold" android:textColor="@android:color/white" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="\nCharacters" android:textSize="12sp" android:textColor="@android:color/white" android:gravity="center" />
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center">
+                    <TextView android:id="@+id/stat_dialogs" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textSize="28sp" android:textStyle="bold" android:textColor="@android:color/white" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="\nDialogs" android:textSize="12sp" android:textColor="@android:color/white" android:gravity="center" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Glass Card: Reading Level -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" app:cardCornerRadius="16dp" app:cardBackgroundColor="#40FFFFFF" app:strokeWidth="1dp" app:strokeColor="#60FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reading Level" android:textSize="14sp" android:textColor="@android:color/white" android:alpha="0.8" />
+                <TextView android:id="@+id/reading_level_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="20sp" android:textStyle="bold" android:textColor="@android:color/white" android:layout_marginTop="4dp" />
+                <TextView android:id="@+id/reading_ease_value" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textSize="14sp" android:textColor="@android:color/white" android:alpha="0.9" android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Glass Card: Emotional Arc -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" app:cardCornerRadius="16dp" app:cardBackgroundColor="#40FFFFFF" app:strokeWidth="1dp" app:strokeColor="#60FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Emotional Journey" android:textSize="14sp" android:textColor="@android:color/white" />
+                <com.dramebaz.app.ui.insights.EmotionalArcView android:id="@+id/emotional_arc_view"
+                    android:layout_width="match_parent" android:layout_height="150dp" android:layout_marginTop="8dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Glass Card: Sentiment -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" app:cardCornerRadius="16dp" app:cardBackgroundColor="#40FFFFFF" app:strokeWidth="1dp" app:strokeColor="#60FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Sentiment" android:textSize="14sp" android:textColor="@android:color/white" />
+                    <TextView android:id="@+id/sentiment_tone" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold" android:textColor="@android:color/white" />
+                </LinearLayout>
+                <com.dramebaz.app.ui.insights.SentimentDistributionView android:id="@+id/sentiment_view"
+                    android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="8dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Glass Card: Themes -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" app:cardCornerRadius="16dp" app:cardBackgroundColor="#40FFFFFF" app:strokeWidth="1dp" app:strokeColor="#60FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Themes" android:textSize="14sp" android:textColor="@android:color/white" />
+                <com.google.android.material.chip.ChipGroup android:id="@+id/themes_chip_group"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Glass Card: Vocabulary -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" app:cardCornerRadius="16dp" app:cardBackgroundColor="#40FFFFFF" app:strokeWidth="1dp" app:strokeColor="#60FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Vocabulary" android:textSize="14sp" android:textColor="@android:color/white" />
+                <LinearLayout android:id="@+id/vocabulary_container" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:layout_marginTop="8dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>
+

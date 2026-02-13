@@ -1,0 +1,151 @@
+=== Segment 1/10 ===
+{
+  "Mr Dursley": {
+    "D": ["hummed", "picked up his briefcase", "left the house"],
+    "T": ["beefy", "moustache"],
+    "V": "male, middle-aged, neutral, 1.0, 1.5"
+  },
+  "Mrs Dursley": {
+    "D": [],
+    "T": ["thin and blonde", "near twice the usual amount of neck"],
+    "V": "female, young, neutral, 0.8, 1.2"
+  },
+  "Dudley": {
+    "D": ["had a tantrum and throwing his cereal at the walls"],
+    "T": [],
+    "V": "child, energetic, loud"
+  },
+  "Mrs Potter": {
+    "D": [],
+    "T": [],
+    "V": "female, elderly, neutral, 0.8, 1.2"
+  }
+}
+
+=== Segment 2/10 ===
+{
+  "Mr_Dursley": {
+    "D": ["He yelled at five different people.", "He made several important telephone calls and shouted a bit more."],
+    "T": ["angry", "confused"],
+    "V": "male, middle-aged, neutral, 1.0, 1.5"
+  },
+  "The_Boy_Who_Lived": {
+    "D": [],
+    "T": [],
+    "V": "unknown"
+  }
+}
+
+=== Segment 3/10 ===
+{
+  "Mr Dursley": {
+    "D": ["He tried to pull himself together", "He sat frozen in his armchair"],
+    "T": ["determined", "concerned about the news"],
+    "V": "male, middle-aged, neutral, 1.0, 1.5"
+  },
+  "Mrs Dursley": {
+    "D": ["She looked shocked and angry", "She sipped her tea through pursed lips"],
+    "T": ["angry", "shocked", "concerned about the news"],
+    "V": "female, middle-aged, neutral, 1.0, 1.5"
+  },
+  "Petunia Dursley": {
+    "D": [],
+    "T": [],
+    "V": "female, child, neutral, 0.7, 1.2"
+  }
+}
+
+=== Segment 4/10 ===
+{
+  "Dumbledore": {"D": ["He chuckled and muttered, 'I should have known.', "He clicked the Put-Outer twelve times until only two tiny pinpricks remained in the street."], "T": ["old", "observant", "polite"], "V": "Male,Age:elderly,Accent:neutral,Pitch:1.0,Speed:1.2"}
+}
+
+=== Segment 5/10 ===
+{
+  "Dumbledore": {"D": ["‘It certainly seems so,’ said Dumbledore.", "'I know you haven’t', said Professor McGonagall, sounding half-exasperated, half-admiring."], "T": ["wise", "kind-hearted"], "V": "Male,Aged middle-aged,Nationality British"}
+}
+
+=== Segment 6/10 ===
+{
+  "Dumbledore": {
+    "D": ["I’ve come to bring Harry to his aunt and uncle.", "You don’t mean – you can’t mean the people who live here?", "It’s the best place for him.", "Exactly, it would be enough to turn any boy's head.", "Hagrid's bringing him."],
+    "T": ["wise", "firm", "serious", "concerned", "thoughtful"],
+    "V": "male,middle-aged,british,pitch=1.0,speed=1.5"
+  },
+  "Professor McGonagall": {
+    "D": ["You don’t mean – you can’t mean the people who live here?", "I’ve come to bring Harry to his aunt and uncle.", "Harry Potter come and live here!"],
+    "T": ["concerned", "frightened", "alarmed"],
+    "V": "female,elderly,british,pitch=0.8,speed=1.2"
+  },
+  "Hagrid": {
+    "D": ["I’ve got him, sir.", "No problems, were there?", "Young Sirius Black lent it me."],
+    "T": ["helpful", "caring", "resourceful"],
+    "V": "male,young,british,pitch=0.7,speed=1.3"
+  }
+}
+
+=== Segment 7/10 ===
+{
+  "Dumbledore": {"D": ["‘Well,’ said Dumbledore finally, 'that's that. We've no business staying here. We may as well go and join the celebrations.'"], "T": ["wise", "compassionate", "responsible"], "V": "male,middle-aged,national accent,pitch 1.0,speed 1.2"},
+  "Hagrid": {"D": ["‘Yeah,’ said Hagrid in a very muffled voice. ‘I’d best get this bike away. G’night, Professor McGonagall – Professor Dumbledore, sir.’"], "T": ["loyal", "compassionate", "excitable"], "V": "male,middle-aged,national accent,pitch 1.0,speed 1.2"},
+  "Professor McGonagall": {"D": [], "T": ["authoritative", "serious", "professional"], "V": "female,elderly,national accent,pitch 0.8,speed 1.0"}
+}
+
+=== Segment 8/10 ===
+{
+  "Harry Potter": {
+    "D": ["Nearly", "Nothing …"],
+    "T": ["small", "thin", "fast", "scared of pain"],
+    "V": "Male,Middle-aged,Neutral,Pitch range: 0.5-1.0, Speed: 2.0"
+  },
+  "Dudley Dursley": {
+    "D": ["Large, pink face", "Large, blond hair"],
+    "T": ["large", "fat", "angry", "scared of pain"],
+    "V": "Male,Middle-aged,Neutral,Pitch range: 0.5-1.0, Speed: 2.0"
+  },
+  "Aunt Petunia Dursley": {
+    "D": ["Shrill voice", "Screeched"],
+    "T": ["scared of pain"],
+    "V": "Female,Middle-aged,Neutral,Pitch range: 0.5-1.0, Speed: 2.0"
+  },
+  "Uncle Vernon Dursley": {
+    "D": ["Barked", "Comb your hair!"],
+    "T": ["angry", "scared of pain"],
+    "V": "Male,Middle-aged,Neutral,Pitch range: 0.5-1.0, Speed: 2.0"
+  }
+}
+
+=== Segment 9/10 ===
+{
+  "Harry": {
+    "D": ["He put the plates of egg and bacon on the table.", "He began wolfing down his bacon as fast as possible in case Dudley turned the table over."],
+    "T": ["brave", "resourceful"],
+    "V": "male, middle-aged, neutral, 1.0, 2.0"
+  },
+  "Dudley": {
+    "D": ["He was counting his presents.", "He thought for a moment and said slowly, 'So I’ll have thirty … thirty …'", "He sat down heavily and grabbed the nearest parcel."],
+    "T": ["insecure", "curious"],
+    "V": "male, middle-aged, neutral, 1.0, 2.0"
+  },
+  "Aunt Petunia": {
+    "D": ["She said quickly, 'And we’ll buy you another two presents while we're out today.'", "She looked both angry and worried.", "She jerked her head in Harry's direction."],
+    "T": ["protective", "concerned"],
+    "V": "female, elderly, neutral, 1.0, 2.0"
+  },
+  "Uncle Vernon": {
+    "D": ["He chuckled.", "He ruffled Dudley's hair.", "He watched Dudley unwrap the racing bike, a cine-camera, a remote-control aeroplane, sixteen new computer games and a video recorder."],
+    "T": ["strict", "protective"],
+    "V": "male, middle-aged, neutral, 1.0, 2.0"
+  },
+  "Mrs Figg": {
+    "D": ["She broke her leg.", "She can't take him."],
+    "T": ["mean", "old-fashioned"],
+    "V": "female, elderly, neutral, 1.0, 2.0"
+  }
+}
+
+=== Segment 10/10 ===
+{
+  "Piers": {"D": ["I'm warning you", "I'm warning you now"], "T": ["scrawny", "rat-like face"], "V": "Male,Yellow,Neutral,Pitch=0.5,Speed=1.2"},
+  "Harry": {"D": ["I'm not going to do anything", "honestly"], "T": ["childish", "impatient"], "V": "Male,Brown,Neutral,Pitch=0.7,Speed=1.3"}
+}

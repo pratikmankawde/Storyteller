@@ -218,6 +218,8 @@ class NovelPageAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val page = getItem(position)
+        // BUG-002-DEBUG: Log binding for all pages
+        AppLogger.d(tag, "onBindViewHolder: position=$position, pageNumber=${page.pageNumber}, pdfPageNumber=${page.pdfPageNumber}, usePdfRendering=${page.usePdfRendering}, holderType=${holder.javaClass.simpleName}")
 
         when (holder) {
             is PdfPageViewHolder -> bindPdfPage(holder, page, position)
@@ -269,6 +271,9 @@ class NovelPageAdapter(
     }
 
     private fun bindPdfPage(holder: PdfPageViewHolder, page: NovelPage, position: Int) {
+        // BUG-002-DEBUG: Log page binding details
+        AppLogger.d(tag, "bindPdfPage: position=$position, pageNumber=${page.pageNumber}, pdfPageNumber=${page.pdfPageNumber}, pdfPageIndex=${page.getPdfPageIndex()}")
+
         // Set page number
         holder.pageNumber.text = "Page ${page.pdfPageNumber}"
 
@@ -285,6 +290,7 @@ class NovelPageAdapter(
         val pdfPageIndex = page.getPdfPageIndex()
 
         if (renderer == null || pdfPageIndex == null) {
+            AppLogger.w(tag, "bindPdfPage: Falling back to text - renderer=${renderer != null}, pdfPageIndex=$pdfPageIndex")
             showFallbackText(holder, page)
             return
         }

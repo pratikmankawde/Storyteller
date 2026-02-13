@@ -257,3 +257,48 @@ OUTPUT FORMAT (valid JSON only):
 {JSON_REMINDER}"""
         return self.build_chat_prompt(system, user)
 
+    # -------------------------------------------------------------------------
+    # Batched Analysis Prompt (Single-pass character + dialog + traits + voice)
+    # -------------------------------------------------------------------------
+
+    def build_batched_analysis_prompt(self, text: str, max_chars: int = 14800) -> str:
+        """Build batched analysis prompt for single-pass extraction.
+
+        Extracts characters, dialogs, traits, and voice profiles in one LLM call.
+        Output format: {"CharacterName": {"D": [...], "T": [...], "V": "..."}}
+        """
+        text = text[:max_chars]
+
+        system = "You are a Story analysis engine. Output one complete and valid JSON object as requested in the user prompt, from the given Story excerpt."
+        user = f'''Extract all the characters, dialogs spoken by them, their traits and inferred voice profile from the given Story excerpt.
+RULES:
+1. ONLY include characters who have quoted dialogs
+2. DO NOT classify locations, objects, creatures or entities that don't speak as characters.
+3. Each character appears EXACTLY ONCE in the output.
+4. Attribute dialogs by character name and pronouns.
+5. Identify character traits explicitly mentioned in the story.
+6. Based on the traits, infer a voice profile.
+
+Keys for output:
+D:Array of exact quoted dialogs spoken by current character
+T:Array of character traits (personalities, adjectives)
+V:Voice profile as a tuple of "Gender,Age,Accent,Pitch,Speed".
+Possible values:
+Gender: male|female
+Age: child|young|middle-aged|elderly
+Accent: neutral|british|american|asian
+Pitch(of voice) range: 0.5-1.5
+Speed(speed of speaking) range: 0.5-2.0
+
+OUTPUT FORMAT:
+{{
+  "CharacterName1": {{"D": ["this character's first dialog", "their next dialog"], "T": ["trait", "another trait"], "V": "Gender,Age,Accent,Pitch,Speed"}},
+  "CharacterName2": {{"D": ["this character's first dialog"], "T": ["trait"], "V": "Gender,Age,Accent,Pitch,Speed"}}
+}}
+
+Story Excerpt:
+{text}
+
+JSON:'''
+        return self.build_chat_prompt(system, user)
+
