@@ -60,13 +60,15 @@ object FontManager {
             "serif" -> Typeface.SERIF
             "sans-serif" -> Typeface.SANS_SERIF
             "monospace" -> Typeface.MONOSPACE
-            
+
             // Custom fonts - load from resources
             "merriweather" -> loadFontResource(context, R.font.merriweather)
             "lora" -> loadFontResource(context, R.font.lora)
             "lexend" -> loadFontResource(context, R.font.lexend)
             "atkinson_hyperlegible" -> loadFontResource(context, R.font.atkinson_hyperlegible)
-            
+            "bellota", "bellota_regular" -> loadFontResource(context, R.font.bellota_regular)
+            "bellota_light" -> loadFontResource(context, R.font.bellota_light)
+
             // Fallback to default
             else -> {
                 AppLogger.w(TAG, "Unknown font: $fontResourceName, using default")

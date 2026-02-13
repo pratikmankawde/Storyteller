@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Settings fragment with glassmorphism theme -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@drawable/gradient_glass_background"
     android:fitsSystemWindows="true"
     android:fillViewport="true">
 
@@ -21,10 +22,10 @@
             android:text="Settings"
             android:textSize="28sp"
             android:textStyle="bold"
-            android:textColor="@color/text_primary"
+            android:textColor="@android:color/white"
             android:layout_marginBottom="24dp" />
 
-        <!-- Test activities (TTS, demo book, LLM) – shown first so it's visible -->
+        <!-- Test activities (TTS, demo book, LLM) – shown first so it's visible - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/settings_test_activities"
             android:layout_width="match_parent"
@@ -32,8 +33,11 @@
             android:layout_marginBottom="16dp"
             android:clickable="true"
             android:focusable="true"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -49,26 +53,30 @@
                     android:text="Test activities"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@android:color/white"
                     android:drawableStart="@android:drawable/ic_menu_manage"
-                    android:drawablePadding="12dp" />
+                    android:drawablePadding="12dp"
+                    android:drawableTint="#B0FFFFFF" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="TTS, demo book, LLM"
                     android:textSize="14sp"
-                    android:textColor="@color/text_secondary" />
+                    android:textColor="#B0FFFFFF" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Playback Theme Card -->
+        <!-- Playback Theme Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -82,9 +90,10 @@
                     android:text="Playback Theme"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@android:color/white"
                     android:drawableStart="@android:drawable/ic_menu_preferences"
                     android:drawablePadding="8dp"
+                    android:drawableTint="#B0FFFFFF"
                     android:layout_marginBottom="16dp" />
 
                 <com.google.android.material.button.MaterialButtonToggleGroup
@@ -134,13 +143,16 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Character Extraction Settings Card -->
+        <!-- Character Extraction Settings Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -160,14 +172,14 @@
                         android:layout_height="wrap_content"
                         android:text="Skip Character Extraction"
                         android:textSize="16sp"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@android:color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Faster analysis, no character voices"
                         android:textSize="12sp"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="#B0FFFFFF" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial

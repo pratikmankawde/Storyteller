@@ -86,7 +86,15 @@ data class Book(
 	    /** Optional path to a genre-based placeholder cover image in assets when no embedded cover exists. */
 	    val placeholderCoverPath: String? = null,
 	    /** Detected primary genre for this book (e.g., fantasy, scifi, romance). */
-	    val detectedGenre: String? = null
+	    val detectedGenre: String? = null,
+
+	    // ============ METADATA-001: Book metadata fields ============
+	    /** Author name (extracted from book file or entered manually) */
+	    val author: String? = null,
+	    /** Book description/summary */
+	    val description: String? = null,
+	    /** Book rating (0.0 to 5.0 scale) */
+	    val rating: Float? = null
 ) {
     /** Get the analysis state as enum */
     fun getAnalysisState(): AnalysisState = try {

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glassmorphism style section header for horizontal library sections -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginTop="16dp"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="#40FFFFFF"
+    app:cardBackgroundColor="#20FFFFFF"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
+
+        <!-- Section Icon -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/section_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:padding="2dp"
+            android:contentDescription="@null"
+            app:tint="@android:color/white"
+            tools:src="@android:drawable/star_on" />
+
+        <!-- Section Title -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/section_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textColor="@android:color/white"
+            tools:text="Favourites" />
+
+        <!-- Book Count Badge -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/section_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:textColor="@android:color/white"
+            android:background="@drawable/badge_glass_background"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            tools:text="3" />
+
+        <!-- Expand/Collapse Arrow -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/section_arrow"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@string/expand_collapse"
+            app:srcCompat="@android:drawable/arrow_down_float"
+            app:tint="#B0FFFFFF" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
+

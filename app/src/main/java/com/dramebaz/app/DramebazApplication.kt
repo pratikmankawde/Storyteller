@@ -81,7 +81,7 @@ class DramebazApplication : Application() {
         // TTS is loaded by SplashActivity; LLM (ONNX) initializes lazily on first use.
 
         // Initialize analysis queue manager for auto-analysis after import
-        AnalysisQueueManager.initialize(applicationContext, bookRepository, db)
+        AnalysisQueueManager.initialize(applicationContext, bookRepository, db, settingsRepository)
         // AUG-043: Set segment audio generator for initial audio generation
         AnalysisQueueManager.setSegmentAudioGenerator(segmentAudioGenerator)
 

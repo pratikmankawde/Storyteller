@@ -4,17 +4,21 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@drawable/gradient_glass_background">
 
+    <!-- Toolbar - Glassmorphism Style -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        app:elevation="0dp">
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:title="Bookmarks"
-            app:titleTextColor="@color/text_primary" />
+            android:background="@android:color/transparent"
+            app:titleTextColor="@android:color/white" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -24,7 +28,8 @@
         android:padding="8dp"
         android:clipToPadding="false"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-    
+
+    <!-- Empty State - Glassmorphism Style -->
     <LinearLayout
         android:id="@+id/empty_state"
         android:layout_width="match_parent"
@@ -33,28 +38,28 @@
         android:gravity="center"
         android:padding="32dp"
         android:visibility="gone">
-        
+
         <ImageView
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:src="@android:drawable/ic_menu_agenda"
-            app:tint="@color/text_secondary"
+            app:tint="#B0FFFFFF"
             android:layout_marginBottom="16dp" />
-        
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/empty_bookmarks"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="@color/text_primary"
+            android:textColor="@android:color/white"
             android:layout_marginBottom="8dp" />
-        
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/empty_bookmarks_subtitle"
             android:textSize="14sp"
-            android:textColor="@color/text_secondary" />
+            android:textColor="#B0FFFFFF" />
     </LinearLayout>
 </LinearLayout>

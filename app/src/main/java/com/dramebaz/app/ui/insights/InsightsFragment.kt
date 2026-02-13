@@ -314,7 +314,7 @@ class InsightsFragment : Fragment() {
                     val itemView = TextView(requireContext()).apply {
                         text = "• ${point.type.displayName} (Ch. ${point.chapterIndex + 1}): ${point.description}"
                         textSize = 12f
-                        setTextColor(Color.parseColor("#666666"))
+                        setTextColor(Color.parseColor("#B0FFFFFF"))
                         setPadding(0, 4, 0, 4)
                     }
                     pointsContainer?.addView(itemView)
@@ -572,7 +572,7 @@ class InsightsFragment : Fragment() {
             val emptyText = TextView(requireContext()).apply {
                 text = if (allVocabulary.isEmpty()) "No vocabulary yet (run chapter analysis)." else "All words learned! 🎉"
                 textSize = 14f
-                setTextColor(Color.GRAY)
+                setTextColor(Color.parseColor("#B0FFFFFF"))
             }
             container?.addView(emptyText)
             return
@@ -584,15 +584,18 @@ class InsightsFragment : Fragment() {
         }
     }
 
-    // AUG-028: Create a vocabulary word card
+    // AUG-028: Create a vocabulary word card with glassmorphism styling
     private fun createVocabCard(vocabWord: VocabWord, container: LinearLayout?, countView: TextView?): View {
         val card = MaterialCardView(requireContext()).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { bottomMargin = 8.dpToPx() }
-            radius = 8.dpToPx().toFloat()
-            cardElevation = 2.dpToPx().toFloat()
+            radius = 12.dpToPx().toFloat()
+            cardElevation = 0f
+            strokeWidth = 1.dpToPx()
+            strokeColor = Color.parseColor("#40FFFFFF")
+            setCardBackgroundColor(Color.parseColor("#30FFFFFF"))
             setContentPadding(12.dpToPx(), 8.dpToPx(), 12.dpToPx(), 8.dpToPx())
             if (vocabWord.learned) alpha = 0.6f
         }
@@ -605,14 +608,14 @@ class InsightsFragment : Fragment() {
             text = if (vocabWord.learned) "✓ ${vocabWord.word}" else vocabWord.word
             textSize = 16f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(if (vocabWord.learned) Color.parseColor("#4CAF50") else Color.parseColor("#333333"))
+            setTextColor(if (vocabWord.learned) Color.parseColor("#80FFAB") else Color.WHITE)
         }
         content.addView(wordText)
 
         val defText = TextView(requireContext()).apply {
             text = vocabWord.definition.ifEmpty { "(no definition)" }
             textSize = 13f
-            setTextColor(Color.parseColor("#666666"))
+            setTextColor(Color.parseColor("#B0FFFFFF"))
         }
         content.addView(defText)
 

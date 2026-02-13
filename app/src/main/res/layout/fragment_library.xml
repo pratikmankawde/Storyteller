@@ -5,44 +5,44 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="?attr/colorSurface">
+    android:background="@drawable/gradient_glass_background">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true"
-        style="@style/Widget.Material3.AppBarLayout">
+        android:background="@android:color/transparent"
+        app:elevation="0dp">
 
-        <com.google.android.material.appbar.CollapsingToolbarLayout
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
-            app:contentScrim="?attr/colorPrimary"
-            app:expandedTitleTextAppearance="@style/TextAppearance.Material3.HeadlineMedium"
-            app:collapsedTitleTextAppearance="@style/TextAppearance.Material3.TitleLarge">
-
-            <com.google.android.material.appbar.MaterialToolbar
-                android:id="@+id/toolbar"
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
-                app:title="Storyteller"
-                app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
-                app:subtitleTextAppearance="@style/TextAppearance.Material3.LabelSmall"
-                app:menu="@menu/library_menu"
-                app:layout_collapseMode="pin" />
-
-        </com.google.android.material.appbar.CollapsingToolbarLayout>
+            android:layout_height="?attr/actionBarSize"
+            android:background="@android:color/transparent"
+            app:title="Dramebaz"
+            app:titleTextColor="@android:color/white"
+            app:titleTextAppearance="@style/TextAppearance.Dramebaz.AppTitle"
+            app:subtitleTextAppearance="@style/TextAppearance.Material3.LabelSmall"
+            app:menu="@menu/library_menu" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler"
+    <!-- Horizontal sections container with vertical scroll -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="8dp"
-        android:clipToPadding="false"
-        android:background="?attr/colorSurface"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        android:fillViewport="true"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:id="@+id/sections_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="80dp" />
+
+    </androidx.core.widget.NestedScrollView>
 
     <LinearLayout
         android:id="@+id/empty_state"
@@ -58,7 +58,7 @@
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:src="@android:drawable/ic_menu_gallery"
-            app:tint="?attr/colorOnSurfaceVariant"
+            app:tint="#80FFFFFF"
             android:layout_marginBottom="24dp"
             app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full" />
 
@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:text="@string/empty_library"
             android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@android:color/white"
             android:layout_marginBottom="8dp" />
 
         <com.google.android.material.textview.MaterialTextView
@@ -75,7 +75,7 @@
             android:layout_height="wrap_content"
             android:text="@string/empty_library_subtitle"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textColor="#B0FFFFFF"
             android:gravity="center" />
 
     </LinearLayout>

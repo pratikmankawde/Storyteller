@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@drawable/gradient_glass_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -19,16 +19,19 @@
             android:text="Insights"
             android:textSize="28sp"
             android:textStyle="bold"
-            android:textColor="@color/text_primary"
+            android:textColor="@android:color/white"
             android:layout_marginBottom="24dp" />
 
-        <!-- AUG-027: Reading Statistics Card -->
+        <!-- AUG-027: Reading Statistics Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -39,12 +42,10 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Reading Statistics"
+                    android:text="📊 Reading Statistics"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:drawableStart="@android:drawable/ic_menu_info_details"
-                    android:drawablePadding="8dp"
+                    android:textColor="@android:color/white"
                     android:layout_marginBottom="12dp" />
 
                 <LinearLayout
@@ -66,13 +67,13 @@
                             android:text="0"
                             android:textSize="24sp"
                             android:textStyle="bold"
-                            android:textColor="@color/primary" />
+                            android:textColor="#80DEEA" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Chapters"
                             android:textSize="12sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -88,13 +89,13 @@
                             android:text="0"
                             android:textSize="24sp"
                             android:textStyle="bold"
-                            android:textColor="@color/primary" />
+                            android:textColor="#80DEEA" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Characters"
                             android:textSize="12sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -110,13 +111,13 @@
                             android:text="0"
                             android:textSize="24sp"
                             android:textStyle="bold"
-                            android:textColor="@color/primary" />
+                            android:textColor="#80DEEA" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Dialogs"
                             android:textSize="12sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -124,7 +125,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/divider"
+                    android:background="#40FFFFFF"
                     android:layout_marginTop="12dp"
                     android:layout_marginBottom="12dp" />
 
@@ -147,14 +148,14 @@
                             android:text="Reading Level"
                             android:textSize="14sp"
                             android:textStyle="bold"
-                            android:textColor="@color/text_primary" />
+                            android:textColor="@android:color/white" />
                         <TextView
                             android:id="@+id/reading_level_description"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Analyzing..."
                             android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
+                            android:textColor="#B0FFFFFF"
                             android:layout_marginTop="2dp" />
                     </LinearLayout>
 
@@ -163,6 +164,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        app:chipBackgroundColor="@color/glass_chip_bg"
+                        android:textColor="@android:color/white"
                         style="@style/Widget.Material3.Chip.Assist" />
                 </LinearLayout>
 
@@ -189,13 +192,13 @@
                             android:text="0"
                             android:textSize="18sp"
                             android:textStyle="bold"
-                            android:textColor="@color/primary" />
+                            android:textColor="#80DEEA" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Reading Ease"
                             android:textSize="10sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -211,13 +214,13 @@
                             android:text="0"
                             android:textSize="18sp"
                             android:textStyle="bold"
-                            android:textColor="@color/primary" />
+                            android:textColor="#80DEEA" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Avg Words/Sent"
                             android:textSize="10sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -233,25 +236,28 @@
                             android:text="0%"
                             android:textSize="18sp"
                             android:textStyle="bold"
-                            android:textColor="@color/primary" />
+                            android:textColor="#80DEEA" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Vocab Complexity"
                             android:textSize="10sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- AUG-022: Emotional Arc Card with visual display -->
+        <!-- AUG-022: Emotional Arc Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -262,12 +268,10 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Emotional Arc"
+                    android:text="📈 Emotional Arc"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:drawableStart="@android:drawable/ic_menu_recent_history"
-                    android:drawablePadding="8dp"
+                    android:textColor="@android:color/white"
                     android:layout_marginBottom="8dp" />
 
                 <TextView
@@ -275,7 +279,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="#B0FFFFFF"
                     android:lineSpacingMultiplier="1.5" />
 
                 <!-- INS-001: Enhanced Emotional Arc Line Graph -->
@@ -305,15 +309,18 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- INS-003: Sentiment Distribution Card -->
+        <!-- INS-003: Sentiment Distribution Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/sentiment_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:visibility="gone"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -332,12 +339,10 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Sentiment Distribution"
+                        android:text="🎭 Sentiment Distribution"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:drawableStart="@android:drawable/ic_menu_compass"
-                        android:drawablePadding="8dp" />
+                        android:textColor="@android:color/white" />
 
                     <!-- Tone badge -->
                     <com.google.android.material.chip.Chip
@@ -346,6 +351,8 @@
                         android:layout_height="wrap_content"
                         android:text="Balanced"
                         android:textSize="12sp"
+                        app:chipBackgroundColor="@color/glass_chip_bg"
+                        android:textColor="@android:color/white"
                         style="@style/Widget.Material3.Chip.Assist" />
                 </LinearLayout>
 
@@ -379,7 +386,7 @@
                             android:layout_height="wrap_content"
                             android:text="Positive"
                             android:textSize="11sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -398,7 +405,7 @@
                             android:layout_height="wrap_content"
                             android:text="Neutral"
                             android:textSize="11sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -416,19 +423,22 @@
                             android:layout_height="wrap_content"
                             android:text="Negative"
                             android:textSize="11sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- AUG-029: Themes Card with expandable details -->
+        <!-- AUG-029: Themes Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -447,12 +457,10 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Themes &amp; Symbols"
+                        android:text="🎨 Themes &amp; Symbols"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:drawableStart="@android:drawable/ic_menu_sort_by_size"
-                        android:drawablePadding="8dp" />
+                        android:textColor="@android:color/white" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_analyze_themes"
@@ -460,6 +468,8 @@
                         android:layout_height="wrap_content"
                         android:text="Analyze"
                         android:textSize="12sp"
+                        android:textColor="@android:color/white"
+                        app:backgroundTint="#40FFFFFF"
                         style="@style/Widget.Material3.Button.TonalButton" />
                 </LinearLayout>
 
@@ -468,7 +478,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="#B0FFFFFF"
                     android:lineSpacingMultiplier="1.5" />
 
                 <!-- AUG-029: Symbols section -->
@@ -479,7 +489,7 @@
                     android:text="Symbols"
                     android:textSize="14sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@android:color/white"
                     android:layout_marginTop="12dp"
                     android:visibility="gone" />
 
@@ -488,7 +498,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="#B0FFFFFF"
                     android:lineSpacingMultiplier="1.5"
                     android:layout_marginTop="4dp"
                     android:visibility="gone" />
@@ -501,7 +511,7 @@
                     android:text="Foreshadowing"
                     android:textSize="14sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@android:color/white"
                     android:layout_marginTop="12dp"
                     android:visibility="gone" />
 
@@ -510,7 +520,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="#B0FFFFFF"
                     android:lineSpacingMultiplier="1.5"
                     android:layout_marginTop="4dp"
                     android:visibility="gone" />
@@ -526,14 +536,17 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- INS-005: Plot Outline Card -->
+        <!-- INS-005: Plot Outline Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/plot_outline_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF"
             android:visibility="gone">
 
             <LinearLayout
@@ -545,12 +558,10 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Story Structure"
+                    android:text="🗺️ Story Structure"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:drawableStart="@android:drawable/ic_menu_compass"
-                    android:drawablePadding="8dp"
+                    android:textColor="@android:color/white"
                     android:layout_marginBottom="8dp" />
 
                 <TextView
@@ -559,7 +570,7 @@
                     android:layout_height="wrap_content"
                     android:text="Story arc visualization"
                     android:textSize="12sp"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="#B0FFFFFF"
                     android:layout_marginBottom="8dp" />
 
                 <com.dramebaz.app.ui.insights.PlotOutlineView
@@ -579,13 +590,16 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- AUG-028: Vocabulary Builder Card with interactive words -->
+        <!-- AUG-028: Vocabulary Builder Card - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:strokeWidth="1dp"
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -603,12 +617,10 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Vocabulary Builder"
+                        android:text="📚 Vocabulary Builder"
                         android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:drawableStart="@android:drawable/ic_menu_edit"
-                        android:drawablePadding="8dp" />
+                        android:textColor="@android:color/white" />
 
                     <!-- AUG-028: Filter toggle -->
                     <com.google.android.material.chip.Chip
@@ -617,6 +629,8 @@
                         android:layout_height="wrap_content"
                         android:text="Unlearned"
                         android:textSize="12sp"
+                        app:chipBackgroundColor="@color/glass_chip_bg"
+                        android:textColor="@android:color/white"
                         style="@style/Widget.Material3.Chip.Filter" />
                 </LinearLayout>
 
@@ -625,7 +639,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="12sp"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="#B0FFFFFF"
                     android:layout_marginTop="4dp"
                     android:layout_marginBottom="8dp" />
 
@@ -641,7 +655,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="#B0FFFFFF"
                     android:lineSpacingMultiplier="1.5"
                     android:visibility="gone" />
 
@@ -653,6 +667,8 @@
                     android:layout_marginTop="12dp"
                     android:text="Export Vocabulary"
                     android:textSize="12sp"
+                    android:textColor="@android:color/white"
+                    app:backgroundTint="#40FFFFFF"
                     style="@style/Widget.Material3.Button.TextButton" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

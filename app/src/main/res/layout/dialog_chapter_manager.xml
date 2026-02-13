@@ -1,30 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Chapter Manager Dialog with Glassmorphism Style -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@drawable/gradient_glass_background">
 
-    <!-- Toolbar -->
+    <!-- Toolbar - Glassmorphism Style -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/primary"
+        android:background="@android:color/transparent"
         app:navigationIcon="@android:drawable/ic_menu_close_clear_cancel"
-        app:navigationIconTint="@color/on_primary"
+        app:navigationIconTint="@android:color/white"
         app:title="@string/chapter_manager_title"
-        app:titleTextColor="@color/on_primary" />
+        app:titleTextColor="@android:color/white" />
 
-    <!-- Batch Action Bar (visible when chapters are selected) -->
+    <!-- Batch Action Bar (visible when chapters are selected) - Glassmorphism Style -->
     <LinearLayout
         android:id="@+id/batch_action_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="8dp"
-        android:background="@color/accent_light"
+        android:background="#20FFFFFF"
         android:visibility="gone">
 
         <!-- Row 1: Selection count and deselect -->
@@ -39,7 +40,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/text_primary"
+                android:textColor="@android:color/white"
                 android:textStyle="bold"
                 android:text="@string/chapters_selected" />
 
@@ -106,7 +107,7 @@
             android:layout_width="64dp"
             android:layout_height="64dp"
             android:src="@android:drawable/ic_menu_sort_by_size"
-            app:tint="@color/text_secondary" />
+            app:tint="#B0FFFFFF" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -114,16 +115,19 @@
             android:layout_marginTop="16dp"
             android:text="@string/no_chapters"
             android:textSize="18sp"
-            android:textColor="@color/text_secondary" />
+            android:textColor="#B0FFFFFF" />
     </LinearLayout>
 
-    <!-- Bottom Info Bar -->
+    <!-- Bottom Info Bar - Glassmorphism Style -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="2dp">
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="#20FFFFFF"
+        app:strokeWidth="1dp"
+        app:strokeColor="#40FFFFFF">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -136,7 +140,7 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:src="@android:drawable/ic_menu_info_details"
-                app:tint="@color/primary" />
+                app:tint="#B0FFFFFF" />
 
             <TextView
                 android:id="@+id/chapter_count_info"
@@ -144,7 +148,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:textSize="14sp"
-                android:textColor="@color/text_secondary"
+                android:textColor="#B0FFFFFF"
                 android:text="@string/chapter_count_info" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

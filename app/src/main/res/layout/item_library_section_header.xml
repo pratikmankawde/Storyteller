@@ -7,8 +7,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="8dp"
-    android:layout_marginVertical="4dp"
-    app:cardCornerRadius="16dp"
+    android:layout_marginVertical="2dp"
+    app:cardCornerRadius="6dp"
     app:cardElevation="0dp"
     app:strokeWidth="0dp"
     app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
@@ -21,16 +21,16 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="14dp"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="2dp"
         android:background="?attr/selectableItemBackground">
 
         <!-- Section Icon -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/section_icon"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:padding="2dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:padding="1dp"
             android:contentDescription="@null"
             app:tint="?attr/colorPrimary"
             tools:src="@android:drawable/star_on" />
@@ -41,8 +41,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:layout_marginStart="8dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
             android:textColor="?attr/colorOnSurface"
             tools:text="Favourites" />
 
@@ -51,19 +51,19 @@
             android:id="@+id/section_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:layout_marginEnd="4dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
             android:textColor="?attr/colorOnPrimaryContainer"
             android:background="@drawable/badge_background_m3"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="4dp"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
             tools:text="3" />
 
         <!-- Expand/Collapse Arrow -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/section_arrow"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:contentDescription="@string/expand_collapse"
             app:srcCompat="@android:drawable/arrow_down_float"
             app:tint="?attr/colorOnSurfaceVariant" />

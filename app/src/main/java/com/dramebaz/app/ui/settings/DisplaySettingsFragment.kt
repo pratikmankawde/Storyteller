@@ -12,6 +12,7 @@ import com.dramebaz.app.R
 import com.dramebaz.app.data.models.FontFamily
 import com.dramebaz.app.data.models.ReadingSettings
 import com.dramebaz.app.data.models.ReadingTheme
+import com.dramebaz.app.ui.theme.FontManager
 import com.dramebaz.app.utils.AppLogger
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.chip.Chip
@@ -70,6 +71,8 @@ class DisplaySettingsFragment : Fragment() {
                 text = font.displayName
                 isCheckable = true
                 tag = font
+                // Apply the actual font typeface to the chip's text
+                typeface = FontManager.getTypeface(requireContext(), font)
             }
             fontFamilyChips.addView(chip)
         }

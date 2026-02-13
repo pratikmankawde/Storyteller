@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.RatingBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.ViewCompat
@@ -56,6 +57,13 @@ class BookDetailFragment : Fragment() {
         val title = view.findViewById<TextView>(R.id.title)
         val format = view.findViewById<TextView>(R.id.format)
 
+        // METADATA-001: Book metadata views
+        val authorView = view.findViewById<TextView>(R.id.author)
+        val descriptionView = view.findViewById<TextView>(R.id.description)
+        val ratingContainer = view.findViewById<LinearLayout>(R.id.rating_container)
+        val ratingBar = view.findViewById<RatingBar>(R.id.rating_bar)
+        val ratingText = view.findViewById<TextView>(R.id.rating_text)
+
         // UI-004: Set up book cover for shared element transition
         val bookCover = view.findViewById<ImageView>(R.id.book_cover)
         val transitionName = "book_cover_$bookId"
@@ -77,6 +85,9 @@ class BookDetailFragment : Fragment() {
                 BookCoverLoader.loadCoverInto(bookCover, it)
                 // FAV-001: Update favorite button state
                 updateFavoriteButton(btnFavorite, it.isFavorite)
+
+                // METADATA-001: Bind book metadata
+                bindBookMetadata(it, authorView, descriptionView, ratingContainer, ratingBar, ratingText)
             }
 
             // AUG-030: Load chapter summaries
@@ -324,6 +335,41 @@ class BookDetailFragment : Fragment() {
                 btnAnalyze.isEnabled = true
                 btnAnalyze.alpha = 1.0f
             }
+        }
+    }
+
+    /**
+     * METADATA-001: Bind book metadata (author, description, rating) to views.
+     */
+    private fun bindBookMetadata(
+        book: com.dramebaz.app.data.db.Book,
+        authorView: TextView?,
+        descriptionView: TextView?,
+        ratingContainer: LinearLayout?,
+        ratingBar: RatingBar?,
+        ratingText: TextView?
+    ) {
+        // Author
+        book.author?.takeIf { it.isNotBlank() }?.let { author ->
+            authorView?.apply {
+                text = "by $author"
+                visibility = View.VISIBLE
+            }
+        }
+
+        // Description
+        book.description?.takeIf { it.isNotBlank() }?.let { desc ->
+            descriptionView?.apply {
+                text = desc
+                visibility = View.VISIBLE
+            }
+        }
+
+        // Rating
+        book.rating?.takeIf { it > 0f }?.let { rating ->
+            ratingContainer?.visibility = View.VISIBLE
+            ratingBar?.rating = rating
+            ratingText?.text = String.format("%.1f", rating)
         }
     }
 

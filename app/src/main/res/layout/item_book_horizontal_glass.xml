@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glassmorphism book card for horizontal carousels with custom corner radius -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/book_card"
+    android:layout_width="140dp"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="6dp"
+    app:shapeAppearanceOverlay="@style/ShapeAppearance.Library.BookCard.RightRounded"
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="#40FFFFFF"
+    app:cardBackgroundColor="#20FFFFFF"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Book cover - 2:3 ratio (140x210) -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/book_cover"
+            android:layout_width="0dp"
+            android:layout_height="200dp"
+            android:scaleType="centerCrop"
+            android:background="#30FFFFFF"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Library.BookCover.RightRounded"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:src="@android:drawable/ic_menu_gallery" />
+
+        <!-- Gradient overlay for text readability -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:background="@drawable/gradient_bottom_overlay"
+            app:layout_constraintBottom_toBottomOf="@id/book_cover"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Favorite indicator -->
+        <ImageView
+            android:id="@+id/favorite_indicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_margin="8dp"
+            android:src="@drawable/ic_favorite"
+            app:tint="#FFCDD2"
+            android:visibility="gone"
+            android:contentDescription="@string/toggle_favorite"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Analysis status badge -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/analysis_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:padding="4dp"
+            android:background="@drawable/badge_glass_background"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+            android:textColor="#E0FFFFFF"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            app:layout_constraintBottom_toTopOf="@id/book_title"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="Analyzing..." />
+
+        <!-- Title at the bottom -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/book_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:textColor="@android:color/white"
+            android:maxLines="2"
+            android:ellipsize="end"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="The Great Adventure" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>
+

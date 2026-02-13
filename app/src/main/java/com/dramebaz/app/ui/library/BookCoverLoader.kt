@@ -38,15 +38,15 @@ object BookCoverLoader {
      *                        that don't have an embedded cover or detected genre yet
      */
     fun loadCoverInto(imageView: ImageView, book: Book, enableSlideshow: Boolean = false) {
-        // Stop any existing slideshow for this book first
-        CoverSlideshowManager.stopSlideshow(book.id)
-
         // COVER-SLIDESHOW: Check if we should show slideshow instead of static cover
         if (enableSlideshow && shouldShowSlideshow(book)) {
+            // Start or join existing slideshow - supports multiple ImageViews for same book
             CoverSlideshowManager.startSlideshow(imageView, book.id)
             return
         }
 
+        // Loading static cover - stop any slideshow for this book since analysis is complete
+        CoverSlideshowManager.stopSlideshow(book.id)
         loadStaticCover(imageView, book)
     }
 

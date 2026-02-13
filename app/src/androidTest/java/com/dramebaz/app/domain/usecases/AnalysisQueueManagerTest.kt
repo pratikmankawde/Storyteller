@@ -8,7 +8,9 @@ import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.db.AppDatabase
 import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.data.db.Chapter
+import com.dramebaz.app.data.models.FeatureSettings
 import com.dramebaz.app.data.repositories.BookRepository
+import com.dramebaz.app.data.repositories.SettingsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -34,6 +36,7 @@ class AnalysisQueueManagerTest {
     private lateinit var app: DramebazApplication
     private lateinit var db: AppDatabase
     private lateinit var bookRepository: BookRepository
+    private lateinit var settingsRepository: SettingsRepository
 
     companion object {
         private const val TAG = "AnalysisQueueManagerTest"
@@ -47,6 +50,7 @@ class AnalysisQueueManagerTest {
             app = context.applicationContext as DramebazApplication
             db = app.db
             bookRepository = app.bookRepository
+            settingsRepository = app.settingsRepository
 
             // Initialize LLM service
             LlmService.initialize(context)
@@ -244,6 +248,63 @@ class AnalysisQueueManagerTest {
         val status = AnalysisQueueManager.getBookStatus(-999)
         assertNull("Unknown book should have null status", status)
         android.util.Log.d(TAG, "Status for unknown book: $status")
+    }
+
+    // ==================== Settings Repository Integration Tests ====================
+
+    @Test
+    fun testAnalysisQueueManagerInitializedWithSettings() {
+        // Verify AnalysisQueueManager is initialized (done in DramebazApplication)
+        // The initialize() method now requires SettingsRepository
+        assertNotNull("AnalysisQueueManager should be initialized", AnalysisQueueManager)
+        assertNotNull("SettingsRepository should be available", settingsRepository)
+        android.util.Log.d(TAG, "AnalysisQueueManager initialized with SettingsRepository")
+    }
+
+    @Test
+    fun testSettingsRepositoryIncrementalPercentAvailable() {
+        runBlocking {
+            // Get current incremental percent setting
+            val percent = settingsRepository.featureSettings.value.incrementalAnalysisPagePercent
+            assertTrue("Incremental percent should be between 25 and 100", percent in 25..100)
+            android.util.Log.d(TAG, "Current incrementalAnalysisPagePercent: $percent")
+        }
+    }
+
+    @Test
+    fun testSettingsChangeReflectedForAnalysis() {
+        runBlocking {
+            // Save current value to restore later
+            val originalPercent = settingsRepository.featureSettings.value.incrementalAnalysisPagePercent
+
+            // Change to 25%
+            settingsRepository.updateFeatureSettings(
+                FeatureSettings(incrementalAnalysisPagePercent = 25)
+            )
+
+            assertEquals(
+                "Settings should be updated to 25%",
+                25,
+                settingsRepository.featureSettings.value.incrementalAnalysisPagePercent
+            )
+            android.util.Log.d(TAG, "Settings changed from $originalPercent to 25%")
+
+            // Restore original
+            settingsRepository.updateFeatureSettings(
+                FeatureSettings(incrementalAnalysisPagePercent = originalPercent)
+            )
+        }
+    }
+
+    @Test
+    fun testMinPagesForIncrementalConstant() {
+        // Verify the MIN_PAGES_FOR_INCREMENTAL constant is accessible
+        assertEquals(
+            "MIN_PAGES_FOR_INCREMENTAL should be 4",
+            4,
+            FeatureSettings.MIN_PAGES_FOR_INCREMENTAL
+        )
+        android.util.Log.d(TAG, "MIN_PAGES_FOR_INCREMENTAL = ${FeatureSettings.MIN_PAGES_FOR_INCREMENTAL}")
     }
 }
 

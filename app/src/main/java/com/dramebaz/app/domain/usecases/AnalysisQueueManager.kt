@@ -5,6 +5,7 @@ import com.dramebaz.app.ai.llm.services.AnalysisForegroundService
 import com.dramebaz.app.audio.SegmentAudioGenerator
 import com.dramebaz.app.data.db.AppDatabase
 import com.dramebaz.app.data.repositories.BookRepository
+import com.dramebaz.app.data.repositories.SettingsRepository
 import com.dramebaz.app.utils.AppLogger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +39,7 @@ object AnalysisQueueManager {
     private var database: AppDatabase? = null
     private var appContext: Context? = null
     private var segmentAudioGenerator: SegmentAudioGenerator? = null
+    private var settingsRepository: SettingsRepository? = null
 
     // Workflow instance (created after initialization)
     private var bookAnalysisWorkflow: BookAnalysisWorkflow? = null
@@ -60,16 +62,23 @@ object AnalysisQueueManager {
         val totalChapters: Int = 0
     )
 
-    fun initialize(context: Context, repository: BookRepository, db: AppDatabase) {
+    fun initialize(
+        context: Context,
+        repository: BookRepository,
+        db: AppDatabase,
+        settings: SettingsRepository
+    ) {
         appContext = context.applicationContext
         bookRepository = repository
         database = db
+        settingsRepository = settings
 
         // Create workflow instance
         bookAnalysisWorkflow = BookAnalysisWorkflow(
             context = context.applicationContext,
             bookRepository = repository,
-            database = db
+            database = db,
+            settingsRepository = settings
         )
 
         AppLogger.d(TAG, "AnalysisQueueManager initialized with workflow")

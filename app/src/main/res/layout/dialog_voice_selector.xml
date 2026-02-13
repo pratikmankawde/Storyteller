@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- VOICE-001: Voice Selector Dialog for character voice customization -->
+<!-- VOICE-001: Voice Selector Dialog for character voice customization - Glassmorphism Style -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/background"
+    android:background="@drawable/gradient_glass_background"
     android:paddingBottom="24dp">
 
     <!-- Drag Handle -->
@@ -34,7 +34,7 @@
             android:text="Character Name"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="@color/text_primary" />
+            android:textColor="@android:color/white" />
 
         <TextView
             android:id="@+id/character_traits"
@@ -42,7 +42,7 @@
             android:layout_height="wrap_content"
             android:text="Female, 30s"
             android:textSize="14sp"
-            android:textColor="@color/text_secondary" />
+            android:textColor="#B0FFFFFF" />
     </LinearLayout>
 
     <!-- Current Voice Info -->
@@ -54,7 +54,7 @@
         android:paddingBottom="8dp"
         android:text="Current voice: Speaker #0"
         android:textSize="14sp"
-        android:textColor="@color/text_secondary" />
+        android:textColor="#B0FFFFFF" />
 
     <!-- Gender Filter Buttons -->
     <com.google.android.material.button.MaterialButtonToggleGroup
@@ -109,7 +109,7 @@
         android:text="Voice Tuning"
         android:textSize="14sp"
         android:textStyle="bold"
-        android:textColor="@color/text_secondary" />
+        android:textColor="@android:color/white" />
 
     <!-- Speed Slider -->
     <LinearLayout
@@ -118,7 +118,7 @@
         android:orientation="horizontal"
         android:paddingHorizontal="16dp"
         android:gravity="center_vertical">
-        <TextView android:layout_width="60dp" android:layout_height="wrap_content" android:text="Speed" android:textColor="@color/text_secondary" />
+        <TextView android:layout_width="60dp" android:layout_height="wrap_content" android:text="Speed" android:textColor="#B0FFFFFF" />
         <com.google.android.material.slider.Slider
             android:id="@+id/speed_slider"
             android:layout_width="0dp"
@@ -128,7 +128,7 @@
             android:valueTo="2.0"
             android:value="1.0"
             android:stepSize="0.05" />
-        <TextView android:id="@+id/speed_value" android:layout_width="40dp" android:layout_height="wrap_content" android:text="1.0" android:textColor="@color/text_secondary" android:gravity="end" />
+        <TextView android:id="@+id/speed_value" android:layout_width="40dp" android:layout_height="wrap_content" android:text="1.0" android:textColor="#B0FFFFFF" android:gravity="end" />
     </LinearLayout>
 
     <!-- Energy Slider -->
@@ -138,7 +138,7 @@
         android:orientation="horizontal"
         android:paddingHorizontal="16dp"
         android:gravity="center_vertical">
-        <TextView android:layout_width="60dp" android:layout_height="wrap_content" android:text="Energy" android:textColor="@color/text_secondary" />
+        <TextView android:layout_width="60dp" android:layout_height="wrap_content" android:text="Energy" android:textColor="#B0FFFFFF" />
         <com.google.android.material.slider.Slider
             android:id="@+id/energy_slider"
             android:layout_width="0dp"
@@ -148,7 +148,7 @@
             android:valueTo="1.5"
             android:value="1.0"
             android:stepSize="0.05" />
-        <TextView android:id="@+id/energy_value" android:layout_width="40dp" android:layout_height="wrap_content" android:text="1.0" android:textColor="@color/text_secondary" android:gravity="end" />
+        <TextView android:id="@+id/energy_value" android:layout_width="40dp" android:layout_height="wrap_content" android:text="1.0" android:textColor="#B0FFFFFF" android:gravity="end" />
     </LinearLayout>
 
     <!-- Action Buttons -->

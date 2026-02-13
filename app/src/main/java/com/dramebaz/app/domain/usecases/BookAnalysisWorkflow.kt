@@ -23,6 +23,7 @@ import com.dramebaz.app.data.models.ChapterSummary
 import com.dramebaz.app.data.models.Dialog
 import com.dramebaz.app.data.models.FeatureSettings
 import com.dramebaz.app.data.repositories.BookRepository
+import com.dramebaz.app.data.repositories.SettingsRepository
 import com.dramebaz.app.domain.theme.GenreCoverMapper
 import com.dramebaz.app.pdf.PdfChapterDetector
 import com.dramebaz.app.utils.AppLogger
@@ -53,7 +54,8 @@ import kotlinx.coroutines.launch
 class BookAnalysisWorkflow(
     private val context: Context,
     private val bookRepository: BookRepository,
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val settingsRepository: SettingsRepository
 ) {
     private val tag = "BookAnalysisWorkflow"
     private val gson = Gson()
@@ -381,16 +383,20 @@ class BookAnalysisWorkflow(
         val totalPages = cleanedPages.size
         AppLogger.i(tag, "INCREMENTAL-001: $totalPages pages prepared for chapter '$chapterLabel'")
 
+        // Get incremental analysis percentage from settings
+        val incrementalPercent = settingsRepository.featureSettings.value.incrementalAnalysisPagePercent
+        AppLogger.d(tag, "INCREMENTAL-001: Using incrementalAnalysisPagePercent=$incrementalPercent% from settings")
+
         // Determine if we should use incremental processing
-        val shouldSplit = totalPages > FeatureSettings.MIN_PAGES_FOR_INCREMENTAL
+        val shouldSplit = totalPages > FeatureSettings.MIN_PAGES_FOR_INCREMENTAL && incrementalPercent < 100
         val initialPageCount = if (shouldSplit) {
-            // Process first 50% of pages initially
-            (totalPages * 50 / 100).coerceAtLeast(1)
+            // Process configured percentage of pages initially
+            (totalPages * incrementalPercent / 100).coerceAtLeast(1)
         } else {
-            totalPages  // Process all pages if below threshold
+            totalPages  // Process all pages if below threshold or percent is 100%
         }
 
-        AppLogger.i(tag, "INCREMENTAL-001: Processing $initialPageCount/$totalPages pages initially (split=$shouldSplit)")
+        AppLogger.i(tag, "INCREMENTAL-001: Processing $initialPageCount/$totalPages pages initially ($incrementalPercent%, split=$shouldSplit)")
 
         // Create batch complete callback for incremental audio generation
         val audioCallback = incrementalAudioEnqueuer?.createBatchCompleteCallback(bookId, chapter.id)

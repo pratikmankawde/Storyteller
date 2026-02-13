@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Settings Tab Features with Glassmorphism Style -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -11,15 +12,16 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Smart Casting Toggle -->
+        <!-- Smart Casting Toggle - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/divider">
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -39,14 +41,14 @@
                         android:layout_height="wrap_content"
                         android:text="@string/smart_casting"
                         android:textSize="14sp"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@android:color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/smart_casting_desc"
                         android:textSize="12sp"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="#B0FFFFFF" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
@@ -56,15 +58,16 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Generative Visuals Toggle -->
+        <!-- Generative Visuals Toggle - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/divider">
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -84,14 +87,14 @@
                         android:layout_height="wrap_content"
                         android:text="@string/generative_visuals"
                         android:textSize="14sp"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@android:color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/generative_visuals_desc"
                         android:textSize="12sp"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="#B0FFFFFF" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
@@ -101,15 +104,16 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Deep Analysis Toggle -->
+        <!-- Deep Analysis Toggle - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/divider">
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -129,14 +133,14 @@
                         android:layout_height="wrap_content"
                         android:text="@string/deep_analysis"
                         android:textSize="14sp"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@android:color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/deep_analysis_desc"
                         android:textSize="12sp"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="#B0FFFFFF" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
@@ -146,15 +150,16 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Emotion Modifiers Toggle -->
+        <!-- Emotion Modifiers Toggle - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/divider">
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -174,14 +179,14 @@
                         android:layout_height="wrap_content"
                         android:text="@string/emotion_modifiers"
                         android:textSize="14sp"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@android:color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/emotion_modifiers_desc"
                         android:textSize="12sp"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="#B0FFFFFF" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
@@ -191,15 +196,16 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Karaoke Highlight Toggle -->
+        <!-- Karaoke Highlight Toggle - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/divider">
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -219,14 +225,14 @@
                         android:layout_height="wrap_content"
                         android:text="@string/karaoke_highlight"
                         android:textSize="14sp"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@android:color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/karaoke_highlight_desc"
                         android:textSize="12sp"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="#B0FFFFFF" />
                 </LinearLayout>
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
@@ -236,14 +242,15 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Incremental Analysis Slider -->
+        <!-- Incremental Analysis Slider - Glassmorphism Style -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="8dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
+            app:cardBackgroundColor="#20FFFFFF"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/divider">
+            app:strokeColor="#40FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -268,14 +275,14 @@
                             android:layout_height="wrap_content"
                             android:text="@string/incremental_analysis"
                             android:textSize="14sp"
-                            android:textColor="@color/text_primary" />
+                            android:textColor="@android:color/white" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/incremental_analysis_desc"
                             android:textSize="12sp"
-                            android:textColor="@color/text_secondary" />
+                            android:textColor="#B0FFFFFF" />
                     </LinearLayout>
 
                     <TextView
@@ -283,7 +290,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="14sp"
-                        android:textColor="@color/text_primary"
+                        android:textColor="@android:color/white"
                         android:minWidth="48dp"
                         android:gravity="end" />
                 </LinearLayout>

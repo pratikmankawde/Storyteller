@@ -21,6 +21,9 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowAnimationStyle">@style/WindowAnimationTransition</item>
         <item name="materialButtonStyle">@style/Widget.Dramebaz.Button</item>
+        <!-- Default UI font: Bellota Regular -->
+        <item name="android:fontFamily">@font/bellota_regular</item>
+        <item name="fontFamily">@font/bellota_regular</item>
     </style>
 
     <!-- Buttons: readable text size (16sp). Use Material 3 parents. -->
@@ -42,11 +45,37 @@
         <item name="android:windowExitAnimation">@android:anim/fade_out</item>
     </style>
 
-    <!-- Splash: no title bar, full background -->
+    <!-- Splash: no title bar, glassmorphism gradient background -->
     <style name="Theme.Dramebaz.Splash" parent="Theme.Dramebaz">
-        <item name="android:windowBackground">@color/primary</item>
+        <item name="android:windowBackground">@drawable/gradient_glass_background</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:statusBarColor">@color/primary_variant</item>
-        <item name="android:navigationBarColor">@color/primary_variant</item>
+        <item name="android:statusBarColor">#1A237E</item>
+        <item name="android:navigationBarColor">#4A148C</item>
+    </style>
+
+    <!-- App title text appearance: larger, bold -->
+    <style name="TextAppearance.Dramebaz.AppTitle" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textSize">28sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">@font/bellota_regular</item>
+        <item name="fontFamily">@font/bellota_regular</item>
+    </style>
+
+    <!-- Shape appearance for book cards with right-side rounded corners (0dp left, 8dp right) -->
+    <style name="ShapeAppearance.Library.BookCard.RightRounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeTopRight">8dp</item>
+        <item name="cornerSizeBottomRight">8dp</item>
+    </style>
+
+    <!-- Shape appearance for book cover images with right-side rounded corners -->
+    <style name="ShapeAppearance.Library.BookCover.RightRounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeTopRight">8dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
     </style>
 </resources>

@@ -4,35 +4,51 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@drawable/gradient_glass_background">
 
+    <!-- Toolbar - Glassmorphism Style -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        app:elevation="0dp">
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:title="Characters"
-            app:titleTextColor="@color/text_primary" />
+            android:background="@android:color/transparent"
+            app:titleTextColor="@android:color/white" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- AUG-026: Search View -->
-    <androidx.appcompat.widget.SearchView
-        android:id="@+id/search_view"
+    <!-- AUG-026: Search View - Glassmorphism Style -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="8dp"
         android:layout_marginTop="8dp"
-        android:queryHint="Search characters..."
-        app:iconifiedByDefault="false"
-        app:queryBackground="@android:color/transparent" />
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="#20FFFFFF"
+        app:strokeWidth="1dp"
+        app:strokeColor="#40FFFFFF">
+        <androidx.appcompat.widget.SearchView
+            android:id="@+id/search_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:queryHint="Search characters..."
+            app:iconifiedByDefault="false"
+            app:queryBackground="@android:color/transparent"
+            app:queryHint="Search characters..."
+            android:theme="@style/ThemeOverlay.Material3.Light" />
+    </com.google.android.material.card.MaterialCardView>
 
-    <!-- AUG-026: Filter Chips -->
+    <!-- AUG-026: Filter Chips - Glassmorphism Style -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:scrollbars="none"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp">
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/filter_chips"
@@ -45,19 +61,31 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="A-Z"
+                android:textColor="@android:color/white"
                 android:checked="true"
+                app:chipBackgroundColor="@color/glass_chip_bg"
+                app:chipStrokeColor="#40FFFFFF"
+                app:chipStrokeWidth="1dp"
                 style="@style/Widget.MaterialComponents.Chip.Filter" />
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_sort_name_desc"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Z-A"
+                android:textColor="@android:color/white"
+                app:chipBackgroundColor="@color/glass_chip_bg"
+                app:chipStrokeColor="#40FFFFFF"
+                app:chipStrokeWidth="1dp"
                 style="@style/Widget.MaterialComponents.Chip.Filter" />
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_sort_dialogs"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Most Dialogs"
+                android:textColor="@android:color/white"
+                app:chipBackgroundColor="@color/glass_chip_bg"
+                app:chipStrokeColor="#40FFFFFF"
+                app:chipStrokeWidth="1dp"
                 style="@style/Widget.MaterialComponents.Chip.Filter" />
         </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>
@@ -70,6 +98,7 @@
         android:clipToPadding="false"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
+    <!-- Empty State - Glassmorphism Style -->
     <LinearLayout
         android:id="@+id/empty_state"
         android:layout_width="match_parent"
@@ -83,7 +112,7 @@
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:src="@android:drawable/ic_menu_myplaces"
-            app:tint="@color/text_secondary"
+            app:tint="#B0FFFFFF"
             android:layout_marginBottom="16dp" />
 
         <TextView
@@ -92,7 +121,7 @@
             android:text="@string/empty_characters"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="@color/text_primary"
+            android:textColor="@android:color/white"
             android:layout_marginBottom="8dp" />
 
         <TextView
@@ -100,6 +129,6 @@
             android:layout_height="wrap_content"
             android:text="@string/empty_characters_subtitle"
             android:textSize="14sp"
-            android:textColor="@color/text_secondary" />
+            android:textColor="#B0FFFFFF" />
     </LinearLayout>
 </LinearLayout>

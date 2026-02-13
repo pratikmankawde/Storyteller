@@ -1,0 +1,240 @@
+{
+  "project": "Dramebaz",
+  "category": "Testing & Quality Assurance",
+  "description": "Comprehensive unit tests and integration tests for the Storyteller app covering AI/LLM, TTS, data layer, domain logic, and utilities",
+  "version": "1.0",
+  "last_updated": "2026-02-13",
+  "instructions_source": "CLAUDE.md testing guidelines",
+  "reference_project": "C:\\Users\\Pratik\\source\\Storyteller",
+  "total_estimated_hours": 24,
+  "total_tests": 465,
+  "milestones": [
+    {
+      "id": "TEST-M1",
+      "name": "Unit Test Suite",
+      "description": "Comprehensive unit tests for all major components",
+      "done": true,
+      "task_ids": ["TEST-001", "TEST-002", "TEST-003", "TEST-004"]
+    },
+    {
+      "id": "TEST-M2",
+      "name": "Integration Test Suite",
+      "description": "Integration tests for key workflows and features",
+      "done": true,
+      "task_ids": ["TEST-005", "TEST-006", "TEST-007", "TEST-008", "TEST-009"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TEST-001",
+      "feature": "AI/LLM Component Tests",
+      "description": "Unit tests for LLM response parsing, pipeline components, and analysis services",
+      "done": true,
+      "status": "completed",
+      "priority": "HIGH",
+      "estimated_hours": 6,
+      "completed_date": "2026-02-13",
+      "test_count": 120,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/ai/llm/LlmResponseParserTest.kt",
+        "app/src/test/java/com/dramebaz/app/ai/llm/pipeline/ParagraphBatcherTest.kt",
+        "app/src/test/java/com/dramebaz/app/ai/llm/pipeline/IncrementalMergerTest.kt",
+        "app/src/test/java/com/dramebaz/app/ai/llm/StubFallbacksTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-001.1", "description": "LlmResponseParser JSON extraction tests", "done": true},
+        {"id": "TEST-001.2", "description": "ParagraphBatcher batch creation tests", "done": true},
+        {"id": "TEST-001.3", "description": "IncrementalMerger character merging tests", "done": true},
+        {"id": "TEST-001.4", "description": "StubFallbacks regex-based heuristic tests", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-002",
+      "feature": "TTS Component Tests",
+      "description": "Unit tests for speaker matching, voice profiles, and TTS catalog",
+      "done": true,
+      "status": "completed",
+      "priority": "HIGH",
+      "estimated_hours": 4,
+      "completed_date": "2026-02-13",
+      "test_count": 80,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/ai/tts/SpeakerMatcherTest.kt",
+        "app/src/test/java/com/dramebaz/app/ai/tts/ProsodyControllerTest.kt",
+        "app/src/test/java/com/dramebaz/app/ai/tts/LibrittsSpeakerCatalogTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-002.1", "description": "SpeakerMatcher trait-based matching tests", "done": true},
+        {"id": "TEST-002.2", "description": "ProsodyController emotion adjustment tests", "done": true},
+        {"id": "TEST-002.3", "description": "LibrittsSpeakerCatalog speaker lookup tests", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-003",
+      "feature": "Data Layer Tests",
+      "description": "Unit tests for data models, enums, and settings",
+      "done": true,
+      "status": "completed",
+      "priority": "MEDIUM",
+      "estimated_hours": 3,
+      "completed_date": "2026-02-13",
+      "test_count": 60,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/data/models/ReadingModeTest.kt",
+        "app/src/test/java/com/dramebaz/app/data/models/ReadingLevelTest.kt",
+        "app/src/test/java/com/dramebaz/app/data/models/AnalysisSettingsTest.kt",
+        "app/src/test/java/com/dramebaz/app/data/models/ScenePromptTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-003.1", "description": "ReadingMode enum cycling tests", "done": true},
+        {"id": "TEST-003.2", "description": "ReadingLevel enum tests", "done": true},
+        {"id": "TEST-003.3", "description": "AnalysisSettings serialization tests", "done": true},
+        {"id": "TEST-003.4", "description": "ScenePrompt data class tests", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-004",
+      "feature": "Utility Tests",
+      "description": "Unit tests for utilities, error handling, and helper classes",
+      "done": true,
+      "status": "completed",
+      "priority": "MEDIUM",
+      "estimated_hours": 3,
+      "completed_date": "2026-02-13",
+      "test_count": 143,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/utils/DegradedModeManagerTest.kt",
+        "app/src/test/java/com/dramebaz/app/utils/ErrorHandlerTest.kt",
+        "app/src/test/java/com/dramebaz/app/domain/exceptions/AppExceptionsTest.kt",
+        "app/src/test/java/com/dramebaz/app/ai/llm/pipeline/CharacterNameMatcherTest.kt",
+        "app/src/test/java/com/dramebaz/app/ai/llm/pipeline/VoiceProfileMergerTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-004.1", "description": "DegradedModeManager state transition tests", "done": true},
+        {"id": "TEST-004.2", "description": "ErrorHandler withRetry tests", "done": true},
+        {"id": "TEST-004.3", "description": "AppExceptions hierarchy tests", "done": true},
+        {"id": "TEST-004.4", "description": "CharacterNameMatcher fuzzy matching tests", "done": true},
+        {"id": "TEST-004.5", "description": "VoiceProfileMerger merge strategy tests", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-005",
+      "feature": "Book Import Integration Tests",
+      "description": "Integration tests for PDF import, chapter extraction, and database persistence",
+      "done": true,
+      "status": "completed",
+      "priority": "HIGH",
+      "estimated_hours": 2,
+      "completed_date": "2026-02-13",
+      "test_count": 8,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/integration/BookImportIntegrationTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-005.1", "description": "BookRepository insert/get operations", "done": true},
+        {"id": "TEST-005.2", "description": "PdfChapterDetector boundary detection", "done": true},
+        {"id": "TEST-005.3", "description": "Book entity metadata storage", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-006",
+      "feature": "LLM Analysis Pipeline Integration Tests",
+      "description": "Integration tests for end-to-end analysis, batching, merging, and StubFallbacks",
+      "done": true,
+      "status": "completed",
+      "priority": "HIGH",
+      "estimated_hours": 2,
+      "completed_date": "2026-02-13",
+      "test_count": 13,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/integration/LlmAnalysisPipelineIntegrationTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-006.1", "description": "ParagraphBatcher batch creation tests", "done": true},
+        {"id": "TEST-006.2", "description": "IncrementalMerger character deduplication tests", "done": true},
+        {"id": "TEST-006.3", "description": "StubFallbacks character detection tests", "done": true},
+        {"id": "TEST-006.4", "description": "DegradedModeManager state transition tests", "done": true},
+        {"id": "TEST-006.5", "description": "Full pipeline test with Space Story demo data", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-007",
+      "feature": "TTS Audio Generation Integration Tests",
+      "description": "Integration tests for dialog-to-audio workflow, speaker matching, and regeneration",
+      "done": true,
+      "status": "completed",
+      "priority": "HIGH",
+      "estimated_hours": 2,
+      "completed_date": "2026-02-13",
+      "test_count": 12,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/integration/TtsAudioGenerationIntegrationTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-007.1", "description": "VoiceProfile parameter storage tests", "done": true},
+        {"id": "TEST-007.2", "description": "SpeakerMatcher deterministic assignment tests", "done": true},
+        {"id": "TEST-007.3", "description": "SpeakerMatcher gender matching tests", "done": true},
+        {"id": "TEST-007.4", "description": "TTS mode transitions via DegradedModeManager", "done": true},
+        {"id": "TEST-007.5", "description": "AudioRegenerationManager job key tests", "done": true},
+        {"id": "TEST-007.6", "description": "Full audio generation workflow tests", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-008",
+      "feature": "Reader Playback Integration Tests",
+      "description": "Integration tests for reading mode transitions, playback state, and cross-chapter navigation",
+      "done": true,
+      "status": "completed",
+      "priority": "HIGH",
+      "estimated_hours": 2,
+      "completed_date": "2026-02-13",
+      "test_count": 13,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/integration/ReaderPlaybackIntegrationTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-008.1", "description": "ReadingMode cycling tests (TEXT → AUDIO → MIXED)", "done": true},
+        {"id": "TEST-008.2", "description": "ReadingMode legacy string conversion tests", "done": true},
+        {"id": "TEST-008.3", "description": "ProsodyController emotion adjustment tests", "done": true},
+        {"id": "TEST-008.4", "description": "Chapter ordering and navigation tests", "done": true},
+        {"id": "TEST-008.5", "description": "Page caching with LRU policy tests", "done": true},
+        {"id": "TEST-008.6", "description": "Playback state tracking tests", "done": true}
+      ]
+    },
+    {
+      "id": "TEST-009",
+      "feature": "Coroutine Processing Integration Tests",
+      "description": "Integration tests for dispatcher usage, cancellation, StateFlow, and retry logic",
+      "done": true,
+      "status": "completed",
+      "priority": "HIGH",
+      "estimated_hours": 2,
+      "completed_date": "2026-02-13",
+      "test_count": 16,
+      "files_created": [
+        "app/src/test/java/com/dramebaz/app/integration/CoroutineProcessingIntegrationTest.kt"
+      ],
+      "sub_tasks": [
+        {"id": "TEST-009.1", "description": "ErrorHandler.withRetry success tests", "done": true},
+        {"id": "TEST-009.2", "description": "ErrorHandler.withRetry retry on retryable exception", "done": true},
+        {"id": "TEST-009.3", "description": "ErrorHandler.withRetry no retry on non-retryable", "done": true},
+        {"id": "TEST-009.4", "description": "StateFlow emissions and value updates", "done": true},
+        {"id": "TEST-009.5", "description": "DegradedModeManager StateFlow mode transitions", "done": true},
+        {"id": "TEST-009.6", "description": "StateFlow combine for merging flows", "done": true},
+        {"id": "TEST-009.7", "description": "Coroutine cancellation propagation", "done": true},
+        {"id": "TEST-009.8", "description": "SupervisorJob child failure isolation", "done": true},
+        {"id": "TEST-009.9", "description": "Mutex concurrent access prevention", "done": true}
+      ]
+    }
+  ],
+  "notes": {
+    "testing_framework": "JUnit 4 with MockK for mocking",
+    "coroutine_testing": "kotlinx-coroutines-test with runTest, StandardTestDispatcher, UnconfinedTestDispatcher",
+    "test_location": "app/src/test/java/com/dramebaz/app/",
+    "integration_test_location": "app/src/test/java/com/dramebaz/app/integration/",
+    "run_command": "./gradlew :app:testReleaseUnitTest --daemon",
+    "all_tests_passing": true,
+    "last_test_run": "2026-02-13"
+  }
+}
+

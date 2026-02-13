@@ -5,6 +5,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
@@ -13,7 +15,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.FragmentNavigatorExtras
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dramebaz.app.DramebazApplication
 import com.dramebaz.app.R
@@ -30,7 +32,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
- * LIBRARY-001: Library fragment with collapsible sections for book organization.
+ * LIBRARY-GLASS: Library fragment with horizontal sections and glassmorphism styling.
+ * Netflix/Spotify style layout with vertical scroll and horizontal book carousels.
  * Sections: Favourites, Last Read, Finished, Recently Added, Unread
  */
 class LibraryFragment : Fragment() {
@@ -41,10 +44,12 @@ class LibraryFragment : Fragment() {
 
     private var memoryMonitor: MemoryMonitor? = null
 
-    // LIBRARY-001: Sectioned adapter stored as property for section toggle callbacks
-    private var sectionAdapter: LibrarySectionAdapter? = null
+    // Container for horizontal section views
+    private var sectionsContainer: LinearLayout? = null
+    private var emptyState: View? = null
+    private var scrollView: View? = null
 
-    // LIBRARY-001: Track which sections are expanded (all open by default)
+    // Track which sections are expanded (all open by default)
     private val expandedSections = mutableSetOf(
         LibrarySection.FAVOURITES,
         LibrarySection.LAST_READ,
@@ -53,7 +58,7 @@ class LibraryFragment : Fragment() {
         LibrarySection.UNREAD
     )
 
-    // Cache current books list for section toggle rebuilding (avoids spawning new collectors)
+    // Cache current books list for section toggle rebuilding
     private var currentBooks: List<Book> = emptyList()
 
     private val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -90,52 +95,12 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        val recycler = view.findViewById<RecyclerView>(R.id.recycler)
-        val emptyState = view.findViewById<View>(R.id.empty_state)
+        // Initialize horizontal sections layout
+        sectionsContainer = view.findViewById(R.id.sections_container)
+        emptyState = view.findViewById(R.id.empty_state)
+        scrollView = view.findViewById(R.id.scroll_view)
 
-        // LIBRARY-001: Create sectioned adapter (stored as property for callbacks)
-        // FAV-001: Added onFavoriteClick callback for favorite toggle
-        sectionAdapter = LibrarySectionAdapter(
-            onBookClick = { book, coverImageView ->
-                navigateToBookDetail(book, coverImageView)
-            },
-            onBookLongClick = { book ->
-                showDeleteConfirmationDialog(book)
-                true
-            },
-            onSectionToggle = { section ->
-                toggleSection(section, recycler)
-            },
-            onFavoriteClick = { book ->
-                vm.toggleFavorite(book) { isFavorite ->
-                    val message = if (isFavorite)
-                        getString(R.string.added_to_favorites)
-                    else
-                        getString(R.string.removed_from_favorites)
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-                }
-            }
-        )
-
-        // LIBRARY-001: Configure GridLayoutManager with span lookup for headers
-        val gridLayoutManager = GridLayoutManager(requireContext(), 2)
-        gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int {
-                // Headers span full width, books take 1 column
-                return when (sectionAdapter?.getItemViewType(position)) {
-                    0 -> 2 // Header spans full width
-                    else -> 1 // Book takes 1 column
-                }
-            }
-        }
-        recycler.layoutManager = gridLayoutManager
-        recycler.adapter = sectionAdapter
-        // LIBRARY-FIX: Disable item animator to prevent overlay issues during list updates.
-        // The DefaultItemAnimator can cause visual glitches when items are added/removed/moved,
-        // especially when the same book appears in multiple sections.
-        recycler.itemAnimator = null
-
-        // LIBRARY-001: Observe all books and build sectioned list
+        // Observe all books and build horizontal sections
         viewLifecycleOwner.lifecycleScope.launch {
             vm.books.combine(AnalysisQueueManager.analysisStatus) { books, analysisStatusMap ->
                 // Merge live analysis status into books
@@ -160,18 +125,12 @@ class LibraryFragment : Fragment() {
                     }
                 }
             }.collectLatest { books ->
-                currentBooks = books  // Cache for section toggle
-                val sectionedItems = buildSectionedList(books)
-                // LIBRARY-FIX: Create a new ArrayList to ensure ListAdapter detects the change.
-                // submitList may skip updates if it detects the same list instance.
-                sectionAdapter?.submitList(ArrayList(sectionedItems))
-
-                emptyState.visibility = if (books.isEmpty()) View.VISIBLE else View.GONE
-                recycler.visibility = if (books.isEmpty()) View.GONE else View.VISIBLE
+                currentBooks = books
+                updateSections(books)
             }
         }
 
-        // AUG-039: Observe import errors and show dialog with retry option
+        // Observe import errors and show dialog with retry option
         viewLifecycleOwner.lifecycleScope.launch {
             vm.importError.collect { errorMessage ->
                 ErrorDialog.showWithRetry(
@@ -193,71 +152,153 @@ class LibraryFragment : Fragment() {
     }
 
     /**
-     * LIBRARY-001: Build the sectioned list from all books.
-     * A book can appear in multiple sections (e.g., both Favourites and Last Read).
+     * Update the horizontal sections with current book data.
+     * Each section has a glassmorphism header and horizontal book carousel.
      */
-    private fun buildSectionedList(allBooks: List<Book>): List<LibraryItem> {
-        val items = mutableListOf<LibraryItem>()
+    private fun updateSections(allBooks: List<Book>) {
+        sectionsContainer?.removeAllViews()
 
-        // Favourites section
-        val favourites = allBooks.filter { it.isFavorite }
-        items.add(LibraryItem.Header(LibrarySection.FAVOURITES, favourites.size, expandedSections.contains(LibrarySection.FAVOURITES)))
-        if (expandedSections.contains(LibrarySection.FAVOURITES)) {
-            favourites.forEach { items.add(LibraryItem.BookItem(it, LibrarySection.FAVOURITES)) }
+        if (allBooks.isEmpty()) {
+            emptyState?.visibility = View.VISIBLE
+            scrollView?.visibility = View.GONE
+            return
         }
+        emptyState?.visibility = View.GONE
+        scrollView?.visibility = View.VISIBLE
 
-        // Last Read section (recently read but not finished)
-        val lastRead = allBooks.filter { it.lastReadAt != null && !it.isFinished }
-            .sortedByDescending { it.lastReadAt }
-        items.add(LibraryItem.Header(LibrarySection.LAST_READ, lastRead.size, expandedSections.contains(LibrarySection.LAST_READ)))
-        if (expandedSections.contains(LibrarySection.LAST_READ)) {
-            lastRead.forEach { items.add(LibraryItem.BookItem(it, LibrarySection.LAST_READ)) }
+        // Build section data map
+        val sectionData = linkedMapOf(
+            LibrarySection.FAVOURITES to allBooks.filter { it.isFavorite },
+            LibrarySection.LAST_READ to allBooks.filter { it.lastReadAt != null && !it.isFinished }
+                .sortedByDescending { it.lastReadAt },
+            LibrarySection.FINISHED to allBooks.filter { it.isFinished }
+                .sortedByDescending { it.lastReadAt },
+            LibrarySection.RECENTLY_ADDED to allBooks.sortedByDescending { it.createdAt },
+            LibrarySection.UNREAD to allBooks.filter { it.lastReadAt == null && !it.isFinished }
+        )
+
+        // Add each section with books
+        sectionData.forEach { (section, sectionBooks) ->
+            addSection(section, sectionBooks)
         }
-
-        // Finished section
-        val finished = allBooks.filter { it.isFinished }
-            .sortedByDescending { it.lastReadAt }
-        items.add(LibraryItem.Header(LibrarySection.FINISHED, finished.size, expandedSections.contains(LibrarySection.FINISHED)))
-        if (expandedSections.contains(LibrarySection.FINISHED)) {
-            finished.forEach { items.add(LibraryItem.BookItem(it, LibrarySection.FINISHED)) }
-        }
-
-        // Recently Added section
-        val recentlyAdded = allBooks.sortedByDescending { it.createdAt }
-        items.add(LibraryItem.Header(LibrarySection.RECENTLY_ADDED, recentlyAdded.size, expandedSections.contains(LibrarySection.RECENTLY_ADDED)))
-        if (expandedSections.contains(LibrarySection.RECENTLY_ADDED)) {
-            recentlyAdded.forEach { items.add(LibraryItem.BookItem(it, LibrarySection.RECENTLY_ADDED)) }
-        }
-
-        // Unread section (never opened)
-        val unread = allBooks.filter { it.lastReadAt == null }
-            .sortedByDescending { it.createdAt }
-        items.add(LibraryItem.Header(LibrarySection.UNREAD, unread.size, expandedSections.contains(LibrarySection.UNREAD)))
-        if (expandedSections.contains(LibrarySection.UNREAD)) {
-            unread.forEach { items.add(LibraryItem.BookItem(it, LibrarySection.UNREAD)) }
-        }
-
-        return items
     }
 
     /**
-     * LIBRARY-001: Toggle section expand/collapse.
-     * Uses cached books list to rebuild sections without spawning new Flow collectors.
+     * Add a section with glassmorphism header and horizontal RecyclerView.
      */
-    private fun toggleSection(section: LibrarySection, recycler: RecyclerView) {
-        if (expandedSections.contains(section)) {
+    private fun addSection(section: LibrarySection, books: List<Book>) {
+        val inflater = LayoutInflater.from(context)
+        val sectionView = inflater.inflate(R.layout.item_section_glass, sectionsContainer, false)
+
+        // Configure header
+        val header = sectionView.findViewById<View>(R.id.section_header)
+        header.findViewById<ImageView>(R.id.section_icon).setImageResource(section.iconResId)
+        header.findViewById<TextView>(R.id.section_title).setText(section.titleResId)
+        header.findViewById<TextView>(R.id.section_count).text = books.size.toString()
+
+        val arrow = header.findViewById<ImageView>(R.id.section_arrow)
+        val isExpanded = expandedSections.contains(section)
+        arrow.rotation = if (isExpanded) 180f else 0f
+
+        // Configure horizontal RecyclerView
+        val recycler = sectionView.findViewById<RecyclerView>(R.id.books_recycler)
+        recycler.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+        recycler.adapter = HorizontalBookAdapter(books, section)
+        recycler.visibility = if (isExpanded && books.isNotEmpty()) View.VISIBLE else View.GONE
+
+        // Toggle section on header click
+        header.setOnClickListener {
+            toggleSection(section, recycler, arrow)
+        }
+
+        sectionsContainer?.addView(sectionView)
+    }
+
+    /**
+     * Toggle section expand/collapse with animation.
+     */
+    private fun toggleSection(section: LibrarySection, recycler: RecyclerView, arrow: ImageView) {
+        val isExpanded = expandedSections.contains(section)
+        if (isExpanded) {
             expandedSections.remove(section)
+            recycler.visibility = View.GONE
+            arrow.animate().rotation(0f).setDuration(200).start()
         } else {
             expandedSections.add(section)
+            recycler.visibility = View.VISIBLE
+            arrow.animate().rotation(180f).setDuration(200).start()
         }
-        // Rebuild sectioned list from cached books (no new collector needed)
-        // LIBRARY-FIX: Wrap in ArrayList to ensure ListAdapter detects the change
-        sectionAdapter?.submitList(ArrayList(buildSectionedList(currentBooks)))
+    }
+
+    /**
+     * Horizontal book adapter for glassmorphism carousel.
+     */
+    private inner class HorizontalBookAdapter(
+        private val books: List<Book>,
+        private val section: LibrarySection
+    ) : RecyclerView.Adapter<HorizontalBookAdapter.BookViewHolder>() {
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BookViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_book_horizontal_glass, parent, false)
+            return BookViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: BookViewHolder, position: Int) {
+            holder.bind(books[position])
+        }
+
+        override fun getItemCount() = books.size
+
+        inner class BookViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+            private val cover: ImageView = itemView.findViewById(R.id.book_cover)
+            private val title: TextView = itemView.findViewById(R.id.book_title)
+            private val favoriteIndicator: ImageView = itemView.findViewById(R.id.favorite_indicator)
+            private val analysisStatus: TextView = itemView.findViewById(R.id.analysis_status)
+
+            fun bind(book: Book) {
+                title.text = book.title
+
+                // Set unique transition name for shared element transition
+                val transitionName = "book_cover_${book.id}"
+                ViewCompat.setTransitionName(cover, transitionName)
+
+                // Load cover with slideshow enabled for analyzing books
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
+
+                // Show favorite indicator
+                favoriteIndicator.visibility = if (book.isFavorite) View.VISIBLE else View.GONE
+
+                // Show analysis status
+                bindAnalysisStatus(book)
+
+                // Click handlers
+                itemView.setOnClickListener { navigateToBookDetail(book, cover) }
+                itemView.setOnLongClickListener {
+                    showDeleteConfirmationDialog(book)
+                    true
+                }
+            }
+
+            private fun bindAnalysisStatus(book: Book) {
+                when (book.getAnalysisState()) {
+                    AnalysisState.ANALYZING -> {
+                        analysisStatus.visibility = View.VISIBLE
+                        analysisStatus.text = "Analyzing ${book.analyzedChapterCount}/${book.totalChaptersToAnalyze}..."
+                    }
+                    AnalysisState.PENDING -> {
+                        analysisStatus.visibility = View.VISIBLE
+                        analysisStatus.text = "Pending..."
+                    }
+                    else -> analysisStatus.visibility = View.GONE
+                }
+            }
+        }
     }
 
     /**
      * UI-004: Navigate to book detail with shared element transition.
-     * The book cover morphs from the library grid into the book detail page.
+     * The book cover morphs from the library into the book detail page.
      */
     private fun navigateToBookDetail(book: Book, coverImageView: ImageView) {
         // Set up exit transition for this fragment
@@ -298,6 +339,8 @@ class LibraryFragment : Fragment() {
         super.onDestroyView()
         memoryMonitor?.stop()
         memoryMonitor = null
-        sectionAdapter = null
+        sectionsContainer = null
+        emptyState = null
+        scrollView = null
     }
 }
