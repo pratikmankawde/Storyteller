@@ -48,16 +48,23 @@ abstract class BaseInsightsDesignFragment : Fragment() {
         "Family", "Bravery", "Sacrifice", "Identity"
     )
 
-    // Dummy vocabulary
+    // Dummy vocabulary - enriched with official Harry Potter glossary terms
     protected val dummyVocabulary = listOf(
-        "Muggle" to "Non-magical person",
-        "Quidditch" to "Wizard sport played on broomsticks",
-        "Horcrux" to "Object containing part of a soul",
-        "Patronus" to "Guardian spell against Dementors",
-        "Parseltongue" to "Language of snakes",
-        "Animagus" to "Wizard who can transform into animal",
-        "Apparate" to "Teleportation spell",
-        "Legilimency" to "Mind-reading magic"
+        "Wand" to "Implement used by wizards to perform magic. Available from Ollivanders in Diagon Alley",
+        "Muggle" to "Person totally without magical powers. Most Muggles live in ignorance of the world of wizards and witches",
+        "Galleon" to "Gold wizarding money",
+        "Poltergeist" to "A mischievous spirit",
+        "Herbology" to "Study of plants. Professor Sprout is the Herbology teacher at Hogwarts",
+        "Remembrall" to "Magical glass ball filled with white smoke. The smoke turns red to tell you there is something you have forgotten to do",
+        "Centaurs" to "Half-man, half-horse creatures. Centaurs live in the Forbidden Forest",
+        "Quidditch" to "The wizarding national sport. Played on broomsticks by seven players",
+        "Transfiguration" to "The art of turning one thing into another",
+        "Seeker" to "Quidditch player who tries to catch the Golden Snitch",
+        "Patronus" to "Guardian spell against Dementors, takes the form of an animal",
+        "Parseltongue" to "The language of snakes, a rare ability",
+        "Animagus" to "A wizard who can transform into an animal at will",
+        "Apparition" to "Magical transportation that can only be issued to those seventeen and over",
+        "Legilimency" to "The magical skill of extracting feelings and memories from another person's mind"
     )
 
     // Dummy emotional arc data points
@@ -96,13 +103,17 @@ abstract class BaseInsightsDesignFragment : Fragment() {
         )
     }
 
-    // Dummy foreshadowing
+    // Dummy foreshadowing - enriched with more detailed examples
     protected val dummyForeshadowing: List<Foreshadowing> by lazy {
         listOf(
-            Foreshadowing(1, 1, 0, "Harry's scar hurts when near Quirrell", 15, "Voldemort is on the back of Quirrell's head", "fate", 0.9f),
-            Foreshadowing(2, 1, 4, "Hagrid mentions vault 713 at Gringotts", 9, "The Sorcerer's Stone was moved", "mystery", 0.85f),
-            Foreshadowing(3, 1, 6, "Dumbledore warns about the 3rd floor corridor", 15, "The trio ventures through the trapdoor", "danger", 0.9f),
-            Foreshadowing(4, 1, 11, "Harry sees his parents in the Mirror of Erised", 16, "Lily's love protects Harry from Voldemort", "love", 0.95f)
+            Foreshadowing(1, 1, 0, "Harry's scar hurts when near Quirrell", 15, "Voldemort is on the back of Quirrell's head", "fate", 0.95f),
+            Foreshadowing(2, 1, 4, "Hagrid mentions vault 713 at Gringotts", 9, "The Sorcerer's Stone was moved before break-in", "mystery", 0.85f),
+            Foreshadowing(3, 1, 6, "Dumbledore warns about the 3rd floor corridor", 15, "The trio ventures through the trapdoor to face Voldemort", "danger", 0.9f),
+            Foreshadowing(4, 1, 11, "Harry sees his parents in the Mirror of Erised", 16, "Lily's sacrificial love protects Harry from Voldemort", "love", 0.98f),
+            Foreshadowing(5, 1, 1, "Snape seems hostile to Harry from the start", 16, "Snape was actually protecting Harry all along", "deception", 0.88f),
+            Foreshadowing(6, 1, 5, "Hagrid says Gringotts is safest place except Hogwarts", 9, "Someone breaks into Gringotts the same day", "irony", 0.82f),
+            Foreshadowing(7, 1, 8, "Harry has natural flying talent", 10, "Harry becomes the youngest Seeker in a century", "destiny", 0.92f),
+            Foreshadowing(8, 1, 14, "Centaurs speak of Mars being bright", 15, "War and conflict with Voldemort is imminent", "prophecy", 0.75f)
         )
     }
 

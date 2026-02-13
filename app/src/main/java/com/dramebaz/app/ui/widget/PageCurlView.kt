@@ -27,6 +27,18 @@ class PageCurlView @JvmOverloads constructor(
         fun onPageChanged(newPageIndex: Int)
         fun getPageCount(): Int
         fun getPageBitmap(pageIndex: Int, width: Int, height: Int, callback: (Bitmap?) -> Unit)
+
+        /**
+         * Called when user swipes past the last page (forward on last page).
+         * Implementations should handle cross-chapter navigation to the next chapter.
+         */
+        fun onSwipePastLastPage() {}
+
+        /**
+         * Called when user swipes before the first page (backward on first page).
+         * Implementations should handle cross-chapter navigation to the previous chapter.
+         */
+        fun onSwipeBeforeFirstPage() {}
     }
 
     var listener: PageCurlListener? = null
@@ -274,6 +286,10 @@ class PageCurlView @JvmOverloads constructor(
                     currentPageIndex++
                     listener?.onPageChanged(currentPageIndex)
                     loadPageBitmaps()
+                } else {
+                    // CROSS-CHAPTER: User swiped past the last page
+                    android.util.Log.d("PageCurlView", "Swipe past last page detected, triggering cross-chapter navigation")
+                    listener?.onSwipePastLastPage()
                 }
             } else {
                 // Moved to previous page
@@ -281,6 +297,10 @@ class PageCurlView @JvmOverloads constructor(
                     currentPageIndex--
                     listener?.onPageChanged(currentPageIndex)
                     // Bitmaps already swapped in loadPreviousPage
+                } else {
+                    // CROSS-CHAPTER: User swiped before the first page
+                    android.util.Log.d("PageCurlView", "Swipe before first page detected, triggering cross-chapter navigation")
+                    listener?.onSwipeBeforeFirstPage()
                 }
             }
 

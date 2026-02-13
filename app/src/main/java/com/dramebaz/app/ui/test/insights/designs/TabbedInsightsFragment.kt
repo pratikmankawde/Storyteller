@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.dramebaz.app.R
 import com.dramebaz.app.ui.insights.EmotionalArcView
+import com.dramebaz.app.ui.insights.ForeshadowingView
 import com.dramebaz.app.ui.insights.PlotOutlineView
 import com.dramebaz.app.ui.insights.SentimentDistributionView
 import com.dramebaz.app.ui.test.insights.BaseInsightsDesignFragment
@@ -74,6 +75,7 @@ class TabbedInsightsFragment : BaseInsightsDesignFragment() {
                 })
             }
         }
+        view.findViewById<ForeshadowingView>(R.id.foreshadowing_view)?.setData(dummyForeshadowing, dummyChapters)
 
         // Populate Learning
         view.findViewById<LinearLayout>(R.id.vocabulary_container)?.apply {

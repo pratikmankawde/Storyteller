@@ -120,7 +120,8 @@ class Grid3ColumnFragment : BaseLibraryDesignFragment() {
             fun bind(item: LibraryItem.BookItem) {
                 val book = item.book
                 title.text = book.title
-                BookCoverLoader.loadCoverInto(cover, book)
+                // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
                 favoriteIndicator.visibility = if (book.isFavorite) View.VISIBLE else View.GONE
                 itemView.setOnClickListener { onBookClick(book, cover) }
                 itemView.setOnLongClickListener { onBookLongClick(book) }

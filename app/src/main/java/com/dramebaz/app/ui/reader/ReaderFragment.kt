@@ -26,6 +26,7 @@ import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
 import com.dramebaz.app.domain.usecases.AudioRegenerationManager
 import com.dramebaz.app.domain.usecases.ChapterCharacterExtractionUseCase
 import com.dramebaz.app.domain.usecases.ChapterLookaheadManager
+import com.dramebaz.app.domain.usecases.CrossChapterCacheManager
 import com.dramebaz.app.domain.usecases.MergeCharactersUseCase
 import com.dramebaz.app.data.db.Bookmark
 import com.dramebaz.app.data.db.ReadingSession
@@ -234,6 +235,19 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     // Track lookahead analysis state (for showing loading banner)
     private var isAnalyzingNextChapter = false
 
+    // CROSS-CHAPTER: Track current chapter's orderIndex for navigation
+    private var currentChapterOrderIndex: Int = 0
+    // CROSS-CHAPTER: Flag to prevent multiple chapter navigations during transitions
+    private var isNavigatingChapter = false
+    // CROSS-CHAPTER: Track last scroll state to detect edge bounce
+    private var lastScrollState = androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE
+    // CROSS-CHAPTER: Track if user was at edge when scrolling started
+    private var wasAtEdgeOnScrollStart = false
+    private var edgeDirection = 0 // -1 for previous, 1 for next, 0 for none
+
+    // CROSS-CHAPTER CACHING: Manager for pre-caching adjacent chapter pages
+    private var crossChapterCacheManager: CrossChapterCacheManager? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         bookId = arguments?.getLong("bookId", 0L) ?: 0L
@@ -297,11 +311,48 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         viewPager?.clipChildren = false
 
         // Register page change callback to update reading progress when user swipes pages
+        // CROSS-CHAPTER: Enhanced callback to detect edge swipes for chapter navigation
         viewPager?.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
                 AppLogger.d(tag, "ViewPager page selected: $position")
                 handleReaderPageChanged(position)
+            }
+
+            override fun onPageScrollStateChanged(state: Int) {
+                super.onPageScrollStateChanged(state)
+                when (state) {
+                    androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_DRAGGING -> {
+                        // User started dragging - check if at edge
+                        wasAtEdgeOnScrollStart = when {
+                            currentPageIndex == 0 -> { edgeDirection = -1; true }
+                            currentPageIndex == novelPages.size - 1 -> { edgeDirection = 1; true }
+                            else -> { edgeDirection = 0; false }
+                        }
+                        AppLogger.d(tag, "CROSS-CHAPTER: Scroll started, atEdge=$wasAtEdgeOnScrollStart, direction=$edgeDirection, page=$currentPageIndex/${novelPages.size}")
+                    }
+                    androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE -> {
+                        // Scroll ended - if we were at edge and page didn't change, trigger chapter nav
+                        if (wasAtEdgeOnScrollStart && !isNavigatingChapter) {
+                            val stillAtSamePage = when (edgeDirection) {
+                                -1 -> currentPageIndex == 0
+                                1 -> currentPageIndex == novelPages.size - 1
+                                else -> false
+                            }
+                            if (stillAtSamePage) {
+                                AppLogger.d(tag, "CROSS-CHAPTER: Edge bounce detected, direction=$edgeDirection")
+                                if (edgeDirection == 1) {
+                                    navigateToNextChapter()
+                                } else if (edgeDirection == -1) {
+                                    navigateToPreviousChapter()
+                                }
+                            }
+                        }
+                        wasAtEdgeOnScrollStart = false
+                        edgeDirection = 0
+                    }
+                }
+                lastScrollState = state
             }
         })
 
@@ -409,6 +460,16 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             bookRepository = app.bookRepository
         )
 
+        // CROSS-CHAPTER: Initialize CrossChapterCacheManager for adjacent chapter pre-caching
+        crossChapterCacheManager = CrossChapterCacheManager(
+            scope = viewLifecycleOwner.lifecycleScope,
+            chapterDao = app.db.chapterDao(),
+            pageAudioStorage = app.pageAudioStorage,
+            segmentAudioGenerator = app.segmentAudioGenerator,
+            ttsEngine = app.ttsEngine,
+            gson = gson
+        )
+
         // READ-003: Observe lookahead state for loading indicator
         viewLifecycleOwner.lifecycleScope.launch {
             chapterLookaheadManager?.lookaheadState?.collectLatest { state ->
@@ -483,6 +544,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             val cid = if (chapterId != 0L) chapterId else vm.firstChapterId(bookId)
             AppLogger.d(tag, "Loading chapter: chapterId=$cid")
             loadedChapterId = cid ?: 0L
+
+            // CROSS-CHAPTER: Get orderIndex for current chapter (for next/prev navigation)
+            currentChapterOrderIndex = app.db.chapterDao().getOrderIndex(loadedChapterId) ?: 0
+            AppLogger.d(tag, "CROSS-CHAPTER: Current chapter orderIndex=$currentChapterOrderIndex")
 
             var ch = cid?.let { vm.getChapter(it) }
             chapterText = ch?.body ?: "No chapter"
@@ -712,6 +777,16 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                                 }
                                 // THEN pre-generate missing pages (now we know what's already saved)
                                 preGenerateAudioForPagesSync(0, minOf(2, novelPages.size))
+
+                                // CROSS-CHAPTER CACHING: Pre-cache adjacent chapter edge pages on initial load
+                                // On first page -> cache previous chapter's last page
+                                withContext(Dispatchers.Main) {
+                                    triggerAdjacentChapterCaching(CrossChapterCacheManager.DIRECTION_PREVIOUS)
+                                    // If on last page as well (single-page chapter), also cache next
+                                    if (novelPages.size == 1) {
+                                        triggerAdjacentChapterCaching(CrossChapterCacheManager.DIRECTION_NEXT)
+                                    }
+                                }
                             } catch (e: Exception) {
                                 AppLogger.e(tag, "Error loading/generating page audio", e)
                             }
@@ -1966,6 +2041,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         chapterLookaheadManager?.reset()
         chapterLookaheadManager = null
 
+        // CROSS-CHAPTER: Clean up cross-chapter cache manager
+        crossChapterCacheManager?.reset()
+        crossChapterCacheManager = null
+
         // Clean up PDF renderer and adapter
         novelPageAdapter?.cleanup()
         pdfPageRenderer?.close()
@@ -2109,6 +2188,18 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             preGenerateAudioForPages(pageIndex + 1, 1)
         }
 
+        // CROSS-CHAPTER CACHING: When on edge pages, pre-cache adjacent chapter's edge page
+        if (novelPages.isNotEmpty()) {
+            // On last page -> pre-cache next chapter's first page
+            if (pageIndex == novelPages.size - 1) {
+                triggerAdjacentChapterCaching(CrossChapterCacheManager.DIRECTION_NEXT)
+            }
+            // On first page -> pre-cache previous chapter's last page
+            if (pageIndex == 0) {
+                triggerAdjacentChapterCaching(CrossChapterCacheManager.DIRECTION_PREVIOUS)
+            }
+        }
+
         // AUG-037: Pre-analyze next chapter when user reaches 50% of current chapter
         if (novelPages.isNotEmpty()) {
             val progressPercent = (pageIndex + 1).toFloat() / novelPages.size * 100
@@ -2201,6 +2292,18 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         callback(bitmap)
                     }
                 }
+            }
+
+            // CROSS-CHAPTER: Handle swipe past last page - navigate to next chapter
+            override fun onSwipePastLastPage() {
+                AppLogger.d(tag, "CROSS-CHAPTER: PageCurlView swipe past last page detected")
+                navigateToNextChapter()
+            }
+
+            // CROSS-CHAPTER: Handle swipe before first page - navigate to previous chapter
+            override fun onSwipeBeforeFirstPage() {
+                AppLogger.d(tag, "CROSS-CHAPTER: PageCurlView swipe before first page detected")
+                navigateToPreviousChapter()
             }
         }
 
@@ -2402,5 +2505,233 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
         } catch (e: Exception) {
             AppLogger.e(tag, "LIBRARY-001: Failed to update reading progress", e)
         }
+    }
+
+    /**
+     * CROSS-CHAPTER: Navigate to the next chapter when user swipes past the last page.
+     * Loads the next chapter and displays its first page.
+     */
+    private fun navigateToNextChapter() {
+        if (isNavigatingChapter) {
+            AppLogger.d(tag, "CROSS-CHAPTER: Already navigating, ignoring next chapter request")
+            return
+        }
+        isNavigatingChapter = true
+        AppLogger.i(tag, "CROSS-CHAPTER: Navigating to next chapter from orderIndex=$currentChapterOrderIndex")
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val nextChapter = app.db.chapterDao().getNextChapter(bookId, currentChapterOrderIndex)
+                if (nextChapter != null) {
+                    AppLogger.i(tag, "CROSS-CHAPTER: Found next chapter: id=${nextChapter.id}, title=${nextChapter.title}")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "Loading: ${nextChapter.title}", Toast.LENGTH_SHORT).show()
+                    }
+                    // Load the new chapter
+                    loadChapterById(nextChapter.id, targetPageIndex = 0)
+                } else {
+                    AppLogger.d(tag, "CROSS-CHAPTER: No next chapter available - this is the last chapter")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "You've reached the end of the book", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e(tag, "CROSS-CHAPTER: Error navigating to next chapter", e)
+            } finally {
+                isNavigatingChapter = false
+            }
+        }
+    }
+
+    /**
+     * CROSS-CHAPTER: Navigate to the previous chapter when user swipes before the first page.
+     * Loads the previous chapter and displays its last page.
+     */
+    private fun navigateToPreviousChapter() {
+        if (isNavigatingChapter) {
+            AppLogger.d(tag, "CROSS-CHAPTER: Already navigating, ignoring previous chapter request")
+            return
+        }
+        isNavigatingChapter = true
+        AppLogger.i(tag, "CROSS-CHAPTER: Navigating to previous chapter from orderIndex=$currentChapterOrderIndex")
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val prevChapter = app.db.chapterDao().getPreviousChapter(bookId, currentChapterOrderIndex)
+                if (prevChapter != null) {
+                    AppLogger.i(tag, "CROSS-CHAPTER: Found previous chapter: id=${prevChapter.id}, title=${prevChapter.title}")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "Loading: ${prevChapter.title}", Toast.LENGTH_SHORT).show()
+                    }
+                    // Load the new chapter, go to last page (-1 means last page)
+                    loadChapterById(prevChapter.id, targetPageIndex = -1)
+                } else {
+                    AppLogger.d(tag, "CROSS-CHAPTER: No previous chapter available - this is the first chapter")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "You're at the beginning of the book", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e(tag, "CROSS-CHAPTER: Error navigating to previous chapter", e)
+            } finally {
+                isNavigatingChapter = false
+            }
+        }
+    }
+
+    /**
+     * CROSS-CHAPTER: Load a specific chapter by ID and navigate to a target page.
+     * @param chapterId The ID of the chapter to load
+     * @param targetPageIndex The page to navigate to (0 for first page, -1 for last page)
+     */
+    private fun loadChapterById(chapterId: Long, targetPageIndex: Int) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                AppLogger.d(tag, "CROSS-CHAPTER: Loading chapter $chapterId, targetPage=$targetPageIndex")
+
+                // Update tracking variables
+                loadedChapterId = chapterId
+                currentChapterOrderIndex = app.db.chapterDao().getOrderIndex(chapterId) ?: 0
+
+                // Get chapter data
+                val ch = vm.getChapter(chapterId)
+                if (ch == null) {
+                    AppLogger.e(tag, "CROSS-CHAPTER: Chapter $chapterId not found")
+                    return@launch
+                }
+
+                chapterText = ch.body
+                chapterTitle = ch.title
+                AppLogger.d(tag, "CROSS-CHAPTER: Chapter loaded: title=$chapterTitle, textLength=${chapterText.length}")
+
+                // Parse analysis if available
+                chapterAnalysis = ch.fullAnalysisJson?.let { json ->
+                    try {
+                        gson.fromJson(json, ChapterAnalysisResponse::class.java)
+                    } catch (e: Exception) {
+                        AppLogger.e(tag, "CROSS-CHAPTER: Failed to parse chapter analysis", e)
+                        null
+                    }
+                }
+
+                // Clear pre-generated audio for previous chapter
+                preGeneratedAudio.clear()
+
+                // CROSS-CHAPTER CACHING: Check if we have cached audio for this chapter's target page
+                // targetPageIndex: 0 = first page (from next chapter cache), -1 = last page (from prev chapter cache)
+                val cachedAudioForTarget: java.io.File? = crossChapterCacheManager?.getCachedAudioForChapter(
+                    chapterId, targetPageIndex
+                )
+
+                // Clear adjacent chapter cache (will be rebuilt based on new chapter's position)
+                viewLifecycleOwner.lifecycleScope.launch {
+                    crossChapterCacheManager?.clearCache()
+                }
+
+                // Parse PDF pages if this is a PDF book
+                val pdfPages = ch.pdfPagesJson?.let { json ->
+                    com.dramebaz.app.pdf.PdfChapterDetector.pdfPagesFromJson(json)
+                } ?: emptyList()
+
+                withContext(Dispatchers.Main) {
+                    if (!isAdded) return@withContext
+
+                    // Update chapter title in toolbar
+                    view?.findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)?.subtitle = chapterTitle
+
+                    if (pdfPages.isNotEmpty()) {
+                        // Use PDF pages directly - one PDF page per screen
+                        var cumulativeOffset = 0
+                        novelPages = pdfPages.mapIndexed { index, pdfPageInfo ->
+                            val page = NovelPage(
+                                pageNumber = index + 1,
+                                text = pdfPageInfo.text,
+                                lines = pdfPageInfo.text.split("\n"),
+                                startOffset = cumulativeOffset,
+                                pdfPageNumber = pdfPageInfo.pdfPage,
+                                usePdfRendering = isPdfBook && pdfPageRenderer != null
+                            )
+                            cumulativeOffset += pdfPageInfo.text.length
+                            page
+                        }
+                        AppLogger.i(tag, "CROSS-CHAPTER: Loaded ${novelPages.size} PDF pages")
+                    } else {
+                        // Fallback: dynamically split text
+                        novelPages = NovelPageSplitter.splitIntoPages(chapterText, requireContext())
+                        AppLogger.i(tag, "CROSS-CHAPTER: Split chapter into ${novelPages.size} pages (no PDF info)")
+                    }
+
+                    // Submit new pages to adapter
+                    novelPageAdapter?.submitList(novelPages.toList()) {
+                        AppLogger.d(tag, "CROSS-CHAPTER: ViewPager2 list committed: ${novelPages.size} pages")
+
+                        // Navigate to target page after list is committed
+                        val finalPageIndex = when {
+                            targetPageIndex < 0 -> maxOf(0, novelPages.size - 1) // -1 means last page
+                            targetPageIndex >= novelPages.size -> novelPages.size - 1
+                            else -> targetPageIndex
+                        }
+                        viewPager?.setCurrentItem(finalPageIndex, false)
+                        currentPageIndex = finalPageIndex
+                        AppLogger.d(tag, "CROSS-CHAPTER: Navigated to page $finalPageIndex")
+
+                        // CROSS-CHAPTER CACHING: Use cached audio for the target page
+                        cachedAudioForTarget?.let { audioFile ->
+                            if (audioFile.exists()) {
+                                preGeneratedAudio[finalPageIndex] = audioFile
+                                AppLogger.i(tag, "CACHE: Loaded cached audio for page $finalPageIndex")
+                            }
+                        }
+
+                        // Update reading progress UI
+                        updateReadingProgressUI(finalPageIndex, novelPages.size)
+                    }
+
+                    // Also update PageCurlView if using it
+                    // Note: PageCurlView gets page count from its listener which reads novelPages.size
+                    pageCurlView?.let { curlView ->
+                        val finalPageIndex = if (targetPageIndex < 0) maxOf(0, novelPages.size - 1) else targetPageIndex
+                        curlView.setCurrentPage(finalPageIndex)
+                    }
+
+                    // Show toast with chapter info
+                    Toast.makeText(requireContext(), "$chapterTitle - ${novelPages.size} pages", Toast.LENGTH_SHORT).show()
+                }
+
+                // Prepare playback engine for new chapter
+                preparePlayback()
+
+                // Save reading session
+                withContext(Dispatchers.IO) {
+                    app.db.readingSessionDao().insert(
+                        ReadingSession(1, bookId, chapterId, 0, 0, ReadingMode.toLegacyString(currentReadingMode))
+                    )
+                }
+
+            } catch (e: Exception) {
+                AppLogger.e(tag, "CROSS-CHAPTER: Error loading chapter $chapterId", e)
+                withContext(Dispatchers.Main) {
+                    if (isAdded) {
+                        Toast.makeText(requireContext(), "Failed to load chapter", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * CROSS-CHAPTER CACHING: Trigger pre-caching of adjacent chapter's edge page.
+     * Delegates to CrossChapterCacheManager for background caching with audio generation.
+     * @param direction CrossChapterCacheManager.DIRECTION_NEXT or DIRECTION_PREVIOUS
+     */
+    private fun triggerAdjacentChapterCaching(direction: Int) {
+        crossChapterCacheManager?.preCacheAdjacentPage(
+            direction = direction,
+            bookId = bookId,
+            currentOrderIndex = currentChapterOrderIndex,
+            isPdfBook = isPdfBook,
+            pdfRendererAvailable = pdfPageRenderer != null,
+            contextProvider = { if (isAdded) requireContext() else null }
+        )
     }
 }

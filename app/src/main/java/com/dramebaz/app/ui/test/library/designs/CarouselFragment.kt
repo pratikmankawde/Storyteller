@@ -109,7 +109,8 @@ class CarouselFragment : BaseLibraryDesignFragment() {
             fun bind(book: Book) {
                 title.text = book.title
                 format.text = "${book.format.uppercase()} • ${book.detectedGenre ?: "Unknown"}"
-                BookCoverLoader.loadCoverInto(cover, book)
+                // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
                 
                 btnFavorite.setIconResource(if (book.isFavorite) R.drawable.ic_favorite else R.drawable.ic_favorite_border)
                 btnFavorite.text = if (book.isFavorite) "Favorited" else "Favorite"

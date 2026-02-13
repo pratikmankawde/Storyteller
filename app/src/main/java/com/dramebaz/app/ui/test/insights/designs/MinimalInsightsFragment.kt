@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.dramebaz.app.R
 import com.dramebaz.app.ui.insights.EmotionalArcView
+import com.dramebaz.app.ui.insights.ForeshadowingView
 import com.dramebaz.app.ui.insights.SentimentDistributionView
 import com.dramebaz.app.ui.test.insights.BaseInsightsDesignFragment
 
@@ -70,6 +71,9 @@ class MinimalInsightsFragment : BaseInsightsDesignFragment() {
                 append("${point.type.displayName}: ${point.description}\n\n")
             }
         }
+
+        // Foreshadowing
+        view.findViewById<ForeshadowingView>(R.id.foreshadowing_view)?.setData(dummyForeshadowing, dummyChapters)
     }
 }
 

@@ -75,8 +75,9 @@ class MinimalistFragment : BaseLibraryDesignFragment() {
             fun bind(book: Book) {
                 title.text = book.title
                 meta.text = book.format.uppercase()
-                BookCoverLoader.loadCoverInto(cover, book)
-                
+                // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
+
                 favoriteIndicator.visibility = if (book.isFavorite) View.VISIBLE else View.GONE
                 
                 itemView.setOnClickListener { onBookClick(book, cover) }

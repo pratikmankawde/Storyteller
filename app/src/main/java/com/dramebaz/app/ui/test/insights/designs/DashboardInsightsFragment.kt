@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.dramebaz.app.R
 import com.dramebaz.app.ui.insights.EmotionalArcView
+import com.dramebaz.app.ui.insights.ForeshadowingView
 import com.dramebaz.app.ui.insights.PlotOutlineView
 import com.dramebaz.app.ui.insights.SentimentDistributionView
 import com.dramebaz.app.ui.test.insights.BaseInsightsDesignFragment
@@ -62,8 +63,20 @@ class DashboardInsightsFragment : BaseInsightsDesignFragment() {
             }
         }
 
-        // Vocabulary count
-        view.findViewById<TextView>(R.id.vocab_count)?.text = "${dummyVocabulary.size} words"
+        // Vocabulary container - show actual words
+        view.findViewById<LinearLayout>(R.id.vocabulary_container)?.apply {
+            removeAllViews()
+            dummyVocabulary.take(5).forEach { (word, definition) ->
+                addView(TextView(requireContext()).apply {
+                    text = "• $word: $definition"
+                    setPadding(0, 8, 0, 8)
+                    setTextColor(ContextCompat.getColor(requireContext(), R.color.md_theme_onSurface))
+                })
+            }
+        }
+
+        // Foreshadowing
+        view.findViewById<ForeshadowingView>(R.id.foreshadowing_view)?.setData(dummyForeshadowing, dummyChapters)
     }
 }
 

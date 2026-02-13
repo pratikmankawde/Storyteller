@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.widget.ImageView
+import com.dramebaz.app.data.db.AnalysisState
 import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.domain.theme.GenreCoverMapper
 import com.dramebaz.app.utils.AppLogger
@@ -17,6 +18,9 @@ import java.io.InputStream
  * 2) placeholderCoverPath (precomputed, genre-based asset path)
  * 3) detectedGenre mapped via GenreCoverMapper
  * 4) fall back to whatever srcCompat is defined in the layout
+ *
+ * COVER-SLIDESHOW: If book is being analyzed and has no cover/genre,
+ * starts a slideshow of placeholder covers instead of showing a static image.
  */
 object BookCoverLoader {
 
@@ -25,7 +29,47 @@ object BookCoverLoader {
     // Simple in-memory cache for small asset-based placeholder covers.
     private val assetCoverCache = mutableMapOf<String, Bitmap>()
 
-    fun loadCoverInto(imageView: ImageView, book: Book) {
+    /**
+     * Load cover into ImageView with optional slideshow support for analyzing books.
+     *
+     * @param imageView Target ImageView
+     * @param book The book to load cover for
+     * @param enableSlideshow If true, shows animated slideshow for books being analyzed
+     *                        that don't have an embedded cover or detected genre yet
+     */
+    fun loadCoverInto(imageView: ImageView, book: Book, enableSlideshow: Boolean = false) {
+        // Stop any existing slideshow for this book first
+        CoverSlideshowManager.stopSlideshow(book.id)
+
+        // COVER-SLIDESHOW: Check if we should show slideshow instead of static cover
+        if (enableSlideshow && shouldShowSlideshow(book)) {
+            CoverSlideshowManager.startSlideshow(imageView, book.id)
+            return
+        }
+
+        loadStaticCover(imageView, book)
+    }
+
+    /**
+     * Determine if a book should show the cover slideshow.
+     * Returns true if:
+     * - Book is in PENDING or ANALYZING state
+     * - Book has no embedded cover
+     * - Book has no detected genre yet
+     */
+    fun shouldShowSlideshow(book: Book): Boolean {
+        val state = book.getAnalysisState()
+        val isAnalyzing = state == AnalysisState.PENDING || state == AnalysisState.ANALYZING
+        val hasNoCover = book.embeddedCoverPath.isNullOrBlank()
+        val hasNoGenre = book.detectedGenre.isNullOrBlank()
+        val hasNoPlaceholder = book.placeholderCoverPath.isNullOrBlank()
+        return isAnalyzing && hasNoCover && hasNoGenre && hasNoPlaceholder
+    }
+
+    /**
+     * Load static cover following priority order.
+     */
+    private fun loadStaticCover(imageView: ImageView, book: Book) {
         // 1) Embedded cover from file system
         val embeddedPath = book.embeddedCoverPath
         if (!embeddedPath.isNullOrBlank()) {

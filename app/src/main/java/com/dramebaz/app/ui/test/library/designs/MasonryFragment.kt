@@ -77,8 +77,9 @@ class MasonryFragment : BaseLibraryDesignFragment() {
             fun bind(book: Book, position: Int) {
                 title.text = book.title
                 format.text = book.format.uppercase()
-                BookCoverLoader.loadCoverInto(cover, book)
-                
+                // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
+
                 // Variable height based on position for staggered effect
                 val heightMultiplier = if (position % 3 == 0) 1.3f else if (position % 3 == 1) 1.0f else 1.15f
                 val baseHeight = (180 * resources.displayMetrics.density).toInt()

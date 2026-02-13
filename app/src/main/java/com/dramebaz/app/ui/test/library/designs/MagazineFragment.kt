@@ -81,8 +81,9 @@ class MagazineFragment : BaseLibraryDesignFragment() {
                 title.text = book.title
                 format.text = book.format.uppercase()
                 genre.text = book.detectedGenre ?: "Unknown genre"
-                BookCoverLoader.loadCoverInto(cover, book)
-                
+                // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
+
                 favoriteIndicator.visibility = if (book.isFavorite) View.VISIBLE else View.GONE
                 
                 // Show reading progress

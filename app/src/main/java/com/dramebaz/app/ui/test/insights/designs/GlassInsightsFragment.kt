@@ -9,6 +9,8 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.dramebaz.app.R
 import com.dramebaz.app.ui.insights.EmotionalArcView
+import com.dramebaz.app.ui.insights.ForeshadowingView
+import com.dramebaz.app.ui.insights.PlotOutlineView
 import com.dramebaz.app.ui.insights.SentimentDistributionView
 import com.dramebaz.app.ui.test.insights.BaseInsightsDesignFragment
 import com.google.android.material.chip.Chip
@@ -60,6 +62,9 @@ class GlassInsightsFragment : BaseInsightsDesignFragment() {
             }
         }
 
+        // Plot Outline
+        view.findViewById<PlotOutlineView>(R.id.plot_outline_view)?.setPlotPoints(dummyPlotPoints, dummyChapters)
+
         // Vocabulary
         view.findViewById<LinearLayout>(R.id.vocabulary_container)?.apply {
             removeAllViews()
@@ -71,6 +76,9 @@ class GlassInsightsFragment : BaseInsightsDesignFragment() {
                 })
             }
         }
+
+        // Foreshadowing
+        view.findViewById<ForeshadowingView>(R.id.foreshadowing_view)?.setData(dummyForeshadowing, dummyChapters)
     }
 }
 

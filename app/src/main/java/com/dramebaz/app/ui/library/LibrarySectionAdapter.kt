@@ -129,7 +129,8 @@ class LibrarySectionAdapter(
             bindFavoriteState(book)
 
             // COVER-001: Load appropriate book cover (embedded or placeholder)
-            BookCoverLoader.loadCoverInto(cover, book)
+            // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+            BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
 
             val transitionName = "book_cover_${book.id}"
             ViewCompat.setTransitionName(cover, transitionName)

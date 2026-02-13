@@ -72,6 +72,9 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Themes" android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="24dp" />
                 <com.google.android.material.chip.ChipGroup android:id="@+id/themes_chip_group"
                     android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Foreshadowing" android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="24dp" />
+                <com.dramebaz.app.ui.insights.ForeshadowingView android:id="@+id/foreshadowing_view"
+                    android:layout_width="match_parent" android:layout_height="120dp" android:layout_marginTop="8dp" />
             </LinearLayout>
         </ScrollView>
 

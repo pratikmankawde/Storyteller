@@ -9,6 +9,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.dramebaz.app.R
 import com.dramebaz.app.ui.insights.EmotionalArcView
+import com.dramebaz.app.ui.insights.ForeshadowingView
 import com.dramebaz.app.ui.insights.PlotOutlineView
 import com.dramebaz.app.ui.insights.SentimentDistributionView
 import com.dramebaz.app.ui.test.insights.BaseInsightsDesignFragment
@@ -85,6 +86,9 @@ class DarkInsightsFragment : BaseInsightsDesignFragment() {
                 })
             }
         }
+
+        // Foreshadowing
+        view.findViewById<ForeshadowingView>(R.id.foreshadowing_view)?.setData(dummyForeshadowing, dummyChapters)
     }
 }
 

@@ -124,7 +124,8 @@ class Grid2ColumnFragment : BaseLibraryDesignFragment() {
             fun bind(item: LibraryItem.BookItem) {
                 val book = item.book
                 title.text = book.title
-                BookCoverLoader.loadCoverInto(cover, book)
+                // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
                 ViewCompat.setTransitionName(cover, "book_cover_${book.id}")
                 btnFavorite.setImageResource(if (book.isFavorite) R.drawable.ic_favorite else R.drawable.ic_favorite_border)
                 itemView.setOnClickListener { onBookClick(book, cover) }

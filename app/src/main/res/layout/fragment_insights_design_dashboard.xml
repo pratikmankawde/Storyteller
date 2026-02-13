@@ -100,13 +100,23 @@
             </com.google.android.material.card.MaterialCardView>
             <com.google.android.material.card.MaterialCardView android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:layout_margin="4dp" app:cardCornerRadius="8dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:gravity="center">
-                    <TextView android:id="@+id/vocab_count" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:textSize="20sp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Vocabulary" android:textSize="12sp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Vocabulary" android:textSize="12sp" android:textStyle="bold" />
+                    <LinearLayout android:id="@+id/vocabulary_container" android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:layout_marginTop="4dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
+
+        <!-- Foreshadowing Widget -->
+        <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_margin="4dp" app:cardCornerRadius="8dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Foreshadowing" android:textSize="14sp" android:textStyle="bold" />
+                <com.dramebaz.app.ui.insights.ForeshadowingView android:id="@+id/foreshadowing_view"
+                    android:layout_width="match_parent" android:layout_height="100dp" android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 </ScrollView>

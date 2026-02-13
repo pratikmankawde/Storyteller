@@ -21,4 +21,16 @@ interface ChapterDao {
     /** Get all chapters for a book as a list (for dialog counting). */
     @Query("SELECT * FROM chapters WHERE bookId = :bookId ORDER BY orderIndex")
     suspend fun getChaptersList(bookId: Long): List<Chapter>
+
+    /** CROSS-CHAPTER: Get the next chapter after the given orderIndex for a book. */
+    @Query("SELECT * FROM chapters WHERE bookId = :bookId AND orderIndex > :currentOrderIndex ORDER BY orderIndex ASC LIMIT 1")
+    suspend fun getNextChapter(bookId: Long, currentOrderIndex: Int): Chapter?
+
+    /** CROSS-CHAPTER: Get the previous chapter before the given orderIndex for a book. */
+    @Query("SELECT * FROM chapters WHERE bookId = :bookId AND orderIndex < :currentOrderIndex ORDER BY orderIndex DESC LIMIT 1")
+    suspend fun getPreviousChapter(bookId: Long, currentOrderIndex: Int): Chapter?
+
+    /** CROSS-CHAPTER: Get the orderIndex of a chapter by its ID. */
+    @Query("SELECT orderIndex FROM chapters WHERE id = :chapterId")
+    suspend fun getOrderIndex(chapterId: Long): Int?
 }

@@ -76,8 +76,9 @@ class NeumorphismFragment : BaseLibraryDesignFragment() {
             fun bind(book: Book) {
                 title.text = book.title
                 format.text = "${book.format.uppercase()} • ${book.detectedGenre ?: "Unknown"}"
-                BookCoverLoader.loadCoverInto(cover, book)
-                
+                // COVER-SLIDESHOW: Enable slideshow for books being analyzed without genre
+                BookCoverLoader.loadCoverInto(cover, book, enableSlideshow = true)
+
                 favoriteIndicator.visibility = if (book.isFavorite) View.VISIBLE else View.GONE
                 
                 // Show reading progress if available
