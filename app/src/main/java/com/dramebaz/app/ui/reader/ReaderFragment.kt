@@ -139,8 +139,17 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             AppLogger.e(tag, "Error playing next page audio, but page turn succeeded", e)
                         }
                     }
+                } else if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex == novelPages.size - 1) {
+                    // CROSS-CHAPTER AUDIO: On last page, navigate to next chapter with auto-play
+                    if (currentReadingMode == ReadingMode.AUDIO || currentReadingMode == ReadingMode.MIXED) {
+                        AppLogger.i(tag, "Audio completed on last page - navigating to next chapter with auto-play")
+                        navigateToNextChapterWithAutoPlay()
+                    } else {
+                        AppLogger.d(tag, "On last page but not in AUDIO/MIXED mode - stopping")
+                        updateFabPlayCurrentPageVisibility()
+                    }
                 } else {
-                    AppLogger.d(tag, "No more pages to auto-continue (last page or empty)")
+                    AppLogger.d(tag, "No more pages to auto-continue (empty)")
                     updateFabPlayCurrentPageVisibility()
                 }
             }
@@ -427,8 +436,17 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             AppLogger.e(tag, "PlaybackEngine: Error playing next page audio, but page turn succeeded", e)
                         }
                     }
+                } else if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex == novelPages.size - 1) {
+                    // CROSS-CHAPTER AUDIO: On last page, navigate to next chapter with auto-play
+                    if (currentReadingMode == ReadingMode.AUDIO || currentReadingMode == ReadingMode.MIXED) {
+                        AppLogger.i(tag, "PlaybackEngine: Audio completed on last page - navigating to next chapter with auto-play")
+                        navigateToNextChapterWithAutoPlay()
+                    } else {
+                        AppLogger.d(tag, "PlaybackEngine: On last page but not in AUDIO/MIXED mode - stopping")
+                        updateFabPlayCurrentPageVisibility()
+                    }
                 } else {
-                    AppLogger.d(tag, "PlaybackEngine: No more pages to auto-continue")
+                    AppLogger.d(tag, "PlaybackEngine: No more pages to auto-continue (empty)")
                     updateFabPlayCurrentPageVisibility()
                 }
             }
@@ -2580,11 +2598,48 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     }
 
     /**
+     * CROSS-CHAPTER AUDIO: Navigate to next chapter with auto-play enabled.
+     * Called when audio completes on the last page to continue seamless playback.
+     */
+    private fun navigateToNextChapterWithAutoPlay() {
+        if (isNavigatingChapter) {
+            AppLogger.d(tag, "CROSS-CHAPTER: Already navigating, ignoring auto-play next chapter request")
+            return
+        }
+        isNavigatingChapter = true
+        AppLogger.i(tag, "CROSS-CHAPTER AUDIO: Navigating to next chapter with auto-play from orderIndex=$currentChapterOrderIndex")
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val nextChapter = app.db.chapterDao().getNextChapter(bookId, currentChapterOrderIndex)
+                if (nextChapter != null) {
+                    AppLogger.i(tag, "CROSS-CHAPTER AUDIO: Found next chapter: id=${nextChapter.id}, title=${nextChapter.title}")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "Continuing: ${nextChapter.title}", Toast.LENGTH_SHORT).show()
+                    }
+                    // Load the new chapter with auto-play enabled
+                    loadChapterById(nextChapter.id, targetPageIndex = 0, autoPlayAudio = true)
+                } else {
+                    AppLogger.d(tag, "CROSS-CHAPTER AUDIO: No next chapter available - end of book")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "You've reached the end of the book", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                AppLogger.e(tag, "CROSS-CHAPTER AUDIO: Error navigating to next chapter", e)
+            } finally {
+                isNavigatingChapter = false
+            }
+        }
+    }
+
+    /**
      * CROSS-CHAPTER: Load a specific chapter by ID and navigate to a target page.
      * @param chapterId The ID of the chapter to load
      * @param targetPageIndex The page to navigate to (0 for first page, -1 for last page)
+     * @param autoPlayAudio If true, automatically start audio playback after loading (for audio continuation)
      */
-    private fun loadChapterById(chapterId: Long, targetPageIndex: Int) {
+    private fun loadChapterById(chapterId: Long, targetPageIndex: Int, autoPlayAudio: Boolean = false) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 AppLogger.d(tag, "CROSS-CHAPTER: Loading chapter $chapterId, targetPage=$targetPageIndex")
@@ -2685,6 +2740,13 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
                         // Update reading progress UI
                         updateReadingProgressUI(finalPageIndex, novelPages.size)
+
+                        // CROSS-CHAPTER AUDIO: Auto-play audio if requested (e.g., from audio completion)
+                        if (autoPlayAudio && (currentReadingMode == ReadingMode.AUDIO || currentReadingMode == ReadingMode.MIXED)) {
+                            AppLogger.i(tag, "CROSS-CHAPTER: Auto-playing audio after chapter load")
+                            // Small delay to ensure UI is fully updated
+                            view?.postDelayed({ playCurrentPage() }, 150)
+                        }
                     }
 
                     // Also update PageCurlView if using it
