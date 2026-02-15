@@ -6,7 +6,6 @@ import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.repositories.BookRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import kotlinx.coroutines.flow.first
 
 /** T9.3: Load themes and vocabulary from chapter analysisJson. Extended analysis is lazy-loaded when Insights is opened. */
 class InsightsViewModel(private val bookRepository: BookRepository) : ViewModel() {
@@ -18,16 +17,25 @@ class InsightsViewModel(private val bookRepository: BookRepository) : ViewModel(
      * and save. Call this when Insights tab is opened so themes/vocabulary appear without blocking reader.
      */
     suspend fun ensureExtendedAnalysisForFirstNeeding(bookId: Long): Boolean {
-        val chapters = bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
-        val ch = chapters.firstOrNull { it.fullAnalysisJson != null && it.body.length > 50 && it.analysisJson.isNullOrBlank() } ?: return false
-        val extendedJson = LlmService.extendedAnalysisJson(ch.body)
+        // BLOB-FIX: Use lightweight projection to find chapter needing analysis
+        val chapters = bookRepository.getChaptersWithAnalysis(bookId).sortedBy { it.orderIndex }
+        val chapterNeedingAnalysis = chapters.firstOrNull {
+            it.fullAnalysisJson != null && it.analysisJson.isNullOrBlank()
+        } ?: return false
+
+        // Load full chapter only when needed (for body access)
+        val fullChapter = bookRepository.getChapter(chapterNeedingAnalysis.id) ?: return false
+        if (fullChapter.body.length <= 50) return false
+
+        val extendedJson = LlmService.extendedAnalysisJson(fullChapter.body)
         if (extendedJson.isNullOrBlank()) return false
-        bookRepository.updateChapter(ch.copy(analysisJson = extendedJson))
+        bookRepository.updateChapter(fullChapter.copy(analysisJson = extendedJson))
         return true
     }
 
     suspend fun insightsForBook(bookId: Long): Insights {
-        val chapters = bookRepository.chapters(bookId).first()
+        // BLOB-FIX: Use lightweight projection - only need analysisJson
+        val chapters = bookRepository.getChaptersWithAnalysis(bookId)
         val themes = mutableSetOf<String>()
         val vocab = mutableListOf<String>()
         for (ch in chapters) {

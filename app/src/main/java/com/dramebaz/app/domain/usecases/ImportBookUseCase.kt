@@ -5,6 +5,7 @@ import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.data.db.Chapter
 import com.dramebaz.app.data.repositories.BookRepository
 import com.dramebaz.app.domain.exceptions.ImportException
+import com.dramebaz.app.epub.EpubExtractor
 import com.dramebaz.app.pdf.PdfChapterDetector
 import com.dramebaz.app.pdf.PdfExtractor
 import com.dramebaz.app.utils.AppLogger
@@ -44,56 +45,83 @@ class ImportBookUseCase(private val bookRepository: BookRepository) {
         val book = Book(title = title, filePath = filePath, format = format)
         val bookId = bookRepository.insertBook(book)
 
-        // For PDF: extract text per page, detect chapter boundaries with PDF page info
-        if (format.equals("pdf", ignoreCase = true) && context != null) {
-            try {
-                val pages = PdfExtractor(context).extractText(file)
-                AppLogger.i(tag, "PDF text extracted: ${pages.size} pages")
-                if (pages.isNotEmpty()) {
-                    val firstPagePreview = pages[0].take(300).replace("\n", " ").trim()
-                    AppLogger.d(tag, "First page preview: \"$firstPagePreview...\"")
+        // Handle different formats
+        when {
+            format.equals("pdf", ignoreCase = true) && context != null -> {
+                // PDF: extract text per page, detect chapter boundaries with PDF page info
+                try {
+                    val pages = PdfExtractor(context).extractText(file)
+                    AppLogger.i(tag, "PDF text extracted: ${pages.size} pages")
+                    if (pages.isNotEmpty()) {
+                        val firstPagePreview = pages[0].take(300).replace("\n", " ").trim()
+                        AppLogger.d(tag, "First page preview: \"$firstPagePreview...\"")
+                    }
+                    val chaptersWithPages = PdfChapterDetector.detectChaptersWithPages(pages, title)
+                    AppLogger.i(tag, "PDF chapter detection complete: ${chaptersWithPages.size} chapters")
+                    val chapterList = chaptersWithPages.mapIndexed { index, ch ->
+                        Chapter(
+                            bookId = bookId,
+                            title = ch.title,
+                            body = ch.body,
+                            orderIndex = index,
+                            pdfPagesJson = PdfChapterDetector.pdfPagesToJson(ch.pdfPages)
+                        )
+                    }
+                    bookRepository.insertChapters(chapterList)
+                    AppLogger.d(tag, "Inserted ${chapterList.size} chapters with PDF page info")
+                } catch (e: Exception) {
+                    AppLogger.e(tag, "PDF extraction/detection failed", e)
+                    bookRepository.deleteBookWithChapters(bookId)
+                    throw ImportException("Failed to extract text from PDF: ${e.message}", e)
                 }
-                // Use new method that preserves PDF page info
-                val chaptersWithPages = PdfChapterDetector.detectChaptersWithPages(pages, title)
-                AppLogger.i(tag, "PDF chapter detection complete: ${chaptersWithPages.size} chapters")
-                for ((idx, ch) in chaptersWithPages.withIndex()) {
-                    AppLogger.i(tag, "Chapter ${idx + 1} \"${ch.title}\": ${ch.pdfPages.size} PDF pages, ${ch.body.length} chars")
+            }
+            format.equals("epub", ignoreCase = true) -> {
+                // EPUB: extract chapters from ZIP archive containing XHTML
+                try {
+                    val epubExtractor = EpubExtractor()
+                    val epubChapters = epubExtractor.extractChapters(file)
+                    AppLogger.i(tag, "EPUB extracted: ${epubChapters.size} chapters")
+                    if (epubChapters.isEmpty()) {
+                        throw ImportException("No readable content found in EPUB")
+                    }
+                    val chapterList = epubChapters.mapIndexed { index, ch ->
+                        Chapter(
+                            bookId = bookId,
+                            title = ch.title,
+                            body = ch.content,
+                            orderIndex = index
+                        )
+                    }
+                    bookRepository.insertChapters(chapterList)
+                    AppLogger.i(tag, "EPUB imported: bookId=$bookId, chapters=${chapterList.size}")
+                } catch (e: ImportException) {
+                    bookRepository.deleteBookWithChapters(bookId)
+                    throw e
+                } catch (e: Exception) {
+                    AppLogger.e(tag, "EPUB extraction failed", e)
+                    bookRepository.deleteBookWithChapters(bookId)
+                    throw ImportException("Failed to extract text from EPUB: ${e.message}", e)
                 }
-                // Insert chapters with PDF page info
-                val chapterList = chaptersWithPages.mapIndexed { index, ch ->
-                    Chapter(
-                        bookId = bookId,
-                        title = ch.title,
-                        body = ch.body,
-                        orderIndex = index,
-                        pdfPagesJson = PdfChapterDetector.pdfPagesToJson(ch.pdfPages)
-                    )
+            }
+            else -> {
+                // Plain text files: use text-based chapter splitting
+                val body = async(Dispatchers.IO) {
+                    AppLogger.d(tag, "Reading file content")
+                    file.readText()
+                }.await().also {
+                    AppLogger.d(tag, "File read complete: ${it.length} characters")
+                }
+                val chunks = async(Dispatchers.Default) {
+                    AppLogger.d(tag, "Splitting into chapters")
+                    splitChapters(body, title)
+                }.await()
+                AppLogger.d(tag, "Split into ${chunks.size} chapters")
+                val chapterList = chunks.mapIndexed { index, (t, b) ->
+                    Chapter(bookId = bookId, title = t, body = b, orderIndex = index)
                 }
                 bookRepository.insertChapters(chapterList)
-                AppLogger.d(tag, "Inserted ${chapterList.size} chapters with PDF page info")
-            } catch (e: Exception) {
-                AppLogger.e(tag, "PDF extraction/detection failed", e)
-                bookRepository.deleteBookWithChapters(bookId)
-                throw ImportException("Failed to extract text from PDF: ${e.message}", e)
+                AppLogger.i(tag, "Book imported successfully: bookId=$bookId, chapters=${chapterList.size}")
             }
-        } else {
-            // Non-PDF files: use text-based chapter splitting (no PDF page info)
-            val body = async(Dispatchers.IO) {
-                AppLogger.d(tag, "Reading file content")
-                file.readText()
-            }.await().also {
-                AppLogger.d(tag, "File read complete: ${it.length} characters")
-            }
-            val chunks = async(Dispatchers.Default) {
-                AppLogger.d(tag, "Splitting into chapters")
-                splitChapters(body, title)
-            }.await()
-            AppLogger.d(tag, "Split into ${chunks.size} chapters")
-            val chapterList = chunks.mapIndexed { index, (t, b) ->
-                Chapter(bookId = bookId, title = t, body = b, orderIndex = index)
-            }
-            bookRepository.insertChapters(chapterList)
-            AppLogger.i(tag, "Book imported successfully: bookId=$bookId, chapters=${chapterList.size}")
         }
 
         AppLogger.logPerformance(tag, "Import book '$title'", System.currentTimeMillis() - startTime)

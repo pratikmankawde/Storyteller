@@ -5,6 +5,8 @@ import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.data.db.BookDao
 import com.dramebaz.app.data.db.Chapter
 import com.dramebaz.app.data.db.ChapterDao
+import com.dramebaz.app.data.db.ChapterSummary
+import com.dramebaz.app.data.db.ChapterWithAnalysis
 import kotlinx.coroutines.flow.Flow
 
 class BookRepository(
@@ -21,6 +23,30 @@ class BookRepository(
     suspend fun getChapter(id: Long) = chapterDao.getById(id)
     suspend fun insertChapters(chapters: List<Chapter>) = chapterDao.insertAll(chapters)
     suspend fun updateChapter(chapter: Chapter) = chapterDao.update(chapter)
+
+    /**
+     * BLOB-FIX: Get lightweight chapter summaries for list views.
+     * Use this for UI that only needs metadata (id, title, wordCount, isAnalyzed).
+     */
+    fun chapterSummaries(bookId: Long): Flow<List<ChapterSummary>> = chapterDao.getSummariesByBookId(bookId)
+
+    /**
+     * BLOB-FIX: Get lightweight chapter summaries as a list.
+     */
+    suspend fun chapterSummariesList(bookId: Long): List<ChapterSummary> = chapterDao.getSummariesList(bookId)
+
+    /**
+     * BLOB-FIX: Get first chapter ID without loading full chapter data.
+     */
+    suspend fun getFirstChapterId(bookId: Long): Long? = chapterDao.getFirstChapterId(bookId)
+
+    /**
+     * BLOB-FIX: Get chapters with analysis data (summaryJson, fullAnalysisJson).
+     * Excludes body to avoid CursorWindow overflow.
+     */
+    suspend fun getChaptersWithAnalysis(bookId: Long): List<ChapterWithAnalysis> =
+        chapterDao.getChaptersWithAnalysis(bookId)
+
     /** SUMMARY-002: Get all books in a series. */
     fun booksInSeries(seriesId: Long): Flow<List<Book>> = bookDao.getBySeriesId(seriesId)
 

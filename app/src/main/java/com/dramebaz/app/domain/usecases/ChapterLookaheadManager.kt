@@ -106,42 +106,49 @@ class ChapterLookaheadManager(
     private fun triggerLookahead(bookId: Long, currentChapterId: Long) {
         // Cancel any previous lookahead job
         lookaheadJob?.cancel()
-        
+
         lookaheadJob = scope.launch(Dispatchers.IO) {
             try {
-                // Get all chapters for the book
-                val chapters = bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
-                val currentIdx = chapters.indexOfFirst { it.id == currentChapterId }
-                
-                if (currentIdx < 0 || currentIdx + 1 >= chapters.size) {
+                // BLOB-FIX: Use lightweight projection first to check if analysis is needed
+                val chapterSummaries = bookRepository.chapterSummariesList(bookId).sortedBy { it.orderIndex }
+                val currentIdx = chapterSummaries.indexOfFirst { it.id == currentChapterId }
+
+                if (currentIdx < 0 || currentIdx + 1 >= chapterSummaries.size) {
                     AppLogger.d(tag, "No next chapter available for lookahead")
                     return@launch
                 }
-                
-                val nextChapter = chapters[currentIdx + 1]
-                
-                // Check if already analyzed
-                if (analyzedChapters.contains(nextChapter.id)) {
-                    AppLogger.d(tag, "Chapter ${nextChapter.id} already analyzed, skipping")
+
+                val nextChapterSummary = chapterSummaries[currentIdx + 1]
+
+                // Check if already analyzed (in-memory cache)
+                if (analyzedChapters.contains(nextChapterSummary.id)) {
+                    AppLogger.d(tag, "Chapter ${nextChapterSummary.id} already analyzed, skipping")
                     return@launch
                 }
-                
-                // Check if chapter already has analysis
-                if (!nextChapter.fullAnalysisJson.isNullOrBlank()) {
-                    AppLogger.d(tag, "Next chapter '${nextChapter.title}' already has analysis")
-                    analyzedChapters.add(nextChapter.id)
+
+                // Check if chapter already has analysis (from lightweight projection)
+                if (nextChapterSummary.isAnalyzed) {
+                    AppLogger.d(tag, "Next chapter '${nextChapterSummary.title}' already has analysis")
+                    analyzedChapters.add(nextChapterSummary.id)
                     return@launch
                 }
-                
-                // Check minimum length
-                if (nextChapter.body.length < MIN_CHAPTER_LENGTH) {
-                    AppLogger.d(tag, "Next chapter '${nextChapter.title}' too short, skipping analysis")
+
+                // Check minimum length (using wordCount estimate: avg 5 chars per word)
+                if (nextChapterSummary.wordCount * 5 < MIN_CHAPTER_LENGTH) {
+                    AppLogger.d(tag, "Next chapter '${nextChapterSummary.title}' too short, skipping analysis")
                     return@launch
                 }
-                
+
+                // Now load full chapter for analysis (only when needed)
+                val nextChapter = bookRepository.getChapter(nextChapterSummary.id)
+                if (nextChapter == null) {
+                    AppLogger.w(tag, "Failed to load next chapter ${nextChapterSummary.id}")
+                    return@launch
+                }
+
                 // Run analysis
                 analyzeChapter(bookId, nextChapter)
-                
+
             } catch (e: Exception) {
                 AppLogger.e(tag, "Error in lookahead trigger", e)
             }

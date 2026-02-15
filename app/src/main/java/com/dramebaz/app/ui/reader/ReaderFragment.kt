@@ -120,17 +120,23 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
             }
 
             audioService?.setOnCompleteListener {
-                AppLogger.d(tag, "Audio playback completed - currentPageIndex=$currentPageIndex, totalPages=${novelPages.size}")
+                // BUG-FIX: Capture the page that just finished playing (loadedAudioPageIndex)
+                // instead of relying on currentPageIndex which might have changed if user swiped
+                val finishedPage = loadedAudioPageIndex.takeIf { it >= 0 } ?: currentPageIndex
+                AppLogger.d(tag, "Audio playback completed - finishedPage=$finishedPage, currentPageIndex=$currentPageIndex, totalPages=${novelPages.size}")
+
                 playerBottomSheet?.updatePlaybackState(false)
                 view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_play)?.text = "Play"
                 if (isNovelFormat) novelPageAdapter?.clearHighlighting()
                 playingPageIndex = -1
+
                 // Auto-continue to next page when current page finishes
-                if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex + 1 < novelPages.size) {
-                    val nextPage = currentPageIndex + 1
-                    AppLogger.d(tag, "Auto-continuing to next page: $nextPage")
+                // Use finishedPage to determine the next page to play
+                val nextPage = finishedPage + 1
+                if (isNovelFormat && novelPages.isNotEmpty() && nextPage < novelPages.size) {
+                    AppLogger.d(tag, "Auto-continuing to next page: $nextPage (finished=$finishedPage)")
                     view?.post {
-                        // Always turn the page first (independent of audio availability)
+                        // Navigate to the next page
                         goToPage(nextPage, smooth = true)
                         // Then attempt to play audio (non-blocking)
                         try {
@@ -139,7 +145,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             AppLogger.e(tag, "Error playing next page audio, but page turn succeeded", e)
                         }
                     }
-                } else if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex == novelPages.size - 1) {
+                } else if (isNovelFormat && novelPages.isNotEmpty() && finishedPage == novelPages.size - 1) {
                     // CROSS-CHAPTER AUDIO: On last page, navigate to next chapter with auto-play
                     if (currentReadingMode == ReadingMode.AUDIO || currentReadingMode == ReadingMode.MIXED) {
                         AppLogger.i(tag, "Audio completed on last page - navigating to next chapter with auto-play")
@@ -149,7 +155,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         updateFabPlayCurrentPageVisibility()
                     }
                 } else {
-                    AppLogger.d(tag, "No more pages to auto-continue (empty)")
+                    AppLogger.d(tag, "No more pages to auto-continue (finishedPage=$finishedPage, pages=${novelPages.size})")
                     updateFabPlayCurrentPageVisibility()
                 }
             }
@@ -158,7 +164,15 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_play)?.text =
                     if (isPlaying) "Pause" else "Play"
                 playerBottomSheet?.updatePlaybackState(isPlaying)
-                if (!isPlaying) playingPageIndex = -1
+                // BUG-FIX: Don't reset playingPageIndex here - let the completion listener handle it.
+                // This prevents race conditions where play state changes from old audio could
+                // reset tracking state while new audio is starting.
+                // The completion listener handles the auto-continue and state reset properly.
+                if (isPlaying && playingPageIndex == -1) {
+                    // If playback started but we don't have a playingPageIndex tracked,
+                    // it means we started fresh - use currentPageIndex
+                    playingPageIndex = currentPageIndex
+                }
                 updateFabPlayCurrentPageVisibility()
             }
         }
@@ -211,6 +225,12 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     private var currentPageIndex = 0
     /** Page index that is currently playing (or -1 if none). Used to show/hide FAB. */
     private var playingPageIndex = -1
+    /** Track the chapter ID of the currently loaded audio in the service. */
+    private var loadedAudioChapterId: Long = -1L
+    /** Track the page index of the currently loaded audio in the service. */
+    private var loadedAudioPageIndex: Int = -1
+    /** Track if audio was ever played in this chapter (for FAB visibility after completion). */
+    private var hasPlayedAudioInChapter: Boolean = false
 
     // READ-002: Audio Buffer Manager for seamless playback
     private var audioBufferManager: com.dramebaz.app.playback.engine.AudioBufferManager? = null
@@ -417,17 +437,21 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 playerBottomSheet?.updateProgress(position, duration)
             }
             setOnCompleteListener {
-                AppLogger.d(tag, "PlaybackEngine completed - currentPageIndex=$currentPageIndex, totalPages=${novelPages.size}")
+                // BUG-FIX: Same fix as AudioPlaybackService - use finishedPage to determine next page
+                val finishedPage = loadedAudioPageIndex.takeIf { it >= 0 } ?: currentPageIndex
+                AppLogger.d(tag, "PlaybackEngine completed - finishedPage=$finishedPage, currentPageIndex=$currentPageIndex, totalPages=${novelPages.size}")
+
                 playerBottomSheet?.updatePlaybackState(false)
                 btnPlay?.text = "Play"
                 if (isNovelFormat) novelPageAdapter?.clearHighlighting()
                 playingPageIndex = -1
-                // AUG-044: Auto-continue to next page when current page finishes (same as AudioPlaybackService)
-                if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex + 1 < novelPages.size) {
-                    val nextPage = currentPageIndex + 1
-                    AppLogger.d(tag, "PlaybackEngine: Auto-continuing to next page: $nextPage")
+
+                // AUG-044: Auto-continue to next page when current page finishes
+                val nextPage = finishedPage + 1
+                if (isNovelFormat && novelPages.isNotEmpty() && nextPage < novelPages.size) {
+                    AppLogger.d(tag, "PlaybackEngine: Auto-continuing to next page: $nextPage (finished=$finishedPage)")
                     view?.post {
-                        // Always turn the page first (independent of audio availability)
+                        // Navigate to the next page
                         goToPage(nextPage, smooth = true)
                         // Then attempt to play audio (non-blocking)
                         try {
@@ -436,7 +460,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                             AppLogger.e(tag, "PlaybackEngine: Error playing next page audio, but page turn succeeded", e)
                         }
                     }
-                } else if (isNovelFormat && novelPages.isNotEmpty() && currentPageIndex == novelPages.size - 1) {
+                } else if (isNovelFormat && novelPages.isNotEmpty() && finishedPage == novelPages.size - 1) {
                     // CROSS-CHAPTER AUDIO: On last page, navigate to next chapter with auto-play
                     if (currentReadingMode == ReadingMode.AUDIO || currentReadingMode == ReadingMode.MIXED) {
                         AppLogger.i(tag, "PlaybackEngine: Audio completed on last page - navigating to next chapter with auto-play")
@@ -446,7 +470,7 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         updateFabPlayCurrentPageVisibility()
                     }
                 } else {
-                    AppLogger.d(tag, "PlaybackEngine: No more pages to auto-continue (empty)")
+                    AppLogger.d(tag, "PlaybackEngine: No more pages to auto-continue (finishedPage=$finishedPage, pages=${novelPages.size})")
                     updateFabPlayCurrentPageVisibility()
                 }
             }
@@ -612,27 +636,33 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                     // Run extraction in parallel, don't block reading
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                         try {
-                            val chapters = app.bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
+                            // BLOB-FIX: Use lightweight projection first, then load chapters one at a time
+                            val chapterSummaries = app.bookRepository.chapterSummariesList(bookId).sortedBy { it.orderIndex }
+                            val totalChapters = chapterSummaries.size
                             val extractionUseCase = ChapterCharacterExtractionUseCase(app.db.characterDao())
-                            for ((idx, chapter) in chapters.withIndex()) {
+                            val characterJsonList = mutableListOf<String>()
+
+                            for ((idx, summary) in chapterSummaries.withIndex()) {
+                                // Load full chapter only when needed
+                                val chapter = app.bookRepository.getChapter(summary.id) ?: continue
                                 if (!chapter.fullAnalysisJson.isNullOrBlank() && chapter.body.length > 50) {
                                     extractionUseCase.extractAndSave(
                                         bookId = bookId,
                                         chapterText = chapter.body,
                                         chapterIndex = idx,
-                                        totalChapters = chapters.size
+                                        totalChapters = totalChapters
                                     )
+                                    // AUG-008: Collect character JSON for merge
+                                    chapter.fullAnalysisJson?.let { json ->
+                                        try {
+                                            val analysis = gson.fromJson(json, ChapterAnalysisResponse::class.java)
+                                            analysis.characters?.let { characterJsonList.add(Gson().toJson(it)) }
+                                        } catch (e: Exception) { }
+                                    }
                                 }
                             }
+
                             // AUG-008: Merge characters after extraction
-                            val characterJsonList = chapters.mapNotNull { chapter ->
-                                chapter.fullAnalysisJson?.let { json ->
-                                    try {
-                                        val analysis = gson.fromJson(json, ChapterAnalysisResponse::class.java)
-                                        analysis.characters?.let { Gson().toJson(it) }
-                                    } catch (e: Exception) { null }
-                                }
-                            }
                             if (characterJsonList.isNotEmpty()) {
                                 MergeCharactersUseCase(app.db.characterDao(), requireContext())
                                     .mergeAndSave(bookId, characterJsonList)
@@ -911,14 +941,22 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                 playerBottomSheet?.updatePlaybackState(false)
                 AppLogger.i(tag, "Playback paused")
             } else {
-                // Check if we can resume existing playback
-                if (audioService?.getDuration() ?: 0L > 0L) {
+                // BUG-FIX: Check if loaded audio matches current chapter AND page before resuming
+                val audioMatchesCurrentPosition = loadedAudioChapterId == loadedChapterId &&
+                    loadedAudioPageIndex == currentPageIndex &&
+                    (audioService?.getDuration() ?: 0L) > 0L
+
+                if (audioMatchesCurrentPosition) {
+                    // Resume existing playback (audio matches current position)
                     audioService?.resume()
                     btnPlay.text = "Pause"
                     playerBottomSheet?.updatePlaybackState(true)
-                    AppLogger.i(tag, "Service playback resumed")
+                    playingPageIndex = currentPageIndex
+                    updateFabPlayCurrentPageVisibility()
+                    AppLogger.i(tag, "Service playback resumed (audio matches current page)")
                 } else {
-                    // Play current page (uses pre-generated audio if available)
+                    // Play current page - either no audio loaded or audio is for different page/chapter
+                    AppLogger.d(tag, "Playing current page: loadedChapter=$loadedAudioChapterId vs $loadedChapterId, loadedPage=$loadedAudioPageIndex vs $currentPageIndex")
                     playCurrentPage()
                 }
             }
@@ -931,12 +969,17 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
         // Floating play: stop current playback and start from current page
         view.findViewById<View>(R.id.fab_play_current_page)?.setOnClickListener {
+            // BUG-FIX: Stop any existing playback and reset state before playing from current page
             audioService?.stop()
             playbackEngine?.stop()
             playingPageIndex = -1
+            // Reset loaded audio tracking since we're starting fresh
+            loadedAudioChapterId = -1L
+            loadedAudioPageIndex = -1
             view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_play)?.text = "Play"
             playerBottomSheet?.updatePlaybackState(false)
             novelPageAdapter?.clearHighlighting()
+            // playCurrentPage() will set the new tracking values
             playCurrentPage()
         }
 
@@ -1511,13 +1554,33 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
     }
 
     /**
-     * Show FAB when user is on a different page than the one playing; hide when on the playing page or not playing.
+     * Show FAB "Read from here" when user navigates to a page different from:
+     * - The currently playing page (if audio is playing), OR
+     * - The last loaded audio page (if audio was played but user navigated away)
+     *
+     * BUG-FIX: Previously only showed FAB when playingPageIndex >= 0, which meant
+     * FAB never appeared after audio completion (when playingPageIndex = -1).
      */
     private fun updateFabPlayCurrentPageVisibility() {
         view ?: return
         val fab = view?.findViewById<View>(R.id.fab_play_current_page) ?: return
+
+        // Determine which reference page to compare against
+        val isAudioPlaying = playingPageIndex >= 0
+        val referencePageIndex = if (isAudioPlaying) {
+            // Audio is playing - compare against playing page
+            playingPageIndex
+        } else if (hasPlayedAudioInChapter && loadedAudioChapterId == loadedChapterId && loadedAudioPageIndex >= 0) {
+            // Audio was played in this chapter but stopped - compare against last loaded audio page
+            loadedAudioPageIndex
+        } else {
+            // No audio context - don't show FAB
+            -1
+        }
+
         val show = isNovelFormat && novelPages.isNotEmpty() &&
-            playingPageIndex >= 0 && currentPageIndex != playingPageIndex
+            referencePageIndex >= 0 && currentPageIndex != referencePageIndex
+
         fab.visibility = if (show) View.VISIBLE else View.GONE
     }
 
@@ -1934,6 +1997,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                         requireContext().startService(serviceIntent)
                     }
                     playingPageIndex = pageIndex
+                    // BUG-FIX: Track which chapter/page this audio belongs to
+                    loadedAudioChapterId = loadedChapterId
+                    loadedAudioPageIndex = pageIndex
+                    hasPlayedAudioInChapter = true
                     audioService?.playAudioFile(preGenAudio, bookTitle, "$chapterTitle - Page ${pageIndex + 1}", null)
                     // SETTINGS-001: Apply saved playback speed
                     audioService?.setSpeed(app.settingsRepository.audioSettings.value.playbackSpeed)
@@ -2009,6 +2076,10 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
                                 requireContext().startService(serviceIntent)
                             }
                             playingPageIndex = pageIndex
+                            // BUG-FIX: Track which chapter/page this audio belongs to
+                            loadedAudioChapterId = loadedChapterId
+                            loadedAudioPageIndex = pageIndex
+                            hasPlayedAudioInChapter = true
                             audioService?.playAudioFile(audioFile, bookTitle, "$chapterTitle - Page ${pageIndex + 1}", null)
                             // SETTINGS-001: Apply saved playback speed
                             audioService?.setSpeed(app.settingsRepository.audioSettings.value.playbackSpeed)
@@ -2502,7 +2573,8 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
      */
     private suspend fun updateBookReadingProgress(chapterProgress: Float) {
         try {
-            val chapters = app.bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
+            // BLOB-FIX: Use lightweight projection - only need id and orderIndex
+            val chapters = app.bookRepository.chapterSummariesList(bookId).sortedBy { it.orderIndex }
             if (chapters.isEmpty()) return
 
             val currentChapterIndex = chapters.indexOfFirst { it.id == loadedChapterId }
@@ -2671,6 +2743,15 @@ class ReaderFragment : Fragment(), PlayerBottomSheet.PlayerControlsListener {
 
                 // Clear pre-generated audio for previous chapter
                 preGeneratedAudio.clear()
+
+                // BUG-FIX: Reset audio tracking state when loading a new chapter
+                // This ensures Play button doesn't try to resume old chapter's audio
+                withContext(Dispatchers.Main) {
+                    loadedAudioChapterId = -1L
+                    loadedAudioPageIndex = -1
+                    hasPlayedAudioInChapter = false
+                    playingPageIndex = -1
+                }
 
                 // CROSS-CHAPTER CACHING: Check if we have cached audio for this chapter's target page
                 // targetPageIndex: 0 = first page (from next chapter cache), -1 = last page (from prev chapter cache)

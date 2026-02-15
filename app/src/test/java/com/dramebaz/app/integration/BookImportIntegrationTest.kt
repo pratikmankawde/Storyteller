@@ -151,6 +151,82 @@ class BookImportIntegrationTest {
         assertTrue(chapters[0].body.contains("content"))
     }
 
+    @Test
+    fun `PdfChapterDetector detects section keywords like Prologue and Epilogue`() {
+        val pages = listOf(
+            "Title Page Content",
+            "Prologue\nThe story begins long ago.",
+            "Some prologue content continues here.",
+            "Chapter 1\nThe main story starts.",
+            "More chapter 1 content.",
+            "Epilogue\nThe conclusion of our tale."
+        )
+
+        val chapters = PdfChapterDetector.detectChaptersWithPages(pages, "Test Book")
+
+        // Should detect: Introduction/Title, Prologue, Chapter 1, Epilogue
+        assertTrue("Should detect multiple chapters", chapters.size >= 3)
+        val titles = chapters.map { it.title }
+        assertTrue("Should detect Prologue", titles.any { it.contains("Prologue", ignoreCase = true) })
+        assertTrue("Should detect Chapter 1", titles.any { it.contains("Chapter", ignoreCase = true) })
+        assertTrue("Should detect Epilogue", titles.any { it.contains("Epilogue", ignoreCase = true) })
+    }
+
+    @Test
+    fun `PdfChapterDetector detects chapters with decorative characters`() {
+        // Simulates "◆ CHAPTER ONE ◆" format (common in many PDFs)
+        val pages = listOf(
+            "Front matter content",
+            "* CHAPTER ONE *\nThe boy who lived.",
+            "Story content page 2.",
+            "~ CHAPTER TWO ~\nThe vanishing glass."
+        )
+
+        val chapters = PdfChapterDetector.detectChaptersWithPages(pages, "Harry Potter")
+
+        // Should strip decorative chars and detect chapters
+        assertTrue("Should detect chapters with decorative chars", chapters.size >= 2)
+    }
+
+    @Test
+    fun `PdfChapterDetector detects expanded section keywords`() {
+        val pages = listOf(
+            "Title Page",
+            "Table of Contents\n1. Introduction\n2. Chapter 1",
+            "Preface\nAuthor's thoughts on writing this book.",
+            "Introduction\nWelcome to this guide.",
+            "Glossary\nTerm definitions.",
+            "Appendix\nAdditional materials."
+        )
+
+        val chapters = PdfChapterDetector.detectChaptersWithPages(pages, "Technical Book")
+
+        val titles = chapters.map { it.title.lowercase() }
+        // Check for expanded keywords detection
+        assertTrue("Should detect Table of Contents", titles.any { it.contains("contents") || it.contains("table") })
+        assertTrue("Should detect Preface", titles.any { it.contains("preface") })
+        assertTrue("Should detect Introduction", titles.any { it.contains("introduction") })
+        assertTrue("Should detect Glossary", titles.any { it.contains("glossary") })
+        assertTrue("Should detect Appendix", titles.any { it.contains("appendix") })
+    }
+
+    @Test
+    fun `PdfChapterDetector handles PART sections`() {
+        val pages = listOf(
+            "Book Title",
+            "PART ONE\nThe Beginning",
+            "Chapter content for part one.",
+            "Part Two\nThe Middle",
+            "Chapter content for part two."
+        )
+
+        val chapters = PdfChapterDetector.detectChaptersWithPages(pages, "Epic Novel")
+
+        val titles = chapters.map { it.title }
+        assertTrue("Should detect PART ONE", titles.any { it.contains("PART", ignoreCase = true) && it.contains("ONE", ignoreCase = true) })
+        assertTrue("Should detect Part Two", titles.any { it.contains("Part", ignoreCase = true) && it.contains("Two", ignoreCase = true) })
+    }
+
     // ==================== Book Metadata Tests ====================
 
     @Test

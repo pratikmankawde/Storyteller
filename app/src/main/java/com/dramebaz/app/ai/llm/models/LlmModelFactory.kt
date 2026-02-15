@@ -55,7 +55,8 @@ object LlmModelFactory {
     enum class ModelType {
         GGUF,           // GGUF format via llama.cpp (GgufEngine)
         LITERTLM,       // LiteRT-LM format (LiteRtLmEngine)
-        MEDIAPIPE       // MediaPipe .task format (MediaPipeEngineImpl)
+        MEDIAPIPE,      // MediaPipe .task format (MediaPipeEngineImpl)
+        REMOTE_SERVER   // Remote AIServer via REST API
     }
 
     // Cache for discovered models
@@ -338,6 +339,10 @@ object LlmModelFactory {
                 val path = getFirstMediaPipeModelPath(context)
                 if (path != null) MediaPipeEngineImpl(context, modelPath = path, maxTokens = MEDIAPIPE_MAX_TOKENS) else null
             }
+            ModelType.REMOTE_SERVER -> {
+                // Use default config; for custom config use createRemoteServerModel
+                createRemoteServerModel()
+            }
         }
     }
 
@@ -378,7 +383,23 @@ object LlmModelFactory {
                     MediaPipeEngineImpl(context, modelPath = path, maxTokens = MEDIAPIPE_MAX_TOKENS)
                 } else null
             }
+            ModelType.REMOTE_SERVER -> {
+                // Backend preference not applicable for remote server
+                AppLogger.d(TAG, "Remote server model - backend preference not applicable")
+                createRemoteServerModel()
+            }
         }
+    }
+
+    /**
+     * Create a remote server model with custom configuration.
+     *
+     * @param config Remote server configuration
+     * @return RemoteServerModel instance
+     */
+    fun createRemoteServerModel(config: RemoteServerConfig = RemoteServerConfig.DEFAULT): LlmModel {
+        AppLogger.i(TAG, "Creating remote server model: ${config.baseUrl}, model: ${config.modelId}")
+        return RemoteServerModel(config)
     }
 
     /**

@@ -1048,7 +1048,8 @@ class BookAnalysisWorkflow(
      */
     private suspend fun performGlobalCharacterMerge(bookId: Long) {
         try {
-            val allChapters = bookRepository.chapters(bookId).first()
+            // BLOB-FIX: Use lightweight projection - only need fullAnalysisJson
+            val allChapters = bookRepository.getChaptersWithAnalysis(bookId)
             val characterJsonList = allChapters.mapNotNull { chapter ->
                 chapter.fullAnalysisJson?.let { json ->
                     try {
@@ -1304,15 +1305,17 @@ class BookAnalysisWorkflow(
      * Check if a book is partially analyzed (first chapter done).
      */
     suspend fun isBookPartiallyAnalyzed(bookId: Long): Boolean {
-        val chapters = bookRepository.chapters(bookId).first()
-        return chapters.firstOrNull()?.fullAnalysisJson != null
+        // BLOB-FIX: Use lightweight projection with isAnalyzed flag
+        val chapters = bookRepository.chapterSummariesList(bookId).sortedBy { it.orderIndex }
+        return chapters.firstOrNull()?.isAnalyzed == true
     }
 
     /**
      * Check if a book is fully analyzed.
      */
     suspend fun isBookAnalyzed(bookId: Long): Boolean {
-        val chapters = bookRepository.chapters(bookId).first()
-        return chapters.isNotEmpty() && chapters.all { it.fullAnalysisJson != null }
+        // BLOB-FIX: Use lightweight projection with isAnalyzed flag
+        val chapters = bookRepository.chapterSummariesList(bookId)
+        return chapters.isNotEmpty() && chapters.all { it.isAnalyzed }
     }
 }

@@ -5,6 +5,7 @@ import com.dramebaz.app.ai.llm.LlmService
 import com.dramebaz.app.data.db.Book
 import com.dramebaz.app.data.db.BookDao
 import com.dramebaz.app.data.db.Chapter
+import com.dramebaz.app.data.db.ChapterWithAnalysis
 import com.dramebaz.app.data.db.Character
 import com.dramebaz.app.data.db.CharacterDao
 import com.dramebaz.app.data.db.ReadingSession
@@ -38,10 +39,11 @@ class GetRecapUseCase(
     private val tag = "GetRecapUseCase"
 
     suspend fun getLastNSummaries(bookId: Long, currentChapterId: Long, n: Int = 3): List<String> {
-        val chapters = bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
+        // BLOB-FIX: Use lightweight projection that excludes body field
+        val chapters = bookRepository.getChaptersWithAnalysis(bookId).sortedBy { it.orderIndex }
         val currentIndex = chapters.indexOfFirst { it.id == currentChapterId }.takeIf { it >= 0 } ?: 0
         val start = (currentIndex - n).coerceAtLeast(0)
-        return chapters.subList(start, currentIndex).mapNotNull { parseSummary(it) }
+        return chapters.subList(start, currentIndex).mapNotNull { parseSummaryFromAnalysis(it) }
     }
 
     /** 
@@ -95,6 +97,18 @@ Create a "Previously on..." paragraph that summarizes these events."""
     }
 
     private fun parseSummary(chapter: Chapter): String? {
+        val json = chapter.summaryJson ?: return null
+        return try {
+            gson.fromJson(json, ChapterSummary::class.java)?.shortSummary ?: json.take(100)
+        } catch (_: Exception) {
+            json.take(100)
+        }
+    }
+
+    /**
+     * BLOB-FIX: Parse summary from lightweight ChapterWithAnalysis projection.
+     */
+    private fun parseSummaryFromAnalysis(chapter: ChapterWithAnalysis): String? {
         val json = chapter.summaryJson ?: return null
         return try {
             gson.fromJson(json, ChapterSummary::class.java)?.shortSummary ?: json.take(100)
@@ -357,11 +371,11 @@ Previously:"""
      */
     private suspend fun generatePreviousBookSummary(previousBookId: Long): String? {
         return try {
-            // Get all chapters of the previous book
-            val chapters = bookRepository.chapters(previousBookId).first().sortedBy { it.orderIndex }
+            // BLOB-FIX: Use lightweight projection that excludes body field
+            val chapters = bookRepository.getChaptersWithAnalysis(previousBookId).sortedBy { it.orderIndex }
 
             // Collect all chapter summaries
-            val summaries = chapters.mapNotNull { parseSummary(it) }
+            val summaries = chapters.mapNotNull { parseSummaryFromAnalysis(it) }
 
             if (summaries.isEmpty()) {
                 return "The previous book has not been analyzed yet."

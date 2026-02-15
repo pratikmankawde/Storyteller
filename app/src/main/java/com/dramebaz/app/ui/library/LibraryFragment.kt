@@ -61,9 +61,19 @@ class LibraryFragment : Fragment() {
     // Cache current books list for section toggle rebuilding
     private var currentBooks: List<Book> = emptyList()
 
-    private val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { vm.importFromUri(requireContext(), it) }
+    // File picker configured to show only supported file types and allow multiple selection
+    private val picker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        uris.forEach { uri -> vm.importFromUri(requireContext(), uri) }
     }
+
+    // MIME types for supported file formats
+    private val supportedMimeTypes = arrayOf(
+        "application/pdf",                          // PDF
+        "application/epub+zip",                     // EPUB
+        "text/plain",                               // TXT
+        "application/x-mobipocket-ebook",           // MOBI (for future support)
+        "application/octet-stream"                  // Fallback for some file managers
+    )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_library, container, false)
@@ -137,11 +147,11 @@ class LibraryFragment : Fragment() {
                     context = requireContext(),
                     title = "Import Failed",
                     message = errorMessage,
-                    onRetry = { picker.launch("*/*") }
+                    onRetry = { picker.launch(supportedMimeTypes) }
                 )
             }
         }
-        view.findViewById<View>(R.id.fab_import).setOnClickListener { picker.launch("*/*") }
+        view.findViewById<View>(R.id.fab_import).setOnClickListener { picker.launch(supportedMimeTypes) }
 
         // UI-004: Set up exit/reenter transitions for returning from BookDetailFragment
         postponeEnterTransition()

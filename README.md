@@ -39,6 +39,8 @@ Dramebaz is an Android audiobook application that uses on-device AI to analyze b
 - **AudioDirector** - Producer/Transformer/Consumer pipeline with AudioTrack
 - **Audio Mixer** - Multi-channel mixing (narration, dialog, SFX, ambience)
 - **Background Playback** - Foreground service with media notification controls
+- **Auto-Transition** - Seamless page/chapter transitions with position tracking
+- **Page-Aware Playback** - Audio state syncs with current reader position
 
 ### ⚙️ Settings & Customization
 - **Reading Modes** - TEXT, AUDIO, MIXED mode toggle
@@ -99,6 +101,12 @@ Unified interface for multiple LLM backends:
 - `PlaybackEngine` - Audio playback with segment management
 - `AudioDirector` - Producer-Consumer audio pipeline
 - `AnalysisQueueManager` - Background analysis orchestration
+
+### Database Optimizations
+- **Lightweight Projections** - Avoids loading large BLOB fields when not needed
+- **ChapterSummary** - Minimal chapter info for navigation (no body/analysis)
+- **ChapterWithAnalysis** - Analysis fields without body text for insights
+- **One-at-a-time Loading** - Large books load chapters individually to avoid CursorWindow limits
 
 ## 📱 Requirements
 

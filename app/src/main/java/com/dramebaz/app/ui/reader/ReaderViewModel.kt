@@ -25,9 +25,11 @@ class ReaderViewModel(
      * Get the first actual chapter ID (skipping intro/preface pages).
      * Looks for chapters with proper "Chapter X" or "Part X" titles.
      * Falls back to first chapter if no proper chapter titles found.
+     *
+     * BLOB-FIX: Uses lightweight chapterSummariesList() to avoid loading large body/JSON fields.
      */
     suspend fun firstChapterId(bookId: Long): Long? {
-        val chapters = bookRepository.chapters(bookId).first().sortedBy { it.orderIndex }
+        val chapters = bookRepository.chapterSummariesList(bookId).sortedBy { it.orderIndex }
 
         // Find first chapter with a proper chapter title (e.g., "Chapter 1", "Chapter One")
         val firstRealChapter = chapters.firstOrNull { chapter ->
@@ -40,9 +42,10 @@ class ReaderViewModel(
 
     /**
      * Get the very first chapter (including intro/preface).
+     * BLOB-FIX: Uses getFirstChapterId() query to avoid loading large fields.
      */
     suspend fun firstChapterIdIncludingIntro(bookId: Long): Long? =
-        bookRepository.chapters(bookId).first().minByOrNull { it.orderIndex }?.id
+        bookRepository.getFirstChapterId(bookId)
 
     /** T4.2: Recap paragraph for "Previously on…" (empty if first chapter). */
     suspend fun getRecapParagraph(bookId: Long, chapterId: Long): String {

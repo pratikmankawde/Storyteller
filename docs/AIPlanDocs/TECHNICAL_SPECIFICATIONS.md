@@ -689,7 +689,153 @@ object TtsAudioCache {
 
 ---
 
-## 6. Model Compatibility Summary
+## 6. Database Query Optimization (BLOB-FIX)
+
+### Problem: SQLiteBlobTooBigException on Large Books
+
+**Root Cause:**
+- Android's SQLite CursorWindow has a ~2MB limit for query results
+- When chapters have large `body` or `fullAnalysisJson` fields (e.g., 847-page PDF books), loading multiple rows crashes
+- Error: `SQLiteBlobTooBigException: Row too big to fit into CursorWindow`
+
+**Solution:** Lightweight Database Projections
+
+Instead of loading full `Chapter` entities with all fields, use targeted projections that SELECT only the columns needed for each use case.
+
+### Lightweight Projection Data Classes
+
+Located in `ChapterDao.kt`:
+
+```kotlin
+/**
+ * Minimal chapter info for navigation and progress tracking.
+ * Excludes: body, summaryJson, analysisJson, fullAnalysisJson
+ */
+data class ChapterSummary(
+    val id: Long,
+    val bookId: Long,
+    val title: String,
+    val orderIndex: Int,
+    val wordCount: Int,
+    val isAnalyzed: Boolean
+)
+
+/**
+ * Chapter with analysis fields but no body text.
+ * For UI display of analysis summaries without loading full chapter content.
+ */
+data class ChapterWithAnalysis(
+    val id: Long,
+    val title: String,
+    val orderIndex: Int,
+    val summaryJson: String?,
+    val analysisJson: String?,
+    val fullAnalysisJson: String?
+)
+
+/**
+ * Minimal projection for dialog counting only.
+ * Only includes fields needed to parse dialogs from analysis JSON.
+ */
+data class ChapterAnalysisOnly(
+    val id: Long,
+    val fullAnalysisJson: String?
+)
+```
+
+### DAO Query Methods
+
+```kotlin
+@Query("SELECT id, bookId, title, orderIndex, wordCount, (fullAnalysisJson IS NOT NULL) as isAnalyzed FROM chapters WHERE bookId = :bookId ORDER BY orderIndex")
+fun getSummariesByBookId(bookId: Long): Flow<List<ChapterSummary>>
+
+@Query("SELECT id, bookId, title, orderIndex, wordCount, (fullAnalysisJson IS NOT NULL) as isAnalyzed FROM chapters WHERE bookId = :bookId ORDER BY orderIndex")
+suspend fun getSummariesList(bookId: Long): List<ChapterSummary>
+
+@Query("SELECT id, title, orderIndex, summaryJson, analysisJson, fullAnalysisJson FROM chapters WHERE bookId = :bookId ORDER BY orderIndex")
+suspend fun getChaptersWithAnalysis(bookId: Long): List<ChapterWithAnalysis>
+
+@Query("SELECT id, fullAnalysisJson FROM chapters WHERE bookId = :bookId")
+suspend fun getAnalysesOnly(bookId: Long): List<ChapterAnalysisOnly>
+
+@Query("SELECT id FROM chapters WHERE bookId = :bookId ORDER BY orderIndex ASC LIMIT 1")
+suspend fun getFirstChapterId(bookId: Long): Long?
+```
+
+### Repository Wrapper Methods
+
+```kotlin
+class BookRepository(private val chapterDao: ChapterDao) {
+    // Reactive observation of chapter changes (lightweight)
+    fun chapterSummaries(bookId: Long): Flow<List<ChapterDao.ChapterSummary>> =
+        chapterDao.getSummariesByBookId(bookId)
+
+    // One-shot chapter list (lightweight)
+    suspend fun chapterSummariesList(bookId: Long): List<ChapterDao.ChapterSummary> =
+        chapterDao.getSummariesList(bookId)
+
+    // Get chapters with analysis JSON only (no body)
+    suspend fun getChaptersWithAnalysis(bookId: Long): List<ChapterDao.ChapterWithAnalysis> =
+        chapterDao.getChaptersWithAnalysis(bookId)
+
+    // Get single full chapter when content is needed
+    suspend fun getChapter(chapterId: Long): Chapter? =
+        chapterDao.getById(chapterId)
+
+    // Get first chapter ID for navigation
+    suspend fun getFirstChapterId(bookId: Long): Long? =
+        chapterDao.getFirstChapterId(bookId)
+}
+```
+
+### Usage Pattern: Load One at a Time
+
+For operations that need full chapter body but for multiple chapters:
+
+```kotlin
+// ❌ BAD: Loads ALL chapter data at once - can crash
+val chapters = bookRepository.chapters(bookId).first()
+for (chapter in chapters) {
+    processChapter(chapter.body)
+}
+
+// ✅ GOOD: Uses lightweight projection, loads body one at a time
+val summaries = bookRepository.chapterSummariesList(bookId)
+for (summary in summaries) {
+    val chapter = bookRepository.getChapter(summary.id) ?: continue
+    processChapter(chapter.body)
+}
+```
+
+### Files Fixed with BLOB-FIX Pattern
+
+| File | Fix Applied |
+|------|-------------|
+| `BookDetailFragment.kt` | Uses `chapterSummariesList()` for chapter count |
+| `BookDetailViewModel.kt` | Uses `getFirstChapterId()` for navigation |
+| `CharactersViewModel.kt` | Uses `getAnalysesOnly()` for dialog counting |
+| `ReaderViewModel.kt` | Uses `chapterSummariesList()` for chapter navigation |
+| `ReaderFragment.kt` | Uses `chapterSummariesList()` for progress tracking and character extraction |
+| `InsightsFragment.kt` | Uses `getChaptersWithAnalysis()` for statistics and analysis |
+| `InsightsViewModel.kt` | Uses `getChaptersWithAnalysis()` for insights loading |
+| `BookAnalysisWorkflow.kt` | Uses `chapterSummariesList()` for analysis status checks |
+| `ChapterLookaheadManager.kt` | Uses `chapterSummariesList()` for lookahead decisions |
+| `GetRecapUseCase.kt` | Uses `getChaptersWithAnalysis()` for recaps |
+
+### When to Use Each Method
+
+| Use Case | Method | Fields Available |
+|----------|--------|------------------|
+| Chapter count/list display | `chapterSummariesList()` | id, title, orderIndex, wordCount, isAnalyzed |
+| Navigation to specific chapter | `getChapter(id)` | All fields |
+| Dialog/character counting | `getAnalysesOnly()` | id, fullAnalysisJson |
+| Insights/themes display | `getChaptersWithAnalysis()` | id, title, orderIndex, *Json fields |
+| Progress tracking | `chapterSummaries()` (Flow) | id, title, orderIndex, wordCount, isAnalyzed |
+| Reading chapter content | `getChapter(id)` | All fields (load individually) |
+
+---
+
+## 7. Model Compatibility Summary
 
 | Feature            | Qwen3-1.7B Support | VITS-Piper Support  | Implementation                |
 | ------------------ | ------------------ | ------------------- | ----------------------------- |

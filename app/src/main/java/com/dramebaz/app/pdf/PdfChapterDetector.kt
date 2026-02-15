@@ -33,13 +33,144 @@ object PdfChapterDetector {
 
     /** Patterns for "this page is the start of a chapter" (first non-empty line). */
     private val chapterStartPattern = Regex(
-        """^\s*(?:Chapter\s+\d+|Chapter\s+[A-Za-z\s]+|CHAPTER\s+\d+|Part\s+[One\d\s]+|PART\s+[ONE\d\s]+|#+\s*.+)\s*$""",
+        """^\s*(?:Chapter\s+\d+|Chapter\s+[A-Za-z\s]+|CHAPTER\s+\d+|Part\s+(?:One|Two|Three|Four|Five|\d+))\s*$""",
         RegexOption.IGNORE_CASE
     )
     private val chapterTitleLine = Regex(
-        """(?:Chapter\s+\d+|Chapter\s+[A-Za-z\s]+|CHAPTER\s+\d+|Part\s+[One\d\s]+|PART\s+[ONE\d\s]+|#+\s*(.+))""",
+        """(?:Chapter\s+\d+|Chapter\s+[A-Za-z\s]+|CHAPTER\s+\d+|Part\s+(?:One|Two|Three|Four|Five|\d+)|#+\s*(.+))""",
         RegexOption.IGNORE_CASE
     )
+
+    /** Expanded section keywords - includes story structure, front matter, and back matter */
+    private val sectionKeywords = listOf(
+        // Story structure
+        "Prologue", "Epilogue", "Foreword", "Introduction", "Preface", "Afterword",
+        // Front matter
+        "Contents", "Table of Contents", "Dedication", "Acknowledgments", "Acknowledgements",
+        "About the Author", "Author's Note",
+        // Back matter
+        "Glossary", "Appendix", "Appendices", "Index", "Bibliography", "References",
+        "Notes", "Endnotes", "Further Reading"
+    )
+
+    /** Regex pattern for section keywords */
+    private val sectionPattern = Regex(
+        """^\s*(?:${sectionKeywords.joinToString("|") { Regex.escape(it) }})\s*$""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /** Pattern to strip decorative characters (allows detecting "◆ CHAPTER ONE ◆" etc.) */
+    private val decorativeChars = Regex("""^[^a-zA-Z0-9#]+|[^a-zA-Z0-9]+$""")
+
+    /**
+     * Strip decorative characters from text for pattern matching.
+     * Handles cases like "◆ CHAPTER ONE ◆" -> "CHAPTER ONE"
+     */
+    private fun stripDecorative(text: String): String {
+        return decorativeChars.replace(text.trim(), "")
+    }
+
+    /**
+     * Check if a first line looks like a chapter start.
+     * @param firstLine The first non-blank line of the page
+     * @return Pair of (isChapterStart, reason) for debugging
+     */
+    private fun isChapterStart(firstLine: String): Pair<Boolean, String> {
+        if (firstLine.isBlank()) return false to "empty"
+
+        // Strip decorative characters for matching (handles "◆ CHAPTER ONE ◆")
+        val coreText = stripDecorative(firstLine)
+        if (coreText.isBlank()) return false to "only_decorative"
+
+        // Check chapter/part patterns
+        if (chapterStartPattern.matches(coreText)) {
+            return true to "chapter_pattern"
+        }
+
+        // Additional chapter keyword patterns
+        if (coreText.matches(Regex("""Chapter\s+.+""", RegexOption.IGNORE_CASE))) {
+            return true to "chapter_keyword"
+        }
+        if (coreText.matches(Regex("""PART\s+(?:ONE|TWO|THREE|FOUR|FIVE|\d+).*""", RegexOption.IGNORE_CASE))) {
+            return true to "part_keyword"
+        }
+
+        // Markdown headers
+        if (coreText.matches(Regex("""#+\s+.+"""))) {
+            return true to "markdown_header"
+        }
+
+        // Section keywords (Prologue, Epilogue, TOC, etc.)
+        if (sectionPattern.matches(coreText)) {
+            return true to "section_keyword"
+        }
+
+        // Numbered titles like "1. The Beginning" or "1) Chapter Title"
+        // Be more strict: require title text after number, not just any content
+        if (coreText.matches(Regex("""^\d{1,3}[.)]\s+[A-Z].*""", RegexOption.IGNORE_CASE))) {
+            return true to "numbered_title"
+        }
+
+        return false to "no_match"
+    }
+
+    /**
+     * Find chapter start indices from pages.
+     * @param pages List of page texts
+     * @param treatFirstPageAsChapter If true, always add page 0 as chapter start
+     * @return List of page indices where chapters start
+     */
+    private fun findChapterStarts(pages: List<String>, treatFirstPageAsChapter: Boolean = true): List<Int> {
+        val chapterStarts = mutableListOf<Int>()
+
+        for (i in pages.indices) {
+            val firstLine = pages[i].lines().firstOrNull { it.isNotBlank() }?.trim()?.take(200) ?: ""
+            val (isStart, reason) = isChapterStart(firstLine)
+
+            if (i == 0 && treatFirstPageAsChapter) {
+                // Only add first page if it has content (not just a blank title page)
+                if (pages[i].trim().length > 50) {
+                    chapterStarts.add(0)
+                    AppLogger.d(tag, "Page 0 added as chapter start (has content)")
+                } else {
+                    AppLogger.d(tag, "Page 0 skipped (appears to be title/blank page)")
+                }
+            } else if (isStart) {
+                chapterStarts.add(i)
+                AppLogger.d(tag, "Chapter start at page $i: reason=$reason, firstLine=\"${firstLine.take(60)}\"")
+            } else if (i < 20) {
+                // Debug log for first 20 pages to help diagnose detection issues
+                AppLogger.d(tag, "Page $i not a chapter start: reason=$reason, firstLine=\"${firstLine.take(60)}\"")
+            }
+        }
+
+        // Ensure we have at least one chapter start
+        if (chapterStarts.isEmpty()) chapterStarts.add(0)
+        // Add sentinel for end of book
+        if (chapterStarts.last() < pages.size) chapterStarts.add(pages.size)
+
+        return chapterStarts
+    }
+
+    /**
+     * Extract chapter title from the first line of a page.
+     */
+    private fun extractChapterTitle(firstLine: String, chapterIndex: Int, startPage: Int): String {
+        val coreText = stripDecorative(firstLine)
+
+        return when {
+            // Markdown header
+            firstLine.startsWith("#") -> firstLine.trimStart('#').trim()
+            // Chapter/Part title
+            chapterTitleLine.find(coreText) != null -> coreText
+            // Section keyword (use as-is)
+            sectionPattern.matches(coreText) -> coreText.trim()
+            // First chunk without chapter title - use generic name
+            chapterIndex == 0 && startPage == 0 -> "Introduction"
+            // Fallback
+            else -> "Section ${chapterIndex + 1}"
+        }
+    }
 
     /**
      * Detect chapter boundaries from a list of PDF page texts.
@@ -53,32 +184,8 @@ object PdfChapterDetector {
             return listOf(defaultTitle to " ")
         }
 
-        // Find indices where a new chapter starts (page starts with chapter header or is first page)
-        val chapterStarts = mutableListOf<Int>()
-        for (i in pages.indices) {
-            val firstLine = pages[i].lines().firstOrNull { it.isNotBlank() }?.trim()?.take(200) ?: ""
-            val isFirstPage = i == 0
-            // Chapter starts: "Chapter 1", "Chapter One", "PART ONE", "# Title", "Prologue", "Epilogue", "1. Title"
-            val looksLikeChapterStart = firstLine.isNotBlank() && (
-                chapterStartPattern.containsMatchIn(firstLine) ||
-                firstLine.matches(Regex("""^\s*Chapter\s+.+""", RegexOption.IGNORE_CASE)) ||
-                firstLine.matches(Regex("""^\s*#+\s+.+""")) ||
-                firstLine.matches(Regex("""^\s*PART\s+[ONE\d\s]+""", RegexOption.IGNORE_CASE)) ||
-                firstLine.matches(Regex("""^\s*(?:Prologue|Epilogue|Foreword|Introduction)\s*$""", RegexOption.IGNORE_CASE)) ||
-                firstLine.matches(Regex("""^\s*\d+[.)]\s+.+""")) // "1. Title" or "1) Title"
-            )
-            if (isFirstPage) {
-                chapterStarts.add(0)
-            } else if (looksLikeChapterStart) {
-                chapterStarts.add(i)
-                AppLogger.d(tag, "Chapter start at PDF page $i: firstLine=\"${firstLine.take(80)}\"")
-            }
-        }
-
-        if (chapterStarts.isEmpty()) chapterStarts.add(0)
-        if (chapterStarts.last() < pages.size) chapterStarts.add(pages.size)
-
-        // Log chapter boundaries at INFO so they appear in on-device logcat
+        // Use shared helper to find chapter boundaries
+        val chapterStarts = findChapterStarts(pages)
         AppLogger.i(tag, "Chapter boundaries: ${chapterStarts.size - 1} chapters, start pages=$chapterStarts")
 
         val result = mutableListOf<Pair<String, String>>()
@@ -96,18 +203,9 @@ object PdfChapterDetector {
             val firstPageText = rangePages.firstOrNull() ?: ""
             val titleLine = firstPageText.lines().firstOrNull { it.isNotBlank() }?.trim() ?: ""
 
-            // Determine title - use proper chapter title if found, otherwise label as Introduction/Preface
-            val title = when {
-                titleLine.startsWith("#") -> titleLine.trimStart('#').trim()
-                chapterTitleLine.find(titleLine) != null -> titleLine
-                titleLine.matches(Regex("""^\s*(?:Prologue|Epilogue|Foreword|Introduction)\s*$""", RegexOption.IGNORE_CASE)) -> titleLine.trim()
-                k == 0 && startPage == 0 -> "Introduction" // First chunk without chapter title is intro
-                else -> "Section ${k + 1}"
-            }
-            // Only add non-empty chapter body so LLM receives valid content
+            val title = extractChapterTitle(titleLine, k, startPage)
             val finalBody = if (body.isBlank()) " " else body
             result.add(title to finalBody)
-            // INFO so on-device logcat shows chapter boundary page numbers
             AppLogger.i(tag, "Chapter ${k + 1}: PDF pages $startPage–${endPage - 1} (${endPage - startPage} pages), title=\"$title\", bodyLen=${finalBody.length}")
         }
         return result
@@ -126,28 +224,9 @@ object PdfChapterDetector {
             return listOf(ChapterWithPages(defaultTitle, " ", emptyList()))
         }
 
-        // Find indices where a new chapter starts
-        val chapterStarts = mutableListOf<Int>()
-        for (i in pages.indices) {
-            val firstLine = pages[i].lines().firstOrNull { it.isNotBlank() }?.trim()?.take(200) ?: ""
-            val isFirstPage = i == 0
-            val looksLikeChapterStart = firstLine.isNotBlank() && (
-                chapterStartPattern.containsMatchIn(firstLine) ||
-                firstLine.matches(Regex("""^\s*Chapter\s+.+""", RegexOption.IGNORE_CASE)) ||
-                firstLine.matches(Regex("""^\s*#+\s+.+""")) ||
-                firstLine.matches(Regex("""^\s*PART\s+[ONE\d\s]+""", RegexOption.IGNORE_CASE)) ||
-                firstLine.matches(Regex("""^\s*(?:Prologue|Epilogue|Foreword|Introduction)\s*$""", RegexOption.IGNORE_CASE)) ||
-                firstLine.matches(Regex("""^\s*\d+[.)]\s+.+"""))
-            )
-            if (isFirstPage) {
-                chapterStarts.add(0)
-            } else if (looksLikeChapterStart) {
-                chapterStarts.add(i)
-            }
-        }
-
-        if (chapterStarts.isEmpty()) chapterStarts.add(0)
-        if (chapterStarts.last() < pages.size) chapterStarts.add(pages.size)
+        // Use shared helper to find chapter boundaries
+        val chapterStarts = findChapterStarts(pages)
+        AppLogger.i(tag, "Chapter boundaries (with pages): ${chapterStarts.size - 1} chapters, start pages=$chapterStarts")
 
         val result = mutableListOf<ChapterWithPages>()
         for (k in 0 until chapterStarts.size - 1) {
@@ -169,14 +248,7 @@ object PdfChapterDetector {
             val firstPageText = rangePages.firstOrNull() ?: ""
             val titleLine = firstPageText.lines().firstOrNull { it.isNotBlank() }?.trim() ?: ""
 
-            val title = when {
-                titleLine.startsWith("#") -> titleLine.trimStart('#').trim()
-                chapterTitleLine.find(titleLine) != null -> titleLine
-                titleLine.matches(Regex("""^\s*(?:Prologue|Epilogue|Foreword|Introduction)\s*$""", RegexOption.IGNORE_CASE)) -> titleLine.trim()
-                k == 0 && startPage == 0 -> "Introduction"
-                else -> "Section ${k + 1}"
-            }
-
+            val title = extractChapterTitle(titleLine, k, startPage)
             val finalBody = if (body.isBlank()) " " else body
             result.add(ChapterWithPages(title, finalBody, pdfPages))
             AppLogger.i(tag, "Chapter ${k + 1}: PDF pages ${startPage + 1}–$endPage (${pdfPages.size} pages), title=\"$title\"")

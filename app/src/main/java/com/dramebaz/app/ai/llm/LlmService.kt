@@ -246,6 +246,7 @@ object LlmService {
             ModelFormat.LITERTLM -> LlmModelFactory.ModelType.LITERTLM
             ModelFormat.GGUF -> LlmModelFactory.ModelType.GGUF
             ModelFormat.MEDIAPIPE -> LlmModelFactory.ModelType.MEDIAPIPE
+            ModelFormat.REMOTE -> LlmModelFactory.ModelType.REMOTE_SERVER
             ModelFormat.UNKNOWN -> null
         }
     }

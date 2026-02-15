@@ -212,6 +212,9 @@ enum class ModelFormat {
     /** MediaPipe .task format */
     MEDIAPIPE,
 
+    /** Remote server via REST API */
+    REMOTE,
+
     /** Unknown or unsupported format */
     UNKNOWN
 }

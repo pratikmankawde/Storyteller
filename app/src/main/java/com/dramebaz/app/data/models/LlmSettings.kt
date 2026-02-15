@@ -1,6 +1,7 @@
 package com.dramebaz.app.data.models
 
 import com.dramebaz.app.ai.llm.models.LlmModelFactory
+import com.dramebaz.app.ai.llm.models.RemoteServerConfig
 
 /**
  * LLM Settings for model and backend selection.
@@ -10,7 +11,9 @@ data class LlmSettings(
     val selectedModelType: LlmModelType = LlmModelType.AUTO,
     val preferredBackend: LlmBackend = LlmBackend.GPU,
     /** Specific model file path when user selects a discovered model (null = auto-select first available) */
-    val selectedModelPath: String? = null
+    val selectedModelPath: String? = null,
+    /** Remote server configuration for REMOTE_SERVER model type */
+    val remoteServerConfig: RemoteServerConfig = RemoteServerConfig.DEFAULT
 ) {
     companion object {
         /** Default settings - auto-select model, prefer GPU */
@@ -26,7 +29,8 @@ enum class LlmModelType(val displayName: String, val description: String) {
     AUTO("Auto", "Automatically select best available model"),
     LITERTLM("LiteRT-LM (.litertlm)", "LiteRT-LM format models (Gemma, Qwen, etc.)"),
     GGUF("GGUF (.gguf)", "GGUF format models via llama.cpp"),
-    MEDIAPIPE("MediaPipe (.task)", "MediaPipe format models (Gemma 3n, etc.)");
+    MEDIAPIPE("MediaPipe (.task)", "MediaPipe format models (Gemma 3n, etc.)"),
+    REMOTE_SERVER("Remote Server", "Remote AIServer via network");
 
     /**
      * Convert to factory model type (returns null for AUTO).
@@ -36,6 +40,7 @@ enum class LlmModelType(val displayName: String, val description: String) {
         LITERTLM -> LlmModelFactory.ModelType.LITERTLM
         GGUF -> LlmModelFactory.ModelType.GGUF
         MEDIAPIPE -> LlmModelFactory.ModelType.MEDIAPIPE
+        REMOTE_SERVER -> LlmModelFactory.ModelType.REMOTE_SERVER
     }
 
     companion object {
@@ -46,6 +51,7 @@ enum class LlmModelType(val displayName: String, val description: String) {
             LlmModelFactory.ModelType.LITERTLM -> LITERTLM
             LlmModelFactory.ModelType.GGUF -> GGUF
             LlmModelFactory.ModelType.MEDIAPIPE -> MEDIAPIPE
+            LlmModelFactory.ModelType.REMOTE_SERVER -> REMOTE_SERVER
         }
     }
 }

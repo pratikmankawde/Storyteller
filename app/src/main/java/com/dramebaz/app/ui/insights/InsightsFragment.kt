@@ -195,13 +195,14 @@ class InsightsFragment : Fragment() {
         statVocabComplexity: TextView? = null
     ) {
         withContext(Dispatchers.IO) {
-            val chapterList = app.db.chapterDao().getByBookId(bookId).first()
+            // BLOB-FIX: Use lightweight projection for chapter count and dialog count
+            val chapterWithAnalysisList = app.bookRepository.getChaptersWithAnalysis(bookId)
             val characterList = app.db.characterDao().getByBookId(bookId).first()
-            val chapters = chapterList.size
+            val chapters = chapterWithAnalysisList.size
             val characters = characterList.size
             // Estimate dialogs from chapter analysis using ChapterAnalysisResponse
             var dialogCount = 0
-            chapterList.forEach { chapter ->
+            chapterWithAnalysisList.forEach { chapter ->
                 chapter.fullAnalysisJson?.let { json ->
                     try {
                         val analysis = gson.fromJson(json, com.dramebaz.app.ai.llm.ChapterAnalysisResponse::class.java)
@@ -210,10 +211,18 @@ class InsightsFragment : Fragment() {
                 }
             }
 
-            // INS-004: Calculate reading level from all chapter text
-            val allText = chapterList.joinToString(" ") { it.body }
+            // INS-004: Calculate reading level from chapter text samples
+            // BLOB-FIX: Load chapters one at a time to avoid CursorWindow overflow
+            // Sample up to first 3 chapters or 50k chars total to avoid performance issues
+            val textBuilder = StringBuilder()
+            val chapterIds = chapterWithAnalysisList.sortedBy { it.orderIndex }.map { it.id }
+            for (chapterId in chapterIds) {
+                if (textBuilder.length >= 50000) break
+                val chapter = app.bookRepository.getChapter(chapterId) ?: continue
+                textBuilder.append(chapter.body).append(" ")
+            }
+            val allText = textBuilder.toString()
             val readingLevel = if (allText.length > 100) {
-                // Sample text for analysis (first 50k chars to avoid performance issues)
                 ReadingLevel.analyze(allText.take(50000))
             } else null
 
@@ -267,13 +276,22 @@ class InsightsFragment : Fragment() {
         if (card == null || plotView == null) return
 
         withContext(Dispatchers.IO) {
-            val chapters = app.db.chapterDao().getByBookId(bookId).first()
-            if (chapters.size < 3) {
+            // BLOB-FIX: Use lightweight projection first to get chapter count
+            val chapterSummaries = app.bookRepository.chapterSummariesList(bookId).sortedBy { it.orderIndex }
+            val totalChapters = chapterSummaries.size
+            if (totalChapters < 3) {
                 // Need at least 3 chapters for meaningful plot extraction
                 withContext(Dispatchers.Main) {
                     if (isAdded) card.visibility = View.GONE
                 }
                 return@withContext
+            }
+
+            // BLOB-FIX: Load chapters one at a time for plot extraction
+            val chapterBodies = mutableListOf<Pair<Int, String>>()
+            for ((idx, summary) in chapterSummaries.withIndex()) {
+                val chapter = app.bookRepository.getChapter(summary.id) ?: continue
+                chapterBodies.add(idx to chapter.body)
             }
 
             // Use the new modular PlotPointExtractionPass
@@ -283,17 +301,17 @@ class InsightsFragment : Fragment() {
                     val pass = PlotPointExtractionPass()
                     val input = PlotPointInput(
                         bookId = bookId,
-                        chapters = chapters.mapIndexed { idx, ch -> idx to ch.body }
+                        chapters = chapterBodies
                     )
                     val output = pass.execute(model, input, PassConfig())
                     output.plotPoints.map { it.copy(bookId = bookId) }
                 } else {
                     // Fallback to stub when no model available
-                    PlotPointExtractionPass.generateStubPlotPoints(bookId, chapters.size)
+                    PlotPointExtractionPass.generateStubPlotPoints(bookId, totalChapters)
                 }
             } catch (e: Exception) {
                 AppLogger.e("InsightsFragment", "Plot point extraction failed", e)
-                PlotPointExtractionPass.generateStubPlotPoints(bookId, chapters.size)
+                PlotPointExtractionPass.generateStubPlotPoints(bookId, totalChapters)
             }
 
             withContext(Dispatchers.Main) {
@@ -304,7 +322,7 @@ class InsightsFragment : Fragment() {
                 }
 
                 card.visibility = View.VISIBLE
-                plotView.setPlotPoints(plotPoints, chapters.size)
+                plotView.setPlotPoints(plotPoints, totalChapters)
 
                 description?.text = "Story structure with ${plotPoints.size} key plot points"
 
@@ -336,7 +354,8 @@ class InsightsFragment : Fragment() {
     ) {
         withContext(Dispatchers.IO) {
             val emotionalData = mutableListOf<Pair<String, List<EmotionalSegment>>>()
-            val chapterList = app.db.chapterDao().getByBookId(bookId).first()
+            // BLOB-FIX: Use lightweight projection - only need title and fullAnalysisJson
+            val chapterList = app.bookRepository.getChaptersWithAnalysis(bookId).sortedBy { it.orderIndex }
             val chapterIndices = mutableListOf<Int>()
 
             chapterList.forEachIndexed { index, chapter ->
@@ -463,12 +482,16 @@ class InsightsFragment : Fragment() {
         foreshadowingView: ForeshadowingView? = null
     ) {
         withContext(Dispatchers.IO) {
-            val chapters = app.db.chapterDao().getByBookId(bookId).first()
+            // BLOB-FIX: Use lightweight projection for analysisJson parsing
+            val chaptersWithAnalysis = app.bookRepository.getChaptersWithAnalysis(bookId).sortedBy { it.orderIndex }
+            val chapterSummaries = app.bookRepository.chapterSummariesList(bookId).sortedBy { it.orderIndex }
+            val totalChapters = chapterSummaries.size
+
             allVocabulary.clear()
             val allSymbols = mutableListOf<String>()
             val allForeshadowing = mutableListOf<String>()
 
-            chapters.forEach { chapter ->
+            chaptersWithAnalysis.forEach { chapter ->
                 chapter.analysisJson?.let { json ->
                     try {
                         val extAnalysis = gson.fromJson(json, JsonObject::class.java)
@@ -496,11 +519,16 @@ class InsightsFragment : Fragment() {
             }
 
             // INS-002: Detect foreshadowing elements using new modular ForeshadowingDetectionPass
-            val detectedForeshadowing = if (chapters.size >= 2) {
+            // BLOB-FIX: Load chapters one at a time for foreshadowing detection
+            val detectedForeshadowing = if (totalChapters >= 2) {
                 try {
-                    val chapterPairs = chapters.mapIndexed { idx, ch ->
-                        idx to ch.body
-                    }.filter { it.second.isNotBlank() }
+                    val chapterPairs = mutableListOf<Pair<Int, String>>()
+                    for ((idx, summary) in chapterSummaries.withIndex()) {
+                        val chapter = app.bookRepository.getChapter(summary.id) ?: continue
+                        if (chapter.body.isNotBlank()) {
+                            chapterPairs.add(idx to chapter.body)
+                        }
+                    }
 
                     val model = LlmService.getModel()
                     if (model != null) {
@@ -513,12 +541,12 @@ class InsightsFragment : Fragment() {
                         com.dramebaz.app.data.models.ForeshadowingResult(
                             bookId = bookId,
                             foreshadowings = output.foreshadowings.map { it.copy(bookId = bookId) },
-                            analyzedChapters = chapters.size
+                            analyzedChapters = totalChapters
                         )
                     } else {
                         // Fallback to stub when no model available
-                        val stubs = ForeshadowingDetectionPass.generateStubForeshadowing(bookId, chapters.size)
-                        com.dramebaz.app.data.models.ForeshadowingResult(bookId, stubs, analyzedChapters = chapters.size)
+                        val stubs = ForeshadowingDetectionPass.generateStubForeshadowing(bookId, totalChapters)
+                        com.dramebaz.app.data.models.ForeshadowingResult(bookId, stubs, analyzedChapters = totalChapters)
                     }
                 } catch (e: Exception) {
                     AppLogger.e("InsightsFragment", "Foreshadowing detection failed", e)
@@ -544,7 +572,7 @@ class InsightsFragment : Fragment() {
                     if (result.foreshadowings.isNotEmpty()) {
                         foreshadowingLabel?.visibility = View.VISIBLE
                         foreshadowingView?.visibility = View.VISIBLE
-                        foreshadowingView?.setData(result.foreshadowings, chapters.size)
+                        foreshadowingView?.setData(result.foreshadowings, totalChapters)
                         foreshadowingView?.onForeshadowingClickListener = { f ->
                             // Navigate to the setup chapter when clicked
                             Toast.makeText(
@@ -708,24 +736,26 @@ class InsightsFragment : Fragment() {
             try {
                 AppLogger.d("InsightsFragment", "Extended analysis button clicked, starting analysis for bookId=$bookId")
 
-                val chapters = withContext(Dispatchers.IO) {
-                    app.db.chapterDao().getByBookId(bookId).first()
+                // BLOB-FIX: Use lightweight projection to find chapters needing analysis
+                val chaptersWithAnalysis = withContext(Dispatchers.IO) {
+                    app.bookRepository.getChaptersWithAnalysis(bookId).sortedBy { it.orderIndex }
                 }
 
-                AppLogger.d("InsightsFragment", "Found ${chapters.size} total chapters")
+                AppLogger.d("InsightsFragment", "Found ${chaptersWithAnalysis.size} total chapters")
 
                 // Find chapters that have fullAnalysisJson (basic analysis done) but no analysisJson (extended)
-                val needAnalysis = chapters.filter {
-                    it.fullAnalysisJson != null && it.body.length > 50 && it.analysisJson.isNullOrBlank()
-                }
+                val needAnalysisIds = chaptersWithAnalysis.filter {
+                    it.fullAnalysisJson != null && it.analysisJson.isNullOrBlank()
+                }.map { it.id }
 
-                AppLogger.d("InsightsFragment", "Chapters needing extended analysis: ${needAnalysis.size}")
                 // Log why chapters might be filtered out
-                chapters.forEachIndexed { idx, ch ->
-                    AppLogger.d("InsightsFragment", "Ch[$idx] '${ch.title.take(20)}': fullAnalysisJson=${ch.fullAnalysisJson != null}, bodyLen=${ch.body.length}, analysisJson=${ch.analysisJson?.take(30) ?: "null"}")
+                chaptersWithAnalysis.forEachIndexed { idx, ch ->
+                    AppLogger.d("InsightsFragment", "Ch[$idx] '${ch.title.take(20)}': fullAnalysisJson=${ch.fullAnalysisJson != null}, analysisJson=${ch.analysisJson?.take(30) ?: "null"}")
                 }
 
-                if (needAnalysis.isEmpty()) {
+                AppLogger.d("InsightsFragment", "Chapters needing extended analysis: ${needAnalysisIds.size}")
+
+                if (needAnalysisIds.isEmpty()) {
                     withContext(Dispatchers.Main) {
                         pd.dismiss()
                         Toast.makeText(ctx, "All chapters already have extended analysis.", Toast.LENGTH_SHORT).show()
@@ -742,17 +772,26 @@ class InsightsFragment : Fragment() {
                     return@launch
                 }
 
-                pd.max = needAnalysis.size
+                pd.max = needAnalysisIds.size
 
-                needAnalysis.forEachIndexed { index, chapter ->
+                // BLOB-FIX: Load and process chapters one at a time
+                needAnalysisIds.forEachIndexed { index, chapterId ->
                     if (!isAdded) {
                         pd.dismiss()
                         return@launch
                     }
 
+                    // Load full chapter only when needed
+                    val chapter = withContext(Dispatchers.IO) {
+                        app.bookRepository.getChapter(chapterId)
+                    } ?: return@forEachIndexed
+
+                    // Skip if body too short
+                    if (chapter.body.length <= 50) return@forEachIndexed
+
                     withContext(Dispatchers.Main) {
                         pd.progress = index
-                        pd.setMessage("Analyzing chapter ${index + 1}/${needAnalysis.size}:\n${chapter.title.take(30)}...")
+                        pd.setMessage("Analyzing chapter ${index + 1}/${needAnalysisIds.size}:\n${chapter.title.take(30)}...")
                     }
 
                     AppLogger.d("InsightsFragment", "Calling LlmService.extendedAnalysisJson for chapter: ${chapter.title}")
@@ -776,7 +815,7 @@ class InsightsFragment : Fragment() {
                     pd.dismiss()
                     if (!isAdded) return@withContext
 
-                    Toast.makeText(ctx, "Extended analysis complete for ${needAnalysis.size} chapters.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, "Extended analysis complete for ${needAnalysisIds.size} chapters.", Toast.LENGTH_SHORT).show()
 
                     // Reload insights
                     val data = withContext(Dispatchers.IO) { vm.insightsForBook(bookId) }

@@ -216,13 +216,14 @@ class BookDetailFragment : Fragment() {
         btnAnalyze?.text = "Loading..."
 
         // Load initial book status and check analysis state
+        // BLOB-FIX: Use lightweight summaries instead of full chapters
         viewLifecycleOwner.lifecycleScope.launch {
             val book = vm.getBook(bookId)
-            val chapters = app.bookRepository.chapters(bookId).first()
-            val hasChapters = chapters.isNotEmpty()
+            val chapterSummaries = app.bookRepository.chapterSummariesList(bookId)
+            val hasChapters = chapterSummaries.isNotEmpty()
 
             if (book != null) {
-                updateAnalyzeButtonFromBookState(btnAnalyze, book, chapters.size)
+                updateAnalyzeButtonFromBookState(btnAnalyze, book, chapterSummaries.size)
             } else if (!hasChapters) {
                 btnAnalyze?.text = "No chapters"
             }
@@ -375,12 +376,14 @@ class BookDetailFragment : Fragment() {
 
     /**
      * AUG-030: Load and display smart chapter summaries with key points.
+     * BLOB-FIX: Uses lightweight projection to avoid CursorWindow overflow.
      */
     private suspend fun loadChapterSummaries(card: MaterialCardView?, container: LinearLayout?) {
         if (card == null || container == null) return
 
+        // BLOB-FIX: Use lightweight projection that excludes body
         val chapters = withContext(Dispatchers.IO) {
-            app.db.chapterDao().getByBookId(bookId).first()
+            app.db.chapterDao().getChaptersWithAnalysis(bookId)
         }
 
         if (chapters.isEmpty()) return

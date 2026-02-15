@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.dramebaz.app.ai.llm.ChapterAnalysisResponse
 import com.dramebaz.app.data.db.AppDatabase
-import com.dramebaz.app.data.db.Chapter
+import com.dramebaz.app.data.db.ChapterSummary
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 
@@ -17,23 +17,26 @@ class CharactersViewModel(private val db: AppDatabase) : ViewModel() {
     /**
      * CHARACTER-002: Observe chapter changes for real-time dialog count updates.
      * Returns a Flow that emits when chapters are updated (e.g., after analysis).
+     * BLOB-FIX: Uses lightweight summaries to avoid CursorWindow overflow.
      */
-    fun observeChapterChanges(bookId: Long): Flow<List<Chapter>> =
-        db.chapterDao().getByBookId(bookId)
+    fun observeChapterChanges(bookId: Long): Flow<List<ChapterSummary>> =
+        db.chapterDao().getSummariesByBookId(bookId)
 
     /**
      * Get dialog counts by speaker name from all chapter analyses.
      * Returns a map of speaker name (lowercase) to dialog count.
+     * BLOB-FIX: Uses lightweight projection to avoid CursorWindow overflow.
      */
     suspend fun getDialogCountsBySpeaker(bookId: Long): Map<String, Int> {
-        val chapters = db.chapterDao().getChaptersList(bookId)
+        // Use lightweight projection that only loads fullAnalysisJson
+        val analyses = db.chapterDao().getAnalysesOnly(bookId)
         val dialogCounts = mutableMapOf<String, Int>()
 
-        for (chapter in chapters) {
-            val analysisJson = chapter.fullAnalysisJson ?: continue
+        for (analysis in analyses) {
+            val analysisJson = analysis.fullAnalysisJson ?: continue
             try {
-                val analysis = gson.fromJson(analysisJson, ChapterAnalysisResponse::class.java)
-                analysis.dialogs?.forEach { dialog ->
+                val parsed = gson.fromJson(analysisJson, ChapterAnalysisResponse::class.java)
+                parsed.dialogs?.forEach { dialog ->
                     val speaker = dialog.speaker.lowercase()
                     dialogCounts[speaker] = (dialogCounts[speaker] ?: 0) + 1
                 }

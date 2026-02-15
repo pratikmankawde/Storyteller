@@ -1,17 +1,25 @@
 package com.dramebaz.app.ai.audio
 
 import android.content.Context
+import android.util.Base64
 import com.dramebaz.app.utils.AppLogger
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * SFX engine implementation with AI-powered generation and tag-based fallback.
  *
- * Primary: Uses StableAudioEngine (Stable Audio Open Small) for AI-generated SFX
- * Fallback: Maps sound prompts to bundled sound files based on keywords and categories.
+ * Generation priority:
+ * 1. Remote server (if configured and connected)
+ * 2. Local AI (StableAudioEngine) if enabled
+ * 3. Bundled assets (keyword/category matching)
  *
  * T3.2: SFX generation/selection - resolves sound_cue to file_path.
  */
@@ -21,6 +29,11 @@ class SfxEngine(private val context: Context) {
     // AI-powered SFX generator (optional - enabled when models are available)
     private var stableAudioEngine: StableAudioEngine? = null
     private var aiGenerationEnabled = false
+
+    // Remote SFX generation support
+    private var remoteConfig: RemoteSfxConfig? = null
+    private var remoteServerConnected = false
+    private val gson = Gson()
 
     // SFX library mapping: keyword/category -> asset path
     private val sfxLibrary = mapOf(
@@ -121,23 +134,62 @@ class SfxEngine(private val context: Context) {
     }
 
     /**
-     * Check if AI-powered generation is available.
+     * Check if AI-powered generation is available (local or remote).
      */
-    fun isAiGenerationEnabled(): Boolean = aiGenerationEnabled && stableAudioEngine?.isReady() == true
+    fun isAiGenerationEnabled(): Boolean =
+        (aiGenerationEnabled && stableAudioEngine?.isReady() == true) || isRemoteGenerationEnabled()
 
     /**
-     * Release AI engine resources.
+     * Initialize remote SFX generation with server configuration.
+     * @param config Remote server configuration
+     * @return true if remote server connection was established
+     */
+    suspend fun initializeRemoteGeneration(config: RemoteSfxConfig): Boolean = withContext(Dispatchers.IO) {
+        AppLogger.i(tag, "Checking connection to remote SFX server: ${config.baseUrl}")
+        try {
+            val url = URL(config.healthUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = config.connectTimeoutMs
+            connection.readTimeout = 5000
+            connection.requestMethod = "GET"
+
+            val responseCode = connection.responseCode
+            connection.disconnect()
+
+            remoteServerConnected = responseCode == 200
+            if (remoteServerConnected) {
+                remoteConfig = config
+                AppLogger.i(tag, "✅ Connected to remote SFX server: ${config.baseUrl}")
+            } else {
+                AppLogger.w(tag, "❌ Remote SFX server returned status $responseCode")
+            }
+            remoteServerConnected
+        } catch (e: Exception) {
+            AppLogger.e(tag, "❌ Failed to connect to remote SFX server: ${e.message}", e)
+            remoteServerConnected = false
+            false
+        }
+    }
+
+    /**
+     * Check if remote SFX generation is available.
+     */
+    fun isRemoteGenerationEnabled(): Boolean = remoteServerConnected && remoteConfig != null
+
+    /**
+     * Release all engine resources (local AI and remote).
      */
     fun release() {
         stableAudioEngine?.release()
         stableAudioEngine = null
         aiGenerationEnabled = false
+        remoteServerConnected = false
+        remoteConfig = null
     }
 
     /**
      * Resolve sound prompt to a sound file.
-     * Primary: Uses AI generation if enabled
-     * Fallback: Uses keyword matching and category-based selection from bundled assets.
+     * Priority: 1. Remote server, 2. Local AI, 3. Bundled assets
      */
     suspend fun resolveToFile(
         soundPrompt: String,
@@ -147,17 +199,27 @@ class SfxEngine(private val context: Context) {
         try {
             AppLogger.d(tag, "Resolving SFX: prompt='$soundPrompt', category='$category', duration=${durationSeconds}s")
 
-            // Try AI generation first if enabled
-            if (isAiGenerationEnabled()) {
-                val aiGeneratedFile = generateWithAi(soundPrompt, durationSeconds)
-                if (aiGeneratedFile != null) {
-                    AppLogger.i(tag, "✅ AI-generated SFX: '$soundPrompt' -> ${aiGeneratedFile.name}")
-                    return@withContext aiGeneratedFile
+            // 1. Try remote generation first if enabled
+            if (isRemoteGenerationEnabled()) {
+                val remoteFile = generateWithRemoteServer(soundPrompt, durationSeconds)
+                if (remoteFile != null) {
+                    AppLogger.i(tag, "✅ Remote-generated SFX: '$soundPrompt' -> ${remoteFile.name}")
+                    return@withContext remoteFile
                 }
-                AppLogger.w(tag, "AI generation failed, falling back to bundled assets")
+                AppLogger.w(tag, "Remote SFX generation failed, trying local AI")
             }
 
-            // Fallback to bundled assets
+            // 2. Try local AI generation if enabled
+            if (aiGenerationEnabled && stableAudioEngine?.isReady() == true) {
+                val aiGeneratedFile = generateWithLocalAi(soundPrompt, durationSeconds)
+                if (aiGeneratedFile != null) {
+                    AppLogger.i(tag, "✅ Local AI-generated SFX: '$soundPrompt' -> ${aiGeneratedFile.name}")
+                    return@withContext aiGeneratedFile
+                }
+                AppLogger.w(tag, "Local AI generation failed, falling back to bundled assets")
+            }
+
+            // 3. Fallback to bundled assets
             resolveToBundledAsset(soundPrompt, category)
         } catch (e: Exception) {
             AppLogger.e(tag, "Error resolving SFX file", e)
@@ -166,13 +228,99 @@ class SfxEngine(private val context: Context) {
     }
 
     /**
-     * Generate SFX using AI (Stable Audio Open Small).
+     * Generate SFX using remote server.
      */
-    private suspend fun generateWithAi(prompt: String, durationSeconds: Float): File? {
+    private suspend fun generateWithRemoteServer(prompt: String, durationSeconds: Float): File? {
+        val config = remoteConfig ?: return null
+        return try {
+            val request = AudioGenRequest(
+                model = config.modelId,
+                prompt = prompt
+            )
+            val response = sendAudioGenRequest(config, request)
+            if (response == null) {
+                AppLogger.w(tag, "No response from remote SFX server")
+                null
+            } else if (response.error != null) {
+                AppLogger.e(tag, "SFX server error: ${response.error.code} - ${response.error.message}")
+                null
+            } else if (response.outputData == null) {
+                AppLogger.w(tag, "No audio data in SFX response")
+                null
+            } else {
+                saveRemoteSfxResponse(response, prompt)
+            }
+        } catch (e: Exception) {
+            AppLogger.e(tag, "Remote SFX generation error", e)
+            remoteServerConnected = false
+            null
+        }
+    }
+
+    /**
+     * Generate SFX using local AI (Stable Audio Open Small).
+     */
+    private suspend fun generateWithLocalAi(prompt: String, durationSeconds: Float): File? {
         return try {
             stableAudioEngine?.generateAudio(prompt, durationSeconds)
         } catch (e: Exception) {
-            AppLogger.e(tag, "AI SFX generation error", e)
+            AppLogger.e(tag, "Local AI SFX generation error", e)
+            null
+        }
+    }
+
+    private fun sendAudioGenRequest(config: RemoteSfxConfig, request: AudioGenRequest): AudioGenResponse? {
+        val url = URL(config.audioGenUrl)
+        val connection = url.openConnection() as HttpURLConnection
+
+        return try {
+            connection.connectTimeout = config.connectTimeoutMs
+            connection.readTimeout = config.readTimeoutMs
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.doOutput = true
+
+            val jsonBody = gson.toJson(request)
+            AppLogger.d(tag, "Audio gen request: $jsonBody")
+
+            OutputStreamWriter(connection.outputStream).use { writer ->
+                writer.write(jsonBody)
+                writer.flush()
+            }
+
+            val responseCode = connection.responseCode
+            if (responseCode == 200) {
+                val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
+                gson.fromJson(responseBody, AudioGenResponse::class.java)
+            } else {
+                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+                AppLogger.e(tag, "Audio gen server error $responseCode: $errorBody")
+                // Try to parse error response
+                try {
+                    gson.fromJson(errorBody, AudioGenResponse::class.java)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun saveRemoteSfxResponse(response: AudioGenResponse, prompt: String): File? {
+        return try {
+            val audioData = Base64.decode(response.outputData!!, Base64.DEFAULT)
+            val cacheDir = File(context.cacheDir, "sfx_remote")
+            if (!cacheDir.exists()) cacheDir.mkdirs()
+
+            val safeFileName = prompt.take(20).replace(Regex("[^a-zA-Z0-9]"), "_")
+            val outputFile = File(cacheDir, "${safeFileName}_${System.currentTimeMillis()}.wav")
+
+            FileOutputStream(outputFile).use { it.write(audioData) }
+            AppLogger.d(tag, "Saved remote SFX: ${outputFile.name} (${audioData.size} bytes)")
+            outputFile
+        } catch (e: Exception) {
+            AppLogger.e(tag, "Failed to save remote SFX", e)
             null
         }
     }
@@ -311,3 +459,47 @@ class SfxEngine(private val context: Context) {
         )
     }
 }
+
+// ==================== Request/Response DTOs ====================
+
+/**
+ * Request body for /api/v1/audio-gen endpoint.
+ * Unified request format matching AIServer API.
+ */
+private data class AudioGenRequest(
+    @SerializedName("model") val model: String,
+    @SerializedName("prompt") val prompt: String
+)
+
+/**
+ * Response body from /api/v1/audio-gen endpoint.
+ * Unified response format matching AIServer API.
+ */
+private data class AudioGenResponse(
+    @SerializedName("id") val id: String?,
+    @SerializedName("model") val model: String?,
+    @SerializedName("task") val task: String?,
+    @SerializedName("generated_text") val generatedText: String?,
+    @SerializedName("output_data") val outputData: String?,
+    @SerializedName("output_mime_type") val outputMimeType: String?,
+    @SerializedName("usage") val usage: AudioGenUsageInfo?,
+    @SerializedName("timing") val timing: AudioGenTiming?,
+    @SerializedName("error") val error: AudioGenErrorInfo?
+)
+
+private data class AudioGenUsageInfo(
+    @SerializedName("prompt_tokens") val promptTokens: Int?,
+    @SerializedName("completion_tokens") val completionTokens: Int?,
+    @SerializedName("total_tokens") val totalTokens: Int?
+)
+
+private data class AudioGenTiming(
+    @SerializedName("inference_time_ms") val inferenceTimeMs: Double?,
+    @SerializedName("tokens_per_second") val tokensPerSecond: Double?
+)
+
+private data class AudioGenErrorInfo(
+    @SerializedName("code") val code: String?,
+    @SerializedName("message") val message: String?,
+    @SerializedName("http_status") val httpStatus: Int?
+)

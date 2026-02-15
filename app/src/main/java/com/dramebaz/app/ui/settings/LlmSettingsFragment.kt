@@ -175,6 +175,7 @@ class LlmSettingsFragment : Fragment() {
                     LlmModelFactory.ModelType.LITERTLM -> "LiteRT"
                     LlmModelFactory.ModelType.GGUF -> "GGUF"
                     LlmModelFactory.ModelType.MEDIAPIPE -> "MediaPipe"
+                    LlmModelFactory.ModelType.REMOTE_SERVER -> "Remote"
                 }
                 "${model.fileName} ($sizeMb MB, $typeLabel)"
             })

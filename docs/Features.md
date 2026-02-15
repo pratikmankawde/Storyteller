@@ -2,26 +2,26 @@
 
 # Implementation Status (Updated 2026-02-06)
 
-| Feature                            | Status            | Notes                                                               |
-| ---------------------------------- | ----------------- | ------------------------------------------------------------------- |
+| Feature                            | Status            | Notes                                                                                   |
+| ---------------------------------- | ----------------- | --------------------------------------------------------------------------------------- |
 | 1. AI Character Voices             | ✅ Implemented     | Modular TTS: LibriTTS (904 speakers) + Kokoro (10 voices), VoiceProfile, SpeakerMatcher |
-| 2. Emotion-Aware Narration         | ✅ Implemented     | EmotionalSegment, prosody via VoiceProfileMapper                    |
-| 3. Sound Effects & Ambience        | ⚠️ Partial         | SoundCue entity exists, AudioMixer ready, needs SFX assets          |
-| 4. Chapter Summaries & Recaps      | ✅ Implemented     | GetRecapUseCase, ChapterSummary, "Previously on..."                 |
-| 5. Character Encyclopedia          | ✅ Implemented     | CharactersFragment, CharacterDetailFragment, traits/voice/speakerId |
-| 6. Scene Visualization             | ❌ Not Implemented | Future feature                                                      |
-| 7. Adaptive Reading Mode           | ✅ Implemented     | Text/Audio/Mixed via PlaybackTheme toggle                           |
-| 8. Smart Bookmarking               | ✅ Implemented     | contextSummary, charactersInvolved, emotionSnapshot                 |
-| 9. Multi-Voice Dialog              | ✅ Implemented     | Different speaker IDs per character                                 |
-| 10. Mood Playback Themes           | ✅ Implemented     | PlaybackTheme: CINEMATIC, RELAXED, IMMERSIVE, CLASSIC               |
-| 11. "What If" Mode                 | ❌ Not Implemented | Future feature                                                      |
-| 12. Analysis Tools                 | ✅ Implemented     | InsightsFragment with themes, symbols, vocabulary                   |
-| 13. Offline-First                  | ✅ Implemented     | llama.cpp + Sherpa-ONNX, no network required                        |
-| 14. Import Any Book                | ✅ Implemented     | PDF/EPUB/TXT via ImportBookUseCase                                  |
-| 15. Reading Goals                  | ⚠️ Partial         | ReadingSession entity, no UI charts yet                             |
-| 16. Real-Time Scene Reconstruction | ⚠️ Partial         | AudioMixer channels ready, needs more SFX                           |
-| 17. Director's Cut Mode            | ❌ Not Implemented | Future feature                                                      |
-| 18. Multi-Language                 | ❌ Not Implemented | Future feature                                                      |
+| 2. Emotion-Aware Narration         | ✅ Implemented     | EmotionalSegment, prosody via VoiceProfileMapper                                        |
+| 3. Sound Effects & Ambience        | ⚠️ Partial         | SoundCue entity exists, AudioMixer ready, needs SFX assets                              |
+| 4. Chapter Summaries & Recaps      | ✅ Implemented     | GetRecapUseCase, ChapterSummary, "Previously on..."                                     |
+| 5. Character Encyclopedia          | ✅ Implemented     | CharactersFragment, CharacterDetailFragment, traits/voice/speakerId                     |
+| 6. Scene Visualization             | ❌ Not Implemented | Future feature                                                                          |
+| 7. Adaptive Reading Mode           | ✅ Implemented     | Text/Audio/Mixed via PlaybackTheme toggle                                               |
+| 8. Smart Bookmarking               | ✅ Implemented     | contextSummary, charactersInvolved, emotionSnapshot                                     |
+| 9. Multi-Voice Dialog              | ✅ Implemented     | Different speaker IDs per character                                                     |
+| 10. Mood Playback Themes           | ✅ Implemented     | PlaybackTheme: CINEMATIC, RELAXED, IMMERSIVE, CLASSIC                                   |
+| 11. "What If" Mode                 | ❌ Not Implemented | Future feature                                                                          |
+| 12. Analysis Tools                 | ✅ Implemented     | InsightsFragment with themes, symbols, vocabulary                                       |
+| 13. Offline-First                  | ✅ Implemented     | llama.cpp + Sherpa-ONNX, no network required                                            |
+| 14. Import Any Book                | ✅ Implemented     | PDF/EPUB/TXT via ImportBookUseCase                                                      |
+| 15. Reading Goals                  | ⚠️ Partial         | ReadingSession entity, no UI charts yet                                                 |
+| 16. Real-Time Scene Reconstruction | ⚠️ Partial         | AudioMixer channels ready, needs more SFX                                               |
+| 17. Director's Cut Mode            | ❌ Not Implemented | Future feature                                                                          |
+| 18. Multi-Language                 | ❌ Not Implemented | Future feature                                                                          |
 
 ---
 
@@ -225,3 +225,42 @@ Like having a literature professor in your pocket.
 
 
 ---
+
+### Here are the most common digital book/magazine formats:
+
+   E-Book Formats
+
+   | Format   | Extension | Description                           | Popularity |
+   | -------- | --------- | ------------------------------------- | ---------- |
+   | EPUB     | .epub     | Open standard, most e-readers         | ⭐⭐⭐⭐⭐      |
+   | PDF      | .pdf      | Fixed layout, universal               | ⭐⭐⭐⭐⭐      |
+   | MOBI     | .mobi     | Amazon Kindle (legacy)                | ⭐⭐⭐        |
+   | AZW3/KF8 | .azw3     | Amazon Kindle (current)               | ⭐⭐⭐⭐       |
+   | FB2      | .fb2      | FictionBook, popular in Russia/Europe | ⭐⭐⭐        |
+   | DJVU     | .djvu     | Scanned documents, image-heavy        | ⭐⭐         |
+
+   Comic/Magazine Formats
+
+   | Format | Extension | Description                    |
+   | ------ | --------- | ------------------------------ |
+   | CBZ    | .cbz      | Comic Book ZIP (images in ZIP) |
+   | CBR    | .cbr      | Comic Book RAR (images in RAR) |
+   | CB7    | .cb7      | Comic Book 7z                  |
+
+   Document Formats
+
+   | Format | Extension | Description                  |
+   | ------ | --------- | ---------------------------- |
+   | DOCX   | .docx     | Microsoft Word (manuscripts) |
+   | RTF    | .rtf      | Rich Text Format             |
+   | ODT    | .odt      | OpenDocument Text            |
+   | HTML   | .html     | Web-based                    |
+
+   Recommendations for Your App
+
+   If you want to expand support, I'd prioritize:
+
+     1. AZW3/MOBI - Very popular due to Kindle dominance (complex DRM issues though)
+     2. FB2 - XML-based, relatively easy to parse
+     3. CBZ - Just a ZIP with images, simple to implement
+     4. DJVU - Requires a native library but useful for scanned books
